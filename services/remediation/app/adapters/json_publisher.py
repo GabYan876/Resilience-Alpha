@@ -1,4 +1,4 @@
-"""Publication des événements en JSON, une ligne par événement (stdout -> Promtail -> Loki)."""
+"""Publication des événements en JSON, une ligne par événement (stdout -> Alloy -> Loki)."""
 
 from __future__ import annotations
 

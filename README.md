@@ -82,27 +82,31 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Les commandes ci-dessous sont la cible ; à ajuster au fur et à mesure de l'implémentation.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le moteur de remédiation (Compose) et la pile d'observabilité. Le WAF, le front, l'auth, le détecteur ML, l'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
-cp .env.example .env            # puis renseigner via Vault/SOPS
+cp .env.example .env            # puis renseigner les secrets (Vault/SOPS)
 
-# 2. Déploiement en une commande
-ansible-playbook infra/ansible/site.yml
-# ou, en local :
-docker compose -f infra/compose/docker-compose.yml up -d --build
+# 2. Socle : base, migrations, API, moteur de remédiation
+#    --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
+docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build --wait
 
-# 3. Vérifier le socle
-./scripts/check_transaction.sh  # API saine + transaction de test
+# 3. Observabilité (pile autonome, lancée après le socle qui crée `resilience-net`)
+docker compose --env-file .env -f infra/compose/docker-compose.observability.yml up -d --wait
+
+# 4. Vérifier le socle
+./scripts/check_transaction.sh  # API saine + transaction de test réglée
 ```
 
-Accès (à confirmer) : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
+La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
+
+Accès actuel : Grafana sur `http://127.0.0.1:3000` (poste hôte uniquement). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
 
 ## Lancer la démonstration
 
 ```bash
-# Sur le PC Attaquant
+# Sur le PC Attaquant (script à écrire dans attack/)
 ./attack/http_flood.sh 192.168.137.1
 
 # Sur le PC Hôte : observer le dashboard / Grafana, puis vérifier la reprise
@@ -115,8 +119,10 @@ Critère de réussite : **aucune intervention humaine** entre l'attaque et la no
 ## Tests
 
 ```bash
-pytest services/            # unitaires (domaine sans I/O, adaptateurs avec doubles)
-./scripts/chaos.sh          # injection de défaillances (jeudi)
+# Un service à la fois : les paquets `app` de chaque service entrent en collision
+cd services/api         && python -m pytest -q   # unitaires (domaine sans I/O, adaptateurs avec doubles)
+cd services/remediation && python -m pytest -q
+./scripts/chaos.sh          # injection de défaillances (jeudi, à écrire)
 ```
 
 ## Sécurité

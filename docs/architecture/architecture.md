@@ -20,7 +20,7 @@ flowchart LR
         end
         subgraph OBS[réseau obs — interne]
             PROM[Prometheus]
-            LOKI[Loki + Promtail]
+            LOKI[Loki + Alloy]
             GRAF[Grafana]
         end
         subgraph CTRL[réseau control — interne]
@@ -68,11 +68,26 @@ flowchart LR
 | `prometheus`, `loki`, `grafana` | Métriques, logs, SOC | obs | non (Grafana via WAF) | Hugo |
 | `anomaly-detector` | ML (IsolationForest) sur métriques/logs | obs, control | non | Kevin |
 | `remediation` | Décision, actions, vérification | control, app, obs | non | Kevin |
-| `docker-socket-proxy` | Endpoints Docker restreints | control | non | Hugo |
+| `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
+| `docker-proxy` | Passerelle Docker d'Alloy : lecture seule (`GET /containers`, `/networks`) | pile obs | non | Hugo |
 | `vault` | Secrets | control | non | Hugo |
 | `rag-assistant` | Assistant RAG (Ollama + LangChain ≤ 8B) | rag | non | François |
 
-**Règle d'exposition** : seul le WAF publie un port. Aucun composant, hors `docker-socket-proxy`, ne touche `docker.sock`.
+**Règle d'exposition** : seul le WAF publie un port (en attendant le WAF, Grafana est lié à `127.0.0.1:3000`). Aucun composant, hors les deux passerelles `docker-proxy-ctl` et `docker-proxy`, ne touche `docker.sock`.
+
+### Réseaux Docker implémentés
+
+Le schéma de la section 1 est logique. Dans les fichiers Compose, il se traduit ainsi :
+
+| Réseau Docker | `internal` | Membres | Rôle |
+|---|---|---|---|
+| `resilience-net` | non | `api`, `remediation`, `prometheus`, `grafana` | trafic entre services ; aucun port publié |
+| `resilience-db-internal` | oui | `postgres`, `migrate`, `api` | accès à la base, seul `api` fait le lien |
+| `resilience-control-internal` | oui | `remediation`, `docker-proxy-ctl` | le moteur et sa passerelle, rien d'autre |
+| `resilience-obs-internal` | oui | `prometheus`, `loki`, `alloy`, `grafana` | observabilité |
+| `resilience-docker-proxy-net` | oui | `alloy`, `docker-proxy` | lecture des logs Docker |
+
+La collecte des logs est faite par **Alloy** (et non Promtail). `infra/compose/docker-compose.yml` (socle) et `docker-compose.observability.yml` sont deux piles autonomes, à ne pas fusionner par `-f` multiples.
 
 ## 3. Moteur de remédiation
 
@@ -131,14 +146,14 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 | detector → remediation | `POST /incidents` (token) | remontée d'anomalie |
 | remediation → docker-socket-proxy | restart / scale uniquement | `ContainerRestarter`, `ServiceScaler` |
 | remediation → waf | API restreinte (token) | `IpBlocker` |
-| dashboard → remediation | `GET /incidents`, flux d'événements | affichage avant / pendant / après |
+| dashboard → remediation | `GET /incidents`, flux d'événements (**à implémenter** : seul `POST /incidents` existe) | affichage avant / pendant / après |
 
 ## 5. Sécurité & RAM
 
 - Secrets : Vault ou SOPS, `.env` ignoré, `.env.example` fourni.
 - `mem_limit` sur chaque conteneur (PC Hôte 16 Go) ; Ollama sur un 3e PC si < 32 Go.
 - Le RAG n'a aucun accès au moteur de remédiation ni à Docker.
-- Reset d'état : `scripts/reset-demo` (débloque les IP, restaure la BDD) pour ≥ 5 passages.
+- Reset d'état : `scripts/reset_demo.sh` (débloque les IP, restaure la BDD) pour ≥ 5 passages.
 
 ## 6. Questions ouvertes
 
