@@ -90,17 +90,24 @@ loki.process "journal_projet" {
   // `trace_id` est une clé de corrélation d'incident : cardinalité faible ici (un
   // incident par passage de démonstration), à déplacer en métadonnée structurée si
   // le volume d'incidents devenait important.
+  // Seuls `service` et `event` sont indexés : tous deux ont un domaine de valeurs
+  // fermé et petit. `trace_id` en est volontairement exclu — l'API en génère un
+  // uuid4 par transaction, donc l'indexer créerait un flux Loki par transaction.
+  // Sous le flood de la démonstration, Loki atteindrait ses limites de flux
+  // (rejets 429, 384 Mo de RAM) et l'on perdrait les événements `incident.*` du
+  // moteur au moment précis où ils servent de preuve.
   stage.labels {
     values = {
-      service  = "",
-      trace_id = "",
-      event    = "",
+      service = "",
+      event   = "",
     }
   }
 
   // Non indexé mais requêtable : évite de faire exploser le nombre de séries.
+  // La corrélation par trace reste possible avec `| trace_id="..."`.
   stage.structured_metadata {
     values = {
+      trace_id    = "",
       incident_id = "",
       level       = "",
       action      = "",

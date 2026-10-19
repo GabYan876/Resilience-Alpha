@@ -121,17 +121,27 @@ Chaque service écrit sur `stdout` une ligne JSON par événement, avec au minim
 `loki.process` applique, à toutes les lignes :
 
 - extraction JSON (`stage.json`) des champs `service`, `trace_id`, `event`, `incident_id`, `at`, `level`, puis de `data.action`, `data.probe_transaction_ok`, `data.api_healthy` ;
-- **labels indexés** (`stage.labels`) : `service`, `trace_id`, `event` — les trois clés exigées par les conventions du projet, celles qui rendent les logs exploitables en SIEM ;
-- **métadonnées structurées** (`stage.structured_metadata`) : `incident_id`, `level`, `action`, `probe_ok`, `api_healthy` — requêtables mais non indexées, pour ne pas multiplier les séries ;
+- **labels indexés** (`stage.labels`) : `service` et `event` — deux clés à domaine de valeurs fermé et petit ;
+- **métadonnées structurées** (`stage.structured_metadata`) : `trace_id`, `incident_id`, `level`, `action`, `probe_ok`, `api_healthy` — requêtables mais non indexées, pour ne pas multiplier les séries ;
 - **horodatage applicatif** (`stage.timestamp` sur `at`) : l'ordre détection → décision → action → vérification reste exact dans Grafana, même si la collecte prend du retard pendant le flood.
 
 Labels d'infrastructure ajoutés par la découverte Docker : `container`, `compose_service`, `compose_project`, `stream`, plus `job="docker"`, `env="lab"`, `site="pc-hote"`.
 
 Une ligne **non JSON** (Prometheus, Grafana, Nginx…) traverse le pipeline sans être modifiée : les étapes d'extraction échouent silencieusement et la ligne est indexée avec ses seuls labels d'infrastructure. Aucun log n'est perdu.
 
-### Cardinalité de `trace_id`
+### Cardinalité de `trace_id` — pourquoi il n'est pas indexé
 
-`trace_id` est un label indexé parce que les conventions du projet l'exigent et parce que c'est la clé de corrélation d'un incident. Sa cardinalité reste faible ici : un `trace_id` par incident, donc une poignée par passage de démonstration. Dans un contexte industriel, avec des milliers d'incidents par jour, il faudrait le déplacer en métadonnée structurée — c'est un réglage à changer dans `stage.labels`, pas une refonte.
+Les conventions du projet exigent que `service`, `trace_id` et `event` soient exploitables dans Loki. Elles n'exigent pas qu'ils soient **indexés**, et `trace_id` ne doit surtout pas l'être : l'API métier en génère un **par transaction**, pas par incident. Chaque valeur distincte d'un label crée un flux Loki. Sous le flood de la démonstration, indexer `trace_id` créerait des milliers de flux, Loki atteindrait ses limites (rejets `429`, 384 Mo de RAM) et l'on perdrait les événements `incident.*` du moteur au moment précis où ils servent de preuve de reprise.
+
+`trace_id` vit donc en métadonnée structurée. Il reste requêtable ligne par ligne :
+
+```logql
+{service="remediation"} | trace_id="955b92ce000e4c0db85e3d28d0a169fa"
+```
+
+Aucune requête du dashboard n'utilise `trace_id` comme sélecteur de label, la corrélation est donc intacte.
+
+Mesuré sur la pile réelle : **7 transactions à `trace_id` distincts, 12 flux Loki au total**, inchangé. Avec `trace_id` indexé, chaque transaction en ajoutait un.
 
 ### Rétention
 
@@ -139,7 +149,9 @@ Loki tourne en mode `single-binary` (`-target=all`), stockage `filesystem`, **r�
 
 ## 7. Accès Docker d'Alloy
 
-**Choix retenu : API Docker via le socket, monté en lecture seule**, avec l'endpoint piloté par la variable `ALLOY_DOCKER_HOST`.
+**Choix retenu : Alloy ne touche jamais le socket Docker.** Il interroge un `docker-socket-proxy` dédié, qui n'expose que des lectures, via `ALLOY_DOCKER_HOST=tcp://docker-proxy:2375`.
+
+C'est l'alignement complet avec la règle non négociable du projet : aucun composant non privilégié ne touche le `docker.sock`.
 
 ### Pourquoi pas `/var/lib/docker/containers`
 
@@ -149,30 +161,35 @@ Lire directement les fichiers `*-json.log` évite le socket, mais :
 - elle impose de monter **tout l'arbre des logs du démon Docker**, y compris ceux de conteneurs hors projet, ce qui est un périmètre de lecture *plus large*, pas plus étroit ;
 - les fichiers sont lisibles par `root` seulement : il faudrait quand même un conteneur privilégié, pour un résultat moins bon.
 
-### Risque assumé
+### Pourquoi un proxy, et pas le socket en lecture seule
 
-Le socket Docker est une interface d'administration complète. **Le montage en lecture seule protège le nœud d'inode, pas le protocole** : un processus qui peut écrire sur le socket peut créer un conteneur privilégié, donc prendre le contrôle du PC Hôte.
+Monter `/var/run/docker.sock` en `:ro` **protège le nœud d'inode, pas le protocole** : un processus capable d'écrire sur ce socket crée un conteneur privilégié et prend le PC Hôte. Or Alloy ingère des lignes de log potentiellement contrôlées par l'attaquant — injectées via le WAF ou l'API — ce qui en ferait une surface d'entrée vers une interface d'administration complète. Appartenir au groupe `docker` équivaut par ailleurs à un accès root sur l'hôte.
 
-Atténuations en place :
+### Le proxy
 
-- Alloy est attaché au **seul réseau `obs-internal`**, sans route sortante et sans port publié : il n'est joignable par aucun composant exposé ;
-- il ne tourne **pas en `root`** : `user: "473:473"`, le propriétaire de son répertoire de données, et le groupe `docker` de l'hôte est ajouté en groupe supplémentaire (`group_add`, variable `DOCKER_GID`) uniquement pour la lecture du socket ;
-- `cap_drop: ALL` et `no-new-privileges:true` ;
-- sa configuration est montée en lecture seule et versionnée ; il ne reçoit aucune entrée venant du réseau exposé.
+`ghcr.io/tecnativa/docker-socket-proxy:v0.5.0`, 32 Mo de RAM. Seul conteneur de la pile à voir le socket.
 
-### Durcissement prévu
+| Réglage | Valeur | Pourquoi |
+|---|---|---|
+| `CONTAINERS` | `1` | `GET /containers/json` et `GET /containers/<id>/logs` |
+| `NETWORKS` | `1` | `discovery.docker` calcule les labels réseau des conteneurs. Sans ce droit, Alloy boucle sur `error while computing network labels: 403 Forbidden` et **aucun log n'est collecté** — constaté à l'exécution, invisible à la lecture. |
+| `POST` | `0` | aucune écriture, quelle que soit la route |
+| tout le reste | `0` | `IMAGES`, `EXEC`, `VOLUMES`, `SWARM`, `INFO`, `SYSTEM`… refusés explicitement, sans compter sur les valeurs par défaut de l'image |
 
-La cible est de faire passer Alloy par le **docker-socket-proxy** déjà présent dans l'architecture (propriété de Hugo), configuré en `CONTAINERS=1` et en lecture seule (méthodes `GET` uniquement). Alloy n'a besoin que de `GET /containers/json` et `GET /containers/<id>/logs`.
+Le proxy et Alloy partagent `docker-proxy-net`, un réseau `internal: true` : la passerelle n'est joignable depuis aucun autre composant, et n'a aucune route sortante.
 
-La bascule ne demande **aucune modification de fichier** : il suffit de renseigner
+Vérifié sur la pile réelle :
 
 ```
-ALLOY_DOCKER_HOST=tcp://docker-proxy:2375
+GET  /containers/json   -> HTTP 200
+GET  /images/json       -> HTTP 403
+POST /containers/create -> HTTP 403
+GET  /info              -> HTTP 403
 ```
 
-et d'attacher Alloy au réseau du proxy, puis de retirer le montage du socket. C'est l'alignement complet avec la règle du projet « aucun composant non privilégié ne touche le `docker.sock` ».
+Atténuations complémentaires : Alloy ne tourne pas en `root` (`user: "473:473"`, le propriétaire de son répertoire de données), `cap_drop: ALL`, `no-new-privileges:true`, configuration montée en lecture seule et versionnée, aucun port publié.
 
-> Rappel : le moteur de remédiation, lui, passe **déjà** par le docker-socket-proxy (`DockerProxyClient`). Alloy est la seule exception temporaire, et elle est en lecture seule.
+> Le moteur de remédiation passe lui aussi par un docker-socket-proxy (`DockerProxyClient`), mais celui de la pile principale. La pile d'observabilité a le sien parce qu'elle doit rester **autonome** : elle survit aux redémarrages déclenchés par le moteur, ce qui serait impossible en dépendant d'un service de la pile qu'elle observe.
 
 ## 8. Grafana
 
@@ -243,8 +260,7 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 | `GRAFANA_ROOT_URL` | URL publique vue par les navigateurs, derrière le WAF | `http://127.0.0.1:3000/` |
 | `GRAFANA_SERVE_FROM_SUB_PATH` | à passer à `true` si le WAF expose Grafana sous un sous-chemin | `false` |
 | `GRAFANA_ANONYMOUS_ENABLED` | accès anonyme en lecture ; `true` pour la démonstration, `false` sinon | `true` |
-| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy ; à pointer vers le docker-socket-proxy pour durcir | `unix:///var/run/docker.sock` |
-| `DOCKER_GID` | GID du groupe `docker` de l'hôte (`getent group docker \| cut -d: -f3`) — **obligatoire**, ajouté en groupe supplémentaire à Alloy pour qu'il puisse lire le socket. Sans valeur par défaut : mieux vaut un échec explicite qu'un collecteur de logs aveugle. Inutile si `ALLOY_DOCKER_HOST` pointe vers le docker-socket-proxy. | aucun |
+| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy — la passerelle restreinte de la pile. À ne pas repointer vers le socket. | `tcp://docker-proxy:2375` |
 | `LOKI_PUSH_URL` | URL de push Loki utilisée par Alloy | `http://loki:3100/loki/api/v1/push` |
 | `RESILIENCE_NET_NAME` | nom Docker réel du réseau externe créé par la pile principale | `resilience-net` |
 

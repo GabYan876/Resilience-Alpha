@@ -14,7 +14,7 @@
 # Le réseau `resilience-net` est créé par infra/compose/docker-compose.yml et déclaré
 # ici en `external` : lancer la pile principale d'abord.
 #
-# Budget mémoire : 512 + 384 + 128 + 256 = 1280 Mo (1,25 Go) sur 16 Go.
+# Budget mémoire : 512 + 384 + 128 + 256 + 32 = 1312 Mo (1,28 Go) sur 16 Go.
 
 name: resilience-alpha-obs
 
@@ -88,6 +88,53 @@ services:
     <<: *hardening
 
   # --- Collecte des logs des conteneurs ---------------------------------------
+  # --- Passerelle Docker restreinte -------------------------------------------
+  # Seul conteneur de la pile à toucher le socket Docker. Il n'expose à Alloy que
+  # `GET /containers/json` et `GET /containers/<id>/logs` : tout le reste de l'API
+  # (création de conteneur, exec, images, volumes, réseaux…) est refusé, et toutes
+  # les méthodes d'écriture le sont aussi. Alloy, qui ingère des lignes de log
+  # potentiellement contrôlées par l'attaquant, n'a donc plus aucun chemin vers
+  # une interface d'administration de l'hôte.
+  docker-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0
+    container_name: resilience-docker-proxy
+    restart: unless-stopped
+    environment:
+      # Les deux seules sections autorisées, et en lecture seule.
+      # `discovery.docker` d'Alloy énumère les conteneurs puis calcule leurs
+      # labels réseau : sans NETWORKS il boucle sur « error while computing
+      # network labels: 403 Forbidden » et aucun log n'est collecté. Les deux
+      # restent des GET ; `POST: "0"` interdit toute écriture.
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      # Tout le reste explicitement refusé : l'image accorde par défaut, on ne
+      # compte pas sur ses valeurs implicites.
+      POST: "0"
+      BUILD: "0"
+      COMMIT: "0"
+      CONFIGS: "0"
+      DISTRIBUTION: "0"
+      EXEC: "0"
+      IMAGES: "0"
+      INFO: "0"
+      NODES: "0"
+      PLUGINS: "0"
+      SECRETS: "0"
+      SERVICES: "0"
+      SESSION: "0"
+      SWARM: "0"
+      SYSTEM: "0"
+      TASKS: "0"
+      VERSION: "0"
+      VOLUMES: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy-net
+    mem_limit: 32m
+    logging: *logging
+    <<: *hardening
+
   alloy:
     image: grafana/alloy:v1.7.1
     container_name: resilience-alloy
@@ -98,16 +145,12 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
     environment:
-      # Endpoint Docker. Par défaut le socket local monté en lecture seule.
-      # Pour durcir : pointer vers le docker-socket-proxy (CONTAINERS=1, en lecture
-      # seule) sans toucher au fichier de configuration Alloy.
-      ALLOY_DOCKER_HOST: ${ALLOY_DOCKER_HOST:-unix:///var/run/docker.sock}
+      # Alloy ne voit JAMAIS le socket Docker : il passe par docker-proxy, qui
+      # n'expose que `GET /containers/...`. Voir docs/architecture/observabilite.md.
+      ALLOY_DOCKER_HOST: ${ALLOY_DOCKER_HOST:-tcp://docker-proxy:2375}
       LOKI_PUSH_URL: ${LOKI_PUSH_URL:-http://loki:3100/loki/api/v1/push}
     volumes:
       - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
-      # LECTURE SEULE, jamais en écriture. Risque et durcissement documentés dans
-      # docs/architecture/observabilite.md, section « Accès Docker d'Alloy ».
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
     # L'image tourne en root par défaut, mais `/var/lib/alloy/data` y est créé en
     # 473:473 mode 0770 et Docker reporte cet ownership sur le volume nommé. Or
@@ -116,19 +159,15 @@ services:
     # échouait donc sur `mkdir /var/lib/alloy/data: permission denied`. On tourne
     # sous le propriétaire du volume, ce qui supprime aussi root du conteneur.
     user: "473:473"
-    # Le socket Docker est en root:docker 0660 : sans ce groupe supplémentaire,
-    # l'uid 473 ne peut pas le lire. DOCKER_GID dépend de la machine
-    # (`getent group docker`), d'où l'absence de valeur par défaut : mieux vaut
-    # un échec explicite au démarrage qu'un collecteur de logs silencieusement
-    # aveugle. Inutile si ALLOY_DOCKER_HOST pointe vers le docker-socket-proxy.
-    group_add:
-      - "${DOCKER_GID:?renseigner le GID du groupe docker de l'hôte (getent group docker)}"
     networks:
       - obs-internal
+      - docker-proxy-net
     mem_limit: 128m
     depends_on:
       loki:
         condition: service_healthy
+      docker-proxy:
+        condition: service_started
     healthcheck:
       # L'image Alloy n'embarque ni curl ni wget : test TCP via bash.
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/12345"]
@@ -197,6 +236,13 @@ networks:
   # Réseau interne de l'observabilité : aucune route vers l'extérieur.
   obs-internal:
     name: resilience-obs-internal
+    driver: bridge
+    internal: true
+
+  # Alloy et la passerelle Docker, et personne d'autre. `internal: true` : aucune
+  # route sortante, donc la passerelle n'est joignable depuis rien d'autre.
+  docker-proxy-net:
+    name: resilience-docker-proxy-net
     driver: bridge
     internal: true
 
