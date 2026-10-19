@@ -2,9 +2,9 @@
 # Contexte de build attendu : racine du dépôt.
 FROM node:20-slim AS build
 WORKDIR /app
-COPY pay-now/frontend/package.json pay-now/frontend/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY pay-now/frontend/ ./
+COPY frontend/ ./
 RUN npm run build
 
 FROM caddy:2-alpine
