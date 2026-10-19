@@ -28,7 +28,7 @@ class _NoDetector:
 
 
 def build_pipeline(settings: Settings, client: httpx.Client) -> RemediationPipeline:
-    docker = DockerProxyClient(client, settings.docker_proxy_url)
+    docker = DockerProxyClient(client, settings.docker_proxy_url, settings.container_names)
     # TODO(WAF, rotation de secrets) : ajouter BlockIpAction / RotateSecretAction dès que les
     # adaptateurs WafIpBlocker / VaultSecretRotator existent. Sans action, l'incident est
     # déclaré en échec (jamais « résolu » à tort).
