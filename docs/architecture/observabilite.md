@@ -151,11 +151,12 @@ Lire directement les fichiers `*-json.log` évite le socket, mais :
 
 ### Risque assumé
 
-Le socket Docker est une interface d'administration complète. **Le montage en lecture seule protège le nœud d'inode, pas le protocole** : un processus qui peut écrire sur le socket peut créer un conteneur privilégié, donc prendre le contrôle du PC Hôte. Alloy tourne par ailleurs en `root` dans son conteneur, parce que le socket n'est pas lisible autrement.
+Le socket Docker est une interface d'administration complète. **Le montage en lecture seule protège le nœud d'inode, pas le protocole** : un processus qui peut écrire sur le socket peut créer un conteneur privilégié, donc prendre le contrôle du PC Hôte.
 
 Atténuations en place :
 
 - Alloy est attaché au **seul réseau `obs-internal`**, sans route sortante et sans port publié : il n'est joignable par aucun composant exposé ;
+- il ne tourne **pas en `root`** : `user: "473:473"`, le propriétaire de son répertoire de données, et le groupe `docker` de l'hôte est ajouté en groupe supplémentaire (`group_add`, variable `DOCKER_GID`) uniquement pour la lecture du socket ;
 - `cap_drop: ALL` et `no-new-privileges:true` ;
 - sa configuration est montée en lecture seule et versionnée ; il ne reçoit aucune entrée venant du réseau exposé.
 
@@ -243,6 +244,7 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 | `GRAFANA_SERVE_FROM_SUB_PATH` | à passer à `true` si le WAF expose Grafana sous un sous-chemin | `false` |
 | `GRAFANA_ANONYMOUS_ENABLED` | accès anonyme en lecture ; `true` pour la démonstration, `false` sinon | `true` |
 | `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy ; à pointer vers le docker-socket-proxy pour durcir | `unix:///var/run/docker.sock` |
+| `DOCKER_GID` | GID du groupe `docker` de l'hôte (`getent group docker \| cut -d: -f3`) — **obligatoire**, ajouté en groupe supplémentaire à Alloy pour qu'il puisse lire le socket. Sans valeur par défaut : mieux vaut un échec explicite qu'un collecteur de logs aveugle. Inutile si `ALLOY_DOCKER_HOST` pointe vers le docker-socket-proxy. | aucun |
 | `LOKI_PUSH_URL` | URL de push Loki utilisée par Alloy | `http://loki:3100/loki/api/v1/push` |
 | `RESILIENCE_NET_NAME` | nom Docker réel du réseau externe créé par la pile principale | `resilience-net` |
 

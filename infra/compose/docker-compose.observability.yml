@@ -109,6 +109,20 @@ services:
       # docs/architecture/observabilite.md, section « Accès Docker d'Alloy ».
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
+    # L'image tourne en root par défaut, mais `/var/lib/alloy/data` y est créé en
+    # 473:473 mode 0770 et Docker reporte cet ownership sur le volume nommé. Or
+    # `cap_drop: ALL` retire CAP_DAC_OVERRIDE, la capacité qui permet à root de
+    # passer outre les permissions d'un répertoire qu'il ne possède pas : Alloy
+    # échouait donc sur `mkdir /var/lib/alloy/data: permission denied`. On tourne
+    # sous le propriétaire du volume, ce qui supprime aussi root du conteneur.
+    user: "473:473"
+    # Le socket Docker est en root:docker 0660 : sans ce groupe supplémentaire,
+    # l'uid 473 ne peut pas le lire. DOCKER_GID dépend de la machine
+    # (`getent group docker`), d'où l'absence de valeur par défaut : mieux vaut
+    # un échec explicite au démarrage qu'un collecteur de logs silencieusement
+    # aveugle. Inutile si ALLOY_DOCKER_HOST pointe vers le docker-socket-proxy.
+    group_add:
+      - "${DOCKER_GID:?renseigner le GID du groupe docker de l'hôte (getent group docker)}"
     networks:
       - obs-internal
     mem_limit: 128m

@@ -10,7 +10,10 @@ providers:
   - name: resilience-alpha
     orgId: 1
     folder: Resilience-Alpha
-    folderUid: resilience-alpha
+    # Doit différer de l'uid du dashboard (`resilience-alpha`) : un uid partagé
+    # entre le dossier et le dashboard fait échouer le provisionnement avec
+    # « Dashboard cannot be changed to a folder », et la vue n'apparaît jamais.
+    folderUid: resilience-alpha-folder
     type: file
     disableDeletion: true
     allowUiUpdates: false
