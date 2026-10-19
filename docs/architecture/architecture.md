@@ -63,7 +63,8 @@ flowchart LR
 | `waf` | Filtrage, blocage IP, logs d'accès | public, app | **oui** (seul point d'entrée) | Hugo |
 | `frontend` | Front paiement + dashboard | public, app | via WAF | Gabriel |
 | `api` | API métier (transactions) | app | non | Antoine |
-| `auth` | Authentification / JWT | app | non | Antoine |
+| `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
+| `gateway` | Caddy : sert le front, route `/auth/*` → `auth` et `/me/*` → `api`. Préfigure le WAF | app | **oui**, `127.0.0.1:8080` | Gabriel / Hugo |
 | `db` | Base de données (fictive) | app | non | Antoine |
 | `prometheus`, `loki`, `grafana` | Métriques, logs, SOC | obs | non (Grafana via WAF) | Hugo |
 | `anomaly-detector` | ML (IsolationForest) sur métriques/logs | obs, control | non | Kevin |
@@ -81,8 +82,8 @@ Le schéma de la section 1 est logique. Dans les fichiers Compose, il se traduit
 
 | Réseau Docker | `internal` | Membres | Rôle |
 |---|---|---|---|
-| `resilience-net` | non | `api`, `remediation`, `prometheus`, `grafana` | trafic entre services ; aucun port publié |
-| `resilience-db-internal` | oui | `postgres`, `migrate`, `api` | accès à la base, seul `api` fait le lien |
+| `resilience-net` | non | `api`, `auth`, `gateway`, `remediation`, `prometheus`, `grafana` | trafic entre services ; aucun port publié |
+| `resilience-db-internal` | oui | `postgres`, `migrate`, `api`, `auth` | accès à la base, `api` et `auth` font le lien (rôle `app_rw`) |
 | `resilience-control-internal` | oui | `remediation`, `docker-proxy-ctl` | le moteur et sa passerelle, rien d'autre |
 | `resilience-obs-internal` | oui | `prometheus`, `loki`, `alloy`, `grafana` | observabilité |
 | `resilience-docker-proxy-net` | oui | `alloy`, `docker-proxy` | lecture des logs Docker |
