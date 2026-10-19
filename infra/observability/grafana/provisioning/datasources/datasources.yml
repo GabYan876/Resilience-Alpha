@@ -1,0 +1,42 @@
+# Provisionnement des sources de données Grafana — PROJECT RESILIENCE-ALPHA
+#
+# Présentes dès le premier démarrage, sans aucun clic : condition pour rejouer la
+# démonstration au moins 5 fois sans intervention humaine.
+# Les UID sont figés (`prometheus`, `loki`) car le dashboard les référence.
+# Aucun secret ici : Prometheus et Loki n'ont pas d'authentification et restent sur
+# le réseau interne `obs-internal`.
+
+apiVersion: 1
+
+# Rend le provisionnement idempotent même si une source a été créée à la main.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+  - name: Loki
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    orgId: 1
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 10s # doit refléter le scrape_interval de Prometheus
+      manageAlerts: false
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    orgId: 1
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 1000
+      timeout: 60

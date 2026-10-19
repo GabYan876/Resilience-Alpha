@@ -1,0 +1,262 @@
+# Stack d'observabilité — PROJECT RESILIENCE-ALPHA
+#
+# Prometheus (métriques), Loki (logs), Alloy (collecte), Grafana (seule interface).
+#
+# Pile autonome : elle se lance seule, et survit au redémarrage des services métier
+# déclenché par le moteur de remédiation — c'est précisément ce qu'il faut pour
+# montrer l'incident avant / pendant / après.
+#
+#   docker compose -f infra/compose/docker-compose.observability.yml up -d
+#
+# Ne pas fusionner ce fichier avec docker-compose.yml via plusieurs `-f` : il porte son
+# propre `name:`, qui écraserait le nom de projet de la pile principale.
+#
+# Le réseau `resilience-net` est créé par infra/compose/docker-compose.yml et déclaré
+# ici en `external` : lancer la pile principale d'abord.
+#
+# Budget mémoire : 512 + 384 + 128 + 256 + 32 = 1312 Mo (1,28 Go) sur 16 Go.
+
+name: resilience-alpha-obs
+
+# Les logs des conteneurs d'observabilité sont bornés : ils sont eux-mêmes collectés
+# par Alloy, pas question de remplir le disque du PC Hôte pendant un flood.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  # --- Métriques --------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: resilience-prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+      - --storage.tsdb.retention.size=512MB
+      - --web.listen-address=0.0.0.0:9090
+      - --log.level=warn
+    volumes:
+      - ../observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    # Deux réseaux : `obs-internal` pour Grafana, `resilience-net` pour aller
+    # scraper api / auth / remediation / anomaly-detector. Aucun port publié.
+    networks:
+      - obs-internal
+      - resilience-net
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+    <<: *hardening
+
+  # --- Logs -------------------------------------------------------------------
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: resilience-loki
+    restart: unless-stopped
+    user: "10001:10001"
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+      - -target=all # single-binary : ingester, querier et compactor dans un process
+    volumes:
+      - ../observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    networks:
+      - obs-internal
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3100/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    logging: *logging
+    <<: *hardening
+
+  # --- Collecte des logs des conteneurs ---------------------------------------
+  # --- Passerelle Docker restreinte -------------------------------------------
+  # Seul conteneur de la pile à toucher le socket Docker. Il n'expose à Alloy que
+  # `GET /containers/json` et `GET /containers/<id>/logs` : tout le reste de l'API
+  # (création de conteneur, exec, images, volumes, réseaux…) est refusé, et toutes
+  # les méthodes d'écriture le sont aussi. Alloy, qui ingère des lignes de log
+  # potentiellement contrôlées par l'attaquant, n'a donc plus aucun chemin vers
+  # une interface d'administration de l'hôte.
+  docker-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0
+    container_name: resilience-docker-proxy
+    restart: unless-stopped
+    environment:
+      # Les deux seules sections autorisées, et en lecture seule.
+      # `discovery.docker` d'Alloy énumère les conteneurs puis calcule leurs
+      # labels réseau : sans NETWORKS il boucle sur « error while computing
+      # network labels: 403 Forbidden » et aucun log n'est collecté. Les deux
+      # restent des GET ; `POST: "0"` interdit toute écriture.
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      # Tout le reste explicitement refusé : l'image accorde par défaut, on ne
+      # compte pas sur ses valeurs implicites.
+      POST: "0"
+      BUILD: "0"
+      COMMIT: "0"
+      CONFIGS: "0"
+      DISTRIBUTION: "0"
+      EXEC: "0"
+      IMAGES: "0"
+      INFO: "0"
+      NODES: "0"
+      PLUGINS: "0"
+      SECRETS: "0"
+      SERVICES: "0"
+      SESSION: "0"
+      SWARM: "0"
+      SYSTEM: "0"
+      TASKS: "0"
+      VERSION: "0"
+      VOLUMES: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-proxy-net
+    mem_limit: 32m
+    logging: *logging
+    <<: *hardening
+
+  alloy:
+    image: grafana/alloy:v1.7.1
+    container_name: resilience-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      # Alloy ne voit JAMAIS le socket Docker : il passe par docker-proxy, qui
+      # n'expose que `GET /containers/...`. Voir docs/architecture/observabilite.md.
+      ALLOY_DOCKER_HOST: ${ALLOY_DOCKER_HOST:-tcp://docker-proxy:2375}
+      LOKI_PUSH_URL: ${LOKI_PUSH_URL:-http://loki:3100/loki/api/v1/push}
+    volumes:
+      - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy-data:/var/lib/alloy/data
+    # L'image tourne en root par défaut, mais `/var/lib/alloy/data` y est créé en
+    # 473:473 mode 0770 et Docker reporte cet ownership sur le volume nommé. Or
+    # `cap_drop: ALL` retire CAP_DAC_OVERRIDE, la capacité qui permet à root de
+    # passer outre les permissions d'un répertoire qu'il ne possède pas : Alloy
+    # échouait donc sur `mkdir /var/lib/alloy/data: permission denied`. On tourne
+    # sous le propriétaire du volume, ce qui supprime aussi root du conteneur.
+    user: "473:473"
+    networks:
+      - obs-internal
+      - docker-proxy-net
+    mem_limit: 128m
+    depends_on:
+      loki:
+        condition: service_healthy
+      docker-proxy:
+        condition: service_started
+    healthcheck:
+      # L'image Alloy n'embarque ni curl ni wget : test TCP via bash.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/12345"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *logging
+    <<: *hardening
+
+  # --- Interface de consultation (la seule) -----------------------------------
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: resilience-grafana
+    restart: unless-stopped
+    environment:
+      # Mot de passe admin : jamais en dur. Absence de la variable = échec immédiat.
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD doit etre defini (voir .env.example)}
+      # Réglage de laboratoire : accès anonyme en lecture pour que le clip de 60 s
+      # n'ait aucun identifiant à saisir. À désactiver hors démonstration.
+      GF_AUTH_ANONYMOUS_ENABLED: ${GRAFANA_ANONYMOUS_ENABLED:-true}
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      # Le dashboard s'ouvre directement : zéro clic pendant la démonstration.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/resilience-alpha.json
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://127.0.0.1:3000/}
+      GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVE_FROM_SUB_PATH:-false}
+      # Rien ne sort du PC Hôte.
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_FEEDBACK_LINKS_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: "true"
+      GF_INSTALL_PLUGINS: ""
+      GF_LOG_LEVEL: warn
+      GF_LOG_MODE: console
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    # Seule interface consultable, et jamais sur 0.0.0.0 : elle est atteinte via le WAF.
+    ports:
+      - "127.0.0.1:${GRAFANA_HTTP_PORT:-3000}:3000"
+    networks:
+      - obs-internal
+      - resilience-net # permet au WAF de publier Grafana
+    mem_limit: 256m
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging: *logging
+    <<: *hardening
+
+networks:
+  # Réseau interne de l'observabilité : aucune route vers l'extérieur.
+  obs-internal:
+    name: resilience-obs-internal
+    driver: bridge
+    internal: true
+
+  # Alloy et la passerelle Docker, et personne d'autre. `internal: true` : aucune
+  # route sortante, donc la passerelle n'est joignable depuis rien d'autre.
+  docker-proxy-net:
+    name: resilience-docker-proxy-net
+    driver: bridge
+    internal: true
+
+  # Créé par infra/compose/docker-compose.yml (propriété de la pile principale).
+  resilience-net:
+    external: true
+    name: ${RESILIENCE_NET_NAME:-resilience-net}
+
+volumes:
+  prometheus-data:
+    name: resilience-prometheus-data
+  loki-data:
+    name: resilience-loki-data
+  alloy-data:
+    name: resilience-alloy-data
+  grafana-data:
+    name: resilience-grafana-data

@@ -1,0 +1,138 @@
+// Grafana Alloy — PROJECT RESILIENCE-ALPHA
+//
+// Rôle : lire les logs de tous les conteneurs Docker du PC Hôte et les pousser vers
+// Loki en conservant les clés des logs JSON structurés du projet (`service`,
+// `trace_id`, `event`), afin qu'ils soient exploitables en SIEM. `service` et `event`
+// sont indexés comme labels ; `trace_id` est en métadonnée structurée, requêtable mais
+// non indexée (voir plus bas).
+//
+// Accès Docker : l'endpoint est piloté par la variable ALLOY_DOCKER_HOST et vaut par
+// défaut `tcp://docker-proxy:2375`. Alloy ne voit JAMAIS le socket Docker : seul le
+// service `docker-proxy` le monte, et il n'autorise que des lectures
+// (`CONTAINERS=1`, `NETWORKS=1`, `POST=0`). Voir docs/architecture/observabilite.md,
+// section « Accès Docker d'Alloy ».
+
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+// --- Découverte des conteneurs ----------------------------------------------
+
+discovery.docker "conteneurs" {
+  host             = env("ALLOY_DOCKER_HOST")
+  refresh_interval = "10s"
+}
+
+// Labels d'infrastructure : qui a écrit la ligne. Cardinalité bornée par le nombre
+// de conteneurs de la démonstration.
+discovery.relabel "conteneurs" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+// --- Lecture des logs --------------------------------------------------------
+
+loki.source.docker "conteneurs" {
+  host             = env("ALLOY_DOCKER_HOST")
+  targets          = discovery.docker.conteneurs.targets
+  relabel_rules    = discovery.relabel.conteneurs.rules
+  labels           = { job = "docker" }
+  refresh_interval = "10s"
+  forward_to       = [loki.process.journal_projet.receiver]
+}
+
+// --- Extraction des logs JSON structurés du projet ---------------------------
+//
+// Convention du projet (CLAUDE.md) : une ligne JSON par événement, avec au moins
+// `service`, `trace_id`, `event`. Le moteur de remédiation émet en plus
+// `incident_id`, `at` et un objet `data` (cf. JsonStdoutPublisher).
+//
+// Une ligne non JSON (Prometheus, Grafana, Nginx...) traverse le pipeline sans être
+// modifiée : les étapes d'extraction échouent silencieusement et le log est quand
+// même indexé avec ses labels d'infrastructure.
+
+loki.process "journal_projet" {
+  forward_to = [loki.write.loki.receiver]
+
+  stage.json {
+    expressions = {
+      service     = "service",
+      trace_id    = "trace_id",
+      event       = "event",
+      incident_id = "incident_id",
+      at          = "at",
+      level       = "level",
+      action      = "data.action",
+      probe_ok    = "data.probe_transaction_ok",
+      api_healthy = "data.api_healthy",
+    }
+  }
+
+  // Seuls `service` et `event` sont indexés : tous deux ont un domaine de valeurs
+  // fermé et petit. `trace_id` en est volontairement exclu — l'API en génère un
+  // uuid4 par transaction, donc l'indexer créerait un flux Loki par transaction.
+  // Sous le flood de la démonstration, Loki atteindrait ses limites de flux
+  // (rejets 429, 384 Mo de RAM) et l'on perdrait les événements `incident.*` du
+  // moteur au moment précis où ils servent de preuve.
+  stage.labels {
+    values = {
+      service = "",
+      event   = "",
+    }
+  }
+
+  // Non indexé mais requêtable : évite de faire exploser le nombre de séries.
+  // La corrélation par trace reste possible avec `| trace_id="..."`.
+  stage.structured_metadata {
+    values = {
+      trace_id    = "",
+      incident_id = "",
+      level       = "",
+      action      = "",
+      probe_ok    = "",
+      api_healthy = "",
+    }
+  }
+
+  // Horodatage applicatif plutôt que celui de la collecte : l'ordre des étapes
+  // détection -> décision -> action -> vérification reste exact dans Grafana.
+  stage.timestamp {
+    source            = "at"
+    format            = "RFC3339Nano"
+    action_on_failure = "fudge"
+  }
+}
+
+// --- Écriture vers Loki ------------------------------------------------------
+
+loki.write "loki" {
+  endpoint {
+    url = env("LOKI_PUSH_URL")
+  }
+
+  external_labels = {
+    env  = "lab",
+    site = "pc-hote",
+  }
+}
