@@ -100,3 +100,18 @@ remédiation : ne pas les renommer sans adapter la sonde.
 puis `scripts/seed_demo.py`. Le seed est idempotent (UPSERT) et les identifiants
 sont déterministes (UUID v5), donc l'état de la base est identique à chaque
 passage : la démonstration peut être rejouée au moins cinq fois sans intervention.
+
+Deux pièges réglés, à ne pas réintroduire — ils se manifestent uniquement contre
+un vrai PostgreSQL, jamais en test unitaire :
+
+- **Le pool de l'API doit être recréé après chaque reset.** `downgrade` supprime
+  les rôles `app_rw` / `app_ro`, `upgrade` les recrée avec de nouveaux OID, et les
+  connexions encore ouvertes restent authentifiées sous les anciens : la première
+  transaction échoue en `permission denied for table transactions`. Le
+  `pool_pre_ping` ne le détecte pas, son `SELECT 1` ne déclenchant aucun contrôle
+  d'ACL. D'où le `up -d --force-recreate --no-deps api` en fin de script : un
+  simple `up -d` ne touche pas un conteneur déjà sain.
+- **Les caches de requêtes préparées sont désactivés** dans `build_engine`
+  (`prepared_statement_cache_size=0` côté dialecte, `statement_cache_size=0` côté
+  asyncpg). Reconstruire tables et types ENUM sous un pool ouvert invalide les
+  plans en cache, et la requête suivante échoue en `InvalidCachedStatementError`.

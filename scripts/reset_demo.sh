@@ -26,7 +26,12 @@ echo "[reset] schéma : downgrade base puis upgrade head"
 compose run --rm --no-deps --entrypoint sh migrate -c \
   "${ALEMBIC} downgrade base && ${ALEMBIC} upgrade head && python /app/scripts/seed_demo.py"
 
-echo "[reset] redémarrage de l'API (pool de connexions remis à neuf)"
-compose up -d --wait api
+# `up -d` ne touche pas un conteneur déjà sain : il faut le recréer. Sans ça, le
+# pool garde des connexions authentifiées sous l'ancien OID des rôles `app_rw` /
+# `app_ro`, que downgrade/upgrade vient de supprimer puis recréer, et la première
+# transaction échoue en « permission denied ». Le `pool_pre_ping` ne le voit pas :
+# son `SELECT 1` ne touche aucune table, donc aucun contrôle d'ACL.
+echo "[reset] recréation de l'API (pool de connexions remis à neuf)"
+compose up -d --force-recreate --no-deps --wait api
 
 echo "[reset] terminé : base rejouable"

@@ -92,6 +92,12 @@ class SqlAlchemyTransactionRepository:
                 trace_id=transaction.trace_id,
             )
         )
+        # Les écritures du grand livre référencent cette ligne par clé étrangère.
+        # Aucune `relationship()` ne lie les deux mappers (les lignes restent
+        # passives), donc SQLAlchemy ignore la dépendance et ordonne les INSERT
+        # par mapper : `ledger_entries` passerait avant `transactions`. Le flush
+        # garantit que la transaction parente existe avant les écritures.
+        await self._session.flush()
 
     async def add_ledger_entries(self, entries: Sequence[LedgerEntry]) -> None:
         self._session.add_all(

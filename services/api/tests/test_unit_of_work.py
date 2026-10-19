@@ -27,6 +27,9 @@ class FakeSession:
         self.commits = 0
         self.rollbacks = 0
         self.closed = 0
+        # Nombre de lignes déjà ajoutées à chaque flush : permet de prouver
+        # qu'une ligne parente est écrite avant les lignes qui la référencent.
+        self.flushed_after: list[int] = []
 
     async def get(self, _model: Any, key: Any) -> Any:
         return self.rows.get(key)
@@ -36,6 +39,9 @@ class FakeSession:
 
     def add_all(self, rows: Any) -> None:
         self.added.extend(rows)
+
+    async def flush(self) -> None:
+        self.flushed_after.append(len(self.added))
 
     async def commit(self) -> None:
         self.commits += 1
@@ -104,6 +110,41 @@ async def test_la_transaction_est_ecrite_avec_tous_ses_champs() -> None:
     assert row.status is TransactionStatus.SETTLED
     assert row.idempotency_key == "cle-1"
     assert row.trace_id == "trace-1"
+
+
+async def test_la_transaction_est_flushee_avant_les_ecritures_du_grand_livre() -> None:
+    """Régression : `ledger_entries` référence `transactions` par clé étrangère.
+
+    Aucune `relationship()` ne lie les deux mappers, donc SQLAlchemy ordonne les
+    INSERT par mapper et insérerait les écritures avant la transaction parente.
+    Sans ce flush, PostgreSQL rejette l'insertion en ForeignKeyViolationError.
+    """
+    session = FakeSession()
+    repository = SqlAlchemyTransactionRepository(session)  # type: ignore[arg-type]
+    transaction = Transaction(
+        account_from=uuid4(),
+        account_to=uuid4(),
+        amount_cents=100,
+        currency="EUR",
+        idempotency_key="cle-flush",
+        trace_id="trace-flush",
+        status=TransactionStatus.SETTLED,
+    )
+
+    await repository.add(transaction)
+    await repository.add_ledger_entries(
+        [
+            LedgerEntry(
+                transaction_id=transaction.id,
+                account_id=uuid4(),
+                direction=LedgerDirection.DEBIT,
+                amount_cents=100,
+            )
+        ]
+    )
+
+    # Un seul flush, déclenché alors que seule la transaction était ajoutée.
+    assert session.flushed_after == [1]
 
 
 async def test_les_ecritures_du_grand_livre_sont_ajoutees_en_bloc() -> None:
