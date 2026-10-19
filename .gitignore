@@ -47,6 +47,18 @@ volumes/
 # Ansible
 *.retry
 
+# Outillage des agents (voir docs/dev.md)
+# Réglages personnels : .claude/settings.json et .mcp.json, eux, sont versionnés.
+.claude/settings.local.json
+# Worktrees créés pour les agents : des copies de travail, jamais du contenu à versionner.
+.claude/worktrees/
+# rtk : données dans ~/.rtk, config dans ~/.config/rtk. Ne restent ici que des
+# réglages locaux et le marqueur d'intégrité du hook. Un .rtk/filters.toml
+# destiné à toute l'équipe se versionne avec `git add -f`.
+.rtk/
+.rtk-hook.sha256
+.claude/hooks/rtk-rewrite.sh
+
 # IDE / OS
 .idea/
 .vscode/
