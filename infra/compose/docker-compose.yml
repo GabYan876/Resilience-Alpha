@@ -138,8 +138,11 @@ services:
     mem_limit: 32m
     environment:
       ALLOW_RESTARTS: "1"
+      # POST doit valoir 1 : le gabarit HAProxy refuse toute méthode hors GET avant d'évaluer
+      # ALLOW_RESTARTS. Les autres sections restant à 0, seuls restart/stop/kill passent
+      # (vérifié : create, exec, GET /containers/json et DELETE renvoient 403).
+      POST: "1"
       CONTAINERS: "0"
-      POST: "0"
       BUILD: "0"
       COMMIT: "0"
       CONFIGS: "0"

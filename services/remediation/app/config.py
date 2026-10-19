@@ -26,6 +26,8 @@ class Settings:
     ingest_token: str  # protège POST /incidents (appelé par le détecteur)
     probe_token: str  # jeton du compte de test utilisé par la sonde de transaction
     http_timeout_s: float = 3.0
+    restart_timeout_s: float = 30.0  # délai de la requête de redémarrage Docker
+    verify_wait_s: float = 30.0  # temps laissé à l'API pour redevenir saine avant de conclure
     # Service Compose -> nom réel du conteneur (`container_name`) que Docker accepte dans l'URL.
     container_names: Mapping[str, str] = field(
         default_factory=lambda: MappingProxyType(dict(DEFAULT_CONTAINER_NAMES))
@@ -41,5 +43,7 @@ class Settings:
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
+            restart_timeout_s=float(os.environ.get("RESTART_TIMEOUT_S", "30")),
+            verify_wait_s=float(os.environ.get("VERIFY_WAIT_S", "30")),
             container_names=parse_container_names(os.environ.get("CONTAINER_NAMES", "")),
         )
