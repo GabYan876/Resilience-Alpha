@@ -1,0 +1,125 @@
+# Socle de données + API métier.
+#
+# Déploiement : docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait
+#
+# Exposition réseau minimale (règle du projet) : PostgreSQL reste sur le réseau
+# interne `db-internal` et ne publie aucun port sur l'hôte ; l'API n'est pas
+# publiée non plus, elle est joignable sous le nom d'hôte `api` sur le port 8000
+# depuis `resilience-net`. Seul le WAF/front sera publié.
+#
+# `resilience-net` est déclaré ici avec un nom fixe (`name: resilience-net`), sans
+# préfixe de projet : les autres piles Compose (observabilité, WAF) le référencent
+# en `external: true`. Chaque pile reste autonome, on ne fusionne pas les fichiers.
+#
+# Les mots de passe ne sont jamais écrits ici : ils viennent de `.env`, qu'il faut
+# passer explicitement (`--env-file .env`), car Compose ne cherche un `.env` qu'à
+# côté de ce fichier. Sans lui, les variables restent vides et PostgreSQL refuse
+# de démarrer : l'échec est immédiat, jamais silencieux.
+
+name: resilience-alpha
+
+networks:
+  resilience-net:
+    name: resilience-net
+    driver: bridge
+  db-internal:
+    name: resilience-db-internal
+    internal: true # aucune sortie vers l'hôte ni Internet
+
+volumes:
+  postgres-data:
+
+x-api-image: &api-image
+  image: resilience-alpha/api:dev
+  build:
+    context: ../..
+    dockerfile: services/api/Dockerfile
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: resilience-postgres
+    restart: unless-stopped
+    mem_limit: 256m # PC Hôte à 16 Go : chaque conteneur est borné
+    networks:
+      - db-internal
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-resilience}
+      POSTGRES_USER: ${POSTGRES_USER:-resilience_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resilience_owner} -d ${POSTGRES_DB:-resilience}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  # Service éphémère : seul détenteur des droits DDL (rôle propriétaire).
+  # L'API, elle, tourne avec `app_rw` qui ne peut pas modifier le schéma.
+  migrate:
+    <<: *api-image
+    container_name: resilience-migrate
+    restart: "no"
+    mem_limit: 256m
+    networks:
+      - db-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL_ADMIN: postgresql+asyncpg://${POSTGRES_USER:-resilience_owner}:${POSTGRES_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
+      APP_RW_PASSWORD: ${APP_RW_PASSWORD:-}
+      APP_RO_PASSWORD: ${APP_RO_PASSWORD:-}
+      PROBE_BALANCE_CENTS: ${PROBE_BALANCE_CENTS:-1000000}
+      SEED_PASSWORD: ${SEED_PASSWORD:-demo-only-not-a-secret}
+    command:
+      - sh
+      - -c
+      - alembic -c /app/db/alembic.ini upgrade head && python /app/scripts/seed_demo.py
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    <<: *api-image
+    container_name: resilience-api
+    restart: unless-stopped
+    mem_limit: 256m
+    networks:
+      - db-internal # accès à PostgreSQL
+      - resilience-net # joignable par le front, le moteur de remédiation, Prometheus
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      # Rôle `app_rw` : SELECT / INSERT / UPDATE, aucun DDL, aucun DELETE.
+      DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
+      PROBE_TOKEN: ${PROBE_TOKEN:-}
+      PROBE_ACCOUNT_IBAN: ${PROBE_ACCOUNT_IBAN:-TEST-0001}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      SQL_ECHO: ${SQL_ECHO:-0}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/health').is_success else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
