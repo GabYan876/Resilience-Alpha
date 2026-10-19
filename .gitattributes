@@ -1,0 +1,3 @@
+# Les scripts shell doivent rester en LF (sinon "bash\r" casse l'exécution sous Windows).
+*.sh text eol=lf
+scripts/git-hooks/* text eol=lf
