@@ -1,0 +1,20 @@
+# Provisionnement des dashboards Grafana — PROJECT RESILIENCE-ALPHA
+#
+# Les fichiers JSON de /var/lib/grafana/dashboards sont chargés au démarrage.
+# `allowUiUpdates: false` : le dashboard est du code versionné, pas un objet modifié
+# à la main pendant la démonstration ; au prochain démarrage le fichier reprend la main.
+
+apiVersion: 1
+
+providers:
+  - name: resilience-alpha
+    orgId: 1
+    folder: Resilience-Alpha
+    folderUid: resilience-alpha
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

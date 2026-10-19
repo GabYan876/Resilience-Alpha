@@ -1,0 +1,87 @@
+# Loki — PROJECT RESILIENCE-ALPHA
+#
+# Mode `single-binary` (-target=all), stockage `filesystem`, rétention 24 h.
+# Pas de S3, pas d'anneau externe (kvstore en mémoire), pas de conteneur compactor
+# séparé : le compactor tourne dans le même binaire, car c'est lui qui applique
+# réellement la rétention de 24 h.
+#
+# Dimensionnement volontairement bas (mem_limit 384 Mo sur un PC Hôte de 16 Go) :
+# chunks petits, peu de requêtes concurrentes, télémétrie Grafana désactivée.
+
+auth_enabled: false
+
+server:
+  http_listen_address: 0.0.0.0
+  http_listen_port: 3100
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 9096
+  log_level: warn
+  # Garde-fou mémoire : une requête trop large est refusée plutôt que de faire
+  # tomber Loki au milieu de la démonstration.
+  grpc_server_max_concurrent_streams: 100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  replication_factor: 1
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2026-10-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# Le répertoire des chunks vient de `common.storage.filesystem` : ne pas le redéfinir ici.
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+
+ingester:
+  chunk_idle_period: 2m # les chunks partent vite : les logs sont lisibles presque en direct
+  chunk_target_size: 1048576 # 1 Mo
+  max_chunk_age: 10m
+  wal:
+    enabled: true
+    dir: /loki/wal
+
+querier:
+  max_concurrent: 4 # plafonne la mémoire des requêtes du dashboard
+
+limits_config:
+  retention_period: 24h
+  reject_old_samples: true
+  reject_old_samples_max_age: 24h
+  ingestion_rate_mb: 8 # un flood génère beaucoup de lignes de logs WAF/API
+  ingestion_burst_size_mb: 16
+  per_stream_rate_limit: 5MB
+  per_stream_rate_limit_burst: 10MB
+  max_query_series: 500
+  max_entries_limit_per_query: 5000
+  allow_structured_metadata: true
+  volume_enabled: true # panneaux de volume de logs dans Grafana
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true # sans ceci, `retention_period` n'est jamais appliqué
+  retention_delete_delay: 30m
+  delete_request_store: filesystem
+
+# Pas de bloc `table_manager` : c'est l'ancien mécanisme de rétention, inutile ici
+# puisque la rétention est appliquée par le compactor ci-dessus.
+
+analytics:
+  reporting_enabled: false # aucune donnée ne sort du PC Hôte
