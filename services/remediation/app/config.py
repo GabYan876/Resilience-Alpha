@@ -37,7 +37,7 @@ class Settings:
         return cls(
             api_base_url=api_base_url,
             api_health_url=os.environ.get("API_HEALTH_URL", f"{api_base_url}/health"),
-            docker_proxy_url=os.environ.get("DOCKER_PROXY_URL", "http://docker-proxy:2375"),
+            docker_proxy_url=os.environ.get("DOCKER_PROXY_URL", "http://docker-proxy-ctl:2375"),
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
