@@ -41,6 +41,7 @@ class Incident:
     id: str = field(default_factory=lambda: uuid4().hex)
     trace_id: str = field(default_factory=lambda: uuid4().hex)
     status: IncidentStatus = IncidentStatus.DETECTED
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def kind(self) -> IncidentKind:

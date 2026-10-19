@@ -81,6 +81,21 @@ class TransactionProbe(Protocol):
     def run(self) -> bool: ...
 
 
+# --- Mémoire des incidents --------------------------------------------------
+
+
+class IncidentStore(Protocol):
+    """Garde les incidents traités, pour que le dashboard les relise (GET /incidents)."""
+
+    def save(self, incident: Incident) -> None: ...
+
+    def get(self, incident_id: str) -> Incident | None: ...
+
+    def list_recent(self, limit: int) -> Sequence[Incident]:
+        """Les plus récents d'abord."""
+        ...
+
+
 # --- Observabilité du pipeline ---------------------------------------------
 
 

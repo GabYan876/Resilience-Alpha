@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.domain.models import Anomaly, Incident, IncidentKind
@@ -27,6 +29,11 @@ class IncidentOut(BaseModel):
     trace_id: str
     kind: IncidentKind
     status: str
+    started_at: datetime
+    target_service: str
+    source: str
+    score: float
+    attacker_ip: str | None = None
 
     @classmethod
     def from_domain(cls, incident: Incident) -> IncidentOut:
@@ -35,4 +42,9 @@ class IncidentOut(BaseModel):
             trace_id=incident.trace_id,
             kind=incident.kind,
             status=incident.status.value,
+            started_at=incident.started_at,
+            target_service=incident.anomaly.target_service,
+            source=incident.anomaly.source,
+            score=incident.anomaly.score,
+            attacker_ip=incident.anomaly.attacker_ip,
         )

@@ -146,7 +146,7 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 | detector → remediation | `POST /incidents` (token) | remontée d'anomalie |
 | remediation → docker-socket-proxy | restart / scale uniquement | `ContainerRestarter`, `ServiceScaler` |
 | remediation → waf | API restreinte (token) | `IpBlocker` |
-| dashboard → remediation | `GET /incidents`, flux d'événements (**à implémenter** : seul `POST /incidents` existe) | affichage avant / pendant / après |
+| dashboard → remediation | `GET /incidents` (liste, plus récents d'abord) et `GET /incidents/{id}`, protégés par jeton ; le flux d'événements passe par Loki | affichage avant / pendant / après |
 
 ## 5. Sécurité & RAM
 

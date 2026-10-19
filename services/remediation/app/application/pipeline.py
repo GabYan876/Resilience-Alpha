@@ -13,6 +13,7 @@ from app.domain.ports import (
     DecisionPolicy,
     Detector,
     EventPublisher,
+    IncidentStore,
     RecoveryVerifier,
     RemediationAction,
 )
@@ -28,12 +29,14 @@ class RemediationPipeline:
         verifier: RecoveryVerifier,
         publisher: EventPublisher,
         max_attempts: int = 2,
+        store: IncidentStore | None = None,
     ) -> None:
         self._detector = detector
         self._policy = policy
         self._verifier = verifier
         self._publisher = publisher
         self._max_attempts = max_attempts
+        self._store = store
 
     def run_once(self) -> Incident | None:
         """Traite au plus un incident. Retourne None si aucune anomalie n'est détectée."""
@@ -45,6 +48,18 @@ class RemediationPipeline:
     def handle(self, anomaly: Anomaly) -> Incident:
         """Traite une anomalie déjà détectée (ex. remontée par le détecteur via l'API)."""
         incident = Incident(anomaly)
+        self._save(incident)
+        try:
+            return self._process(incident)
+        finally:
+            self._save(incident)  # état final (résolu / en échec) pour GET /incidents
+
+    def _save(self, incident: Incident) -> None:
+        if self._store is not None:
+            self._store.save(incident)
+
+    def _process(self, incident: Incident) -> Incident:
+        anomaly = incident.anomaly
         self._emit(
             incident,
             "incident.detected",
