@@ -7,7 +7,8 @@ petits (ISP) : une action ne dépend que de ce dont elle a besoin.
 
 from __future__ import annotations
 
-from typing import Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 from app.domain.models import (
     ActionResult,

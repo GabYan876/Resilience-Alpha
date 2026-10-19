@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from uuid import uuid4
 
 
-class IncidentKind(str, Enum):
+class IncidentKind(StrEnum):
     """Nature d'un incident : détermine la famille d'actions à appliquer."""
 
     AVAILABILITY = "availability"  # flood / DoS : restaurer le service
     COMPROMISE = "compromise"  # SQLi / exfiltration : corriger la compromission
 
 
-class IncidentStatus(str, Enum):
+class IncidentStatus(StrEnum):
     DETECTED = "detected"
     REMEDIATING = "remediating"
     VERIFYING = "verifying"
@@ -32,7 +32,7 @@ class Anomaly:
     kind_hint: IncidentKind
     attacker_ip: str | None = None
     target_service: str = "api"
-    detected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -76,4 +76,4 @@ class PipelineEvent:
     incident_id: str
     data: dict[str, object] = field(default_factory=dict)
     service: str = "remediation"
-    at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    at: datetime = field(default_factory=lambda: datetime.now(UTC))
