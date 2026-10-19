@@ -6,6 +6,7 @@ Règles de travail de l'équipe. Les règles d'architecture et de sécurité dé
 
 - Une branche par fonctionnalité, créée depuis `main` : `feat/<sujet>`, `fix/<sujet>`, `docs/<sujet>`, `infra/<sujet>`, `test/<sujet>`.
 - Pas de push direct sur `main` : tout passe par une PR.
+- Le dépôt est privé sur une offre gratuite : GitHub ne permet pas de protéger `main`. La règle repose donc sur l'équipe et sur un hook local qui refuse le push direct. **À installer une fois par PC** (depuis Git Bash) : `./scripts/install-hooks.sh`. `git push --no-verify` contourne le hook : ne pas l'utiliser.
 - Une PR relue par le tech lead (Kevin) avant fusion. Une PR = un sujet, petite et lisible.
 - La PR décrit : le résumé, les points d'attention pour la relecture, ce qui est testé et ce qui ne l'est pas.
 - Gel du code jeudi 22/10 à 17h : plus de fusion après.
