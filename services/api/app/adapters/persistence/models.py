@@ -60,6 +60,8 @@ class UserRow(Base):
     id: Mapped[UUID] = mapped_column(**_UUID_PK)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)  # argon2
+    full_name: Mapped[str] = mapped_column(String(120), nullable=False, server_default="")
+    phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     role: Mapped[UserRole] = mapped_column(
         _enum(UserRole, "user_role"), nullable=False, default=UserRole.CUSTOMER
     )
