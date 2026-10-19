@@ -1,13 +1,16 @@
 // Grafana Alloy — PROJECT RESILIENCE-ALPHA
 //
 // Rôle : lire les logs de tous les conteneurs Docker du PC Hôte et les pousser vers
-// Loki, en conservant les labels des logs JSON structurés du projet
-// (`service`, `trace_id`, `event`) afin qu'ils soient exploitables en SIEM.
+// Loki en conservant les clés des logs JSON structurés du projet (`service`,
+// `trace_id`, `event`), afin qu'ils soient exploitables en SIEM. `service` et `event`
+// sont indexés comme labels ; `trace_id` est en métadonnée structurée, requêtable mais
+// non indexée (voir plus bas).
 //
-// Accès Docker : l'endpoint est piloté par la variable ALLOY_DOCKER_HOST. Par défaut
-// `unix:///var/run/docker.sock`, monté EN LECTURE SEULE. Voir
-// docs/architecture/observabilite.md, section « Accès Docker d'Alloy », pour le risque
-// et le durcissement (bascule vers le docker-socket-proxy sans modifier ce fichier).
+// Accès Docker : l'endpoint est piloté par la variable ALLOY_DOCKER_HOST et vaut par
+// défaut `tcp://docker-proxy:2375`. Alloy ne voit JAMAIS le socket Docker : seul le
+// service `docker-proxy` le monte, et il n'autorise que des lectures
+// (`CONTAINERS=1`, `NETWORKS=1`, `POST=0`). Voir docs/architecture/observabilite.md,
+// section « Accès Docker d'Alloy ».
 
 logging {
   level  = "warn"
@@ -86,10 +89,6 @@ loki.process "journal_projet" {
     }
   }
 
-  // Labels indexés : ce sont les trois clés exigées par les conventions du projet.
-  // `trace_id` est une clé de corrélation d'incident : cardinalité faible ici (un
-  // incident par passage de démonstration), à déplacer en métadonnée structurée si
-  // le volume d'incidents devenait important.
   // Seuls `service` et `event` sont indexés : tous deux ont un domaine de valeurs
   // fermé et petit. `trace_id` en est volontairement exclu — l'API en génère un
   // uuid4 par transaction, donc l'indexer créerait un flux Loki par transaction.

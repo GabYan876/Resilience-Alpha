@@ -268,7 +268,26 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 
 - **Métriques applicatives absentes** tant que `api`, `auth`, `remediation` et `anomaly-detector` n'exposent pas `/metrics`. Les panneaux de débit, d'erreurs et de latence resteront vides ; les panneaux de santé et les panneaux Loki, eux, fonctionnent immédiatement.
 - **Noms de séries à confirmer** avec les propriétaires des services (`http_requests_total`, `http_request_duration_seconds`). Si l'instrumentation choisie diffère, seules les requêtes du dashboard changent.
-- **Alloy accède au socket Docker** (lecture seule) ; le durcissement via docker-socket-proxy reste à faire avec Hugo, cf. section 7.
-- **Accès anonyme à Grafana** activé pour la démonstration, cf. section 8.
+- **Accès anonyme à Grafana** activé pour la démonstration, cf. section 8. À inscrire dans les risques résiduels du dossier.
 - **Pas d'Alertmanager, pas de Wazuh** : la fonction SOC repose sur Loki + Grafana, choix assumé pour tenir le budget RAM de 16 Go.
-- Les configurations n'ont **pas** été validées à l'exécution (`promtool check config`, `loki -verify-config`, `alloy fmt`) : le démon Docker n'était pas accessible depuis l'environnement de développement utilisé. Seules la syntaxe YAML/JSON et `docker compose config` ont été vérifiées. À rejouer au premier `up` réel.
+- **Le proxy Docker reste le point sensible de la pile.** Alloy n'y a qu'un accès en lecture (`CONTAINERS`, `NETWORKS`, `POST=0`), mais `docker-proxy` monte bien le socket : c'est lui qu'il faut surveiller, pas Alloy. Il n'est joignable que depuis `docker-proxy-net`, en `internal: true`.
+- **Conflit de port possible** : Grafana est liée à `127.0.0.1:3000`, comme le backend Pay-Now. Changer `GRAFANA_HTTP_PORT` le cas échéant.
+
+### Validation effectuée
+
+Contrairement à une version antérieure de ce document, les configurations **ont** été validées à l'exécution, depuis des volumes vierges :
+
+| Contrôle | Résultat |
+|---|---|
+| `promtool check config prometheus.yml` | `SUCCESS: ... is valid prometheus config file syntax` |
+| `loki -config.file=... -verify-config` | exit 0 |
+| `alloy fmt config.alloy` | exit 0 |
+| `docker compose ... up -d --wait` | les 5 services `healthy` |
+| cibles Prometheus | `api=1`, `prometheus/loki/alloy/grafana=1`, `auth/remediation/anomaly-detector=0` |
+| labels Loki | `service`, `event` présents ; `trace_id` **absent** des labels indexés |
+| cardinalité | 7 transactions à `trace_id` distincts → 12 flux Loki, inchangé |
+| services collectés | `alloy`, `api`, `docker-proxy`, `grafana`, `loki`, `postgres` |
+| dashboard | provisionné, `uid resilience-alpha`, dossier `Resilience-Alpha` |
+| proxy Docker | `GET /containers/json` → 200 ; `/images/json`, `/info`, `POST /containers/create` → 403 |
+
+Ce qui n'a **pas** été éprouvé : le comportement sous flood réel (limites de flux Loki, débit d'Alloy, latence de Prometheus) et les panneaux applicatifs des services qui n'exposent pas encore `/metrics`.
