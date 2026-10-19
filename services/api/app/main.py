@@ -9,10 +9,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.adapters.jwt_verifier import JwtTokenVerifier
 from app.adapters.logging_publisher import JsonEventPublisher
 from app.adapters.persistence.engine import build_engine, build_session_factory
 from app.adapters.persistence.health import SqlAlchemyHealthProbe
 from app.adapters.persistence.unit_of_work import SqlAlchemyUnitOfWork
+from app.api.me_routes import build_me_router
 from app.api.routes import build_router
 from app.application.transfer import ExecuteTransfer
 from app.config import Settings
@@ -46,6 +48,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             SqlAlchemyHealthProbe(engine),
             lambda: settings.probe_token,
         )
+    )
+    app.include_router(
+        build_me_router(uow_factory, transfer_factory, JwtTokenVerifier(settings.jwt_secret))
     )
     # /metrics pour Prometheus ; /health et /metrics sont exclus des métriques de latence.
     Instrumentator(excluded_handlers=["/metrics", "/health"]).instrument(app).expose(

@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.domain.models import Account, Transaction, TransactionStatus
+from app.domain.models import Account, Transaction, TransactionStatus, TransactionView
 
 _CENTS = Decimal(100)
 
@@ -102,3 +102,34 @@ class AccountOut(BaseModel):
 class HealthOut(BaseModel):
     status: str
     database: str
+
+
+class MyTransferIn(BaseModel):
+    """Virement d'un client : la source est celle de son jeton, jamais celle du corps."""
+
+    to_account: str = Field(min_length=1, max_length=34)
+    amount_cents: int = Field(gt=0)
+    idempotency_key: str = Field(min_length=8, max_length=64)  # générée par le front par envoi
+
+
+class HistoryItemOut(BaseModel):
+    id: UUID
+    direction: str  # "debit" si le client a payé, "credit" s'il a reçu
+    counterparty_iban: str
+    amount_cents: int
+    currency: str
+    status: TransactionStatus
+    created_at: datetime
+
+    @classmethod
+    def from_view(cls, view: TransactionView, own_account_id: UUID) -> HistoryItemOut:
+        paid = view.transaction.account_from == own_account_id
+        return cls(
+            id=view.transaction.id,
+            direction="debit" if paid else "credit",
+            counterparty_iban=view.to_iban if paid else view.from_iban,
+            amount_cents=view.transaction.amount_cents,
+            currency=view.transaction.currency,
+            status=view.transaction.status,
+            created_at=view.transaction.created_at,
+        )

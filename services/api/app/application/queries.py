@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from app.domain.errors import AccountNotFound
-from app.domain.models import Account, Transaction
+from app.domain.models import Account, Transaction, TransactionView
 from app.domain.ports import UnitOfWork
 
 
@@ -30,3 +31,31 @@ class GetAccount:
         if account is None:
             raise AccountNotFound(f"compte inconnu : {iban_fake}")
         return account
+
+
+class GetUserAccount:
+    """Compte du client authentifié (solde affiché par le front)."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    async def execute(self, user_id: UUID) -> Account:
+        async with self._uow as uow:
+            account = await uow.accounts.get_by_user_id(user_id)
+        if account is None:
+            raise AccountNotFound("aucun compte pour cet utilisateur")
+        return account
+
+
+class ListUserTransactions:
+    """Historique du client, du plus récent au plus ancien."""
+
+    def __init__(self, uow: UnitOfWork) -> None:
+        self._uow = uow
+
+    async def execute(self, user_id: UUID, limit: int) -> tuple[Account, Sequence[TransactionView]]:
+        async with self._uow as uow:
+            account = await uow.accounts.get_by_user_id(user_id)
+            if account is None:
+                raise AccountNotFound("aucun compte pour cet utilisateur")
+            return account, await uow.transactions.list_for_account(account.id, limit)

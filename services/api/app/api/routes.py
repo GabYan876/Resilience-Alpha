@@ -13,10 +13,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 
 from app.api.schemas import AccountOut, HealthOut, TransactionOut, TransferIn
+from app.api.transfer_http import run_transfer
 from app.application.queries import GetAccount, GetTransaction
 from app.application.transfer import ExecuteTransfer, TransferCommand
-from app.domain.errors import AccountNotFound, DomainError
-from app.domain.models import TransactionStatus
+from app.domain.errors import AccountNotFound
 from app.domain.ports import HealthProbe, UnitOfWork
 
 
@@ -55,25 +55,17 @@ def build_router(
         response: Response,
         transfer: ExecuteTransfer = Depends(transfer_factory),
     ) -> TransactionOut:
-        try:
-            command = TransferCommand(
+        return await run_transfer(
+            transfer,
+            lambda: TransferCommand(
                 from_iban=body.from_account,
                 to_iban=body.to_account,
                 amount_cents=body.to_cents(),
                 currency=body.currency,
                 idempotency_key=body.idempotency_key,
-            )
-            transaction = await transfer.execute(command)
-        except AccountNotFound as exc:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
-        except DomainError as exc:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
-        except ValueError as exc:  # conversion de montant
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
-        if transaction.status is not TransactionStatus.SETTLED:
-            # Refus métier : 409, pour que la sonde de reprise ne le lise pas comme un succès.
-            response.status_code = status.HTTP_409_CONFLICT
-        return TransactionOut.from_domain(transaction)
+            ),
+            response,
+        )
 
     @router.get("/transactions/{transaction_id}", response_model=TransactionOut)
     async def read_transaction(transaction_id: UUID) -> TransactionOut:

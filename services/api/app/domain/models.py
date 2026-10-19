@@ -153,6 +153,15 @@ class Transaction:
         self.status = TransactionStatus.FAILED
 
 
+@dataclass(frozen=True)
+class TransactionView:
+    """Lecture d'historique : la transaction avec les IBAN fictifs de ses deux comptes."""
+
+    transaction: Transaction
+    from_iban: str
+    to_iban: str
+
+
 def _check_amount(amount_cents: int) -> None:
     if not isinstance(amount_cents, int) or isinstance(amount_cents, bool):
         raise InvalidAmount("le montant doit être un entier de centimes")

@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from types import TracebackType
 from uuid import UUID, uuid4
 
-from app.domain.models import Account, LedgerEntry, Transaction, User, UserRole
+from app.domain.models import Account, LedgerEntry, Transaction, TransactionView, User, UserRole
 
 
 class InMemoryAccountRepository:
@@ -23,13 +23,17 @@ class InMemoryAccountRepository:
     async def get_by_iban(self, iban_fake: str) -> Account | None:
         return next((a for a in self.by_id.values() if a.iban_fake == iban_fake), None)
 
+    async def get_by_user_id(self, user_id: UUID) -> Account | None:
+        return next((a for a in self.by_id.values() if a.user_id == user_id), None)
+
     async def save(self, account: Account) -> None:
         self.by_id[account.id] = account
         self.saved.append(account.id)
 
 
 class InMemoryTransactionRepository:
-    def __init__(self) -> None:
+    def __init__(self, accounts: InMemoryAccountRepository | None = None) -> None:
+        self._accounts = accounts
         self.transactions: dict[UUID, Transaction] = {}
         self.ledger: list[LedgerEntry] = []
 
@@ -48,6 +52,18 @@ class InMemoryTransactionRepository:
     async def add_ledger_entries(self, entries: Sequence[LedgerEntry]) -> None:
         self.ledger.extend(entries)
 
+    async def list_for_account(self, account_id: UUID, limit: int) -> Sequence[TransactionView]:
+        assert self._accounts is not None, "fournir les comptes pour lire l'historique"
+        by_id = self._accounts.by_id
+        mine = [
+            t for t in self.transactions.values() if account_id in (t.account_from, t.account_to)
+        ]
+        mine.sort(key=lambda t: t.created_at, reverse=True)
+        return [
+            TransactionView(t, by_id[t.account_from].iban_fake, by_id[t.account_to].iban_fake)
+            for t in mine[:limit]
+        ]
+
 
 class FakeUnitOfWork:
     """Unité de travail en mémoire. Compte les commits et les rollbacks."""
@@ -58,7 +74,7 @@ class FakeUnitOfWork:
         transactions: InMemoryTransactionRepository | None = None,
     ) -> None:
         self.accounts = accounts or InMemoryAccountRepository()
-        self.transactions = transactions or InMemoryTransactionRepository()
+        self.transactions = transactions or InMemoryTransactionRepository(self.accounts)
         self.commits = 0
         self.rollbacks = 0
         self.entered = 0

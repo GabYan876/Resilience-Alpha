@@ -161,7 +161,14 @@ Authorization: Bearer <PROBE_TOKEN>
 - **Si `PROBE_TOKEN` est vide, la garde est désactivée.** Réservé au développement local, voir [Limites connues](#sécurité-et-limites-connues).
 - Les routes de lecture et `/health` ne demandent pas de jeton.
 
-L'authentification des utilisateurs finaux (comptes, mots de passe, sessions) n'est pas gérée ici : elle appartient au service `auth`. Seul le hachage argon2 des mots de passe de démonstration existe côté base.
+Les utilisateurs finaux s'inscrivent et se connectent auprès du service `auth` (`services/auth`), qui émet un JWT HS256 `{sub, iat, exp}` signé avec `JWT_SECRET`. L'API vérifie ce jeton (algorithme figé à HS256, `sub` et `exp` requis) et expose l'espace client sous `/me`, joignable par la passerelle :
+
+- `GET /me/account` : compte de l'utilisateur du jeton.
+- `GET /me/transactions?limit=20` : historique (1..100), `direction` `debit`/`credit`.
+- `POST /me/transfers` `{to_account, amount_cents, idempotency_key}` : la source est toujours le compte du jeton ; la clé d'idempotence est hachée avec l'identifiant utilisateur, un client ne peut donc pas rejouer la clé d'un autre.
+- Jeton absent, invalide ou expiré : `401`.
+
+Le contrat de la sonde (`POST /transactions` + `PROBE_TOKEN`) reste inchangé.
 
 ## Montants, devises et idempotence
 
@@ -249,6 +256,7 @@ Lue uniquement dans `app/config.py`. Aucun secret dans le dépôt : valeurs rée
 | `DATABASE_URL` | URL de connexion du rôle `app_rw` (`postgresql+asyncpg://…`) | obligatoire |
 | `PROBE_TOKEN` | Jeton de l'écriture ; vide = garde désactivée | vide |
 | `PROBE_ACCOUNT_IBAN` | IBAN du compte de sonde | `TEST-0001` |
+| `JWT_SECRET` | Secret de vérification des jetons `/me/*` ; vide = aucun jeton accepté | vide |
 | `DB_POOL_SIZE` | Taille du pool de connexions | `5` |
 | `SQL_ECHO` | `1` pour journaliser le SQL (débogage) | `0` |
 
