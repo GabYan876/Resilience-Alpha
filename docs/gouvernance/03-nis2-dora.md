@@ -6,9 +6,10 @@ Principe du sujet : distinguer les exigences **pertinentes** pour une activité 
 Les références d'articles ci-dessous sont à **vérifier dans les textes** avant remise.
 
 ## 1. Applicabilité
-- NIS2 : l'entité fictive serait-elle « essentielle » ou « importante » ? À DÉFINIR et justifier.
-- DORA : s'applique aux entités financières (paiement). À DÉFINIR et justifier.
-- Dans un cadre réel, DORA est lex specialis pour le secteur financier : à discuter.
+Position retenue (décision du 19/10, à vérifier dans les textes) :
+- **DORA applicable** : l'entité fictive exerce une activité de paiement, donc une entité financière.
+- **NIS2 en complément** : DORA est lex specialis pour le secteur financier ; NIS2 sert de repère, notamment pour la chaîne d'approvisionnement.
+- Classification « essentielle » / « importante » (NIS2) : sans objet si DORA prime ; à justifier en une phrase dans le dossier.
 
 ## 2. Exigences pertinentes et lien avec le démonstrateur
 

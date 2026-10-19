@@ -6,7 +6,18 @@ Statut : squelette. Responsable : Antoine. Données techniques : Hugo, Kevin.
 
 ### Périmètre
 - Plateforme de paiement **fictive** conteneurisée : front, API métier, auth, BDD, WAF, observabilité, moteur de remédiation, assistant RAG.
-- Référence architecture : `docs/architecture/` (À COMPLÉTER avec le schéma validé lundi).
+- Référence architecture : [`docs/architecture/architecture.md`](../architecture/architecture.md) (schéma, réseaux Docker, ports du moteur de remédiation). Les biens supports ci-dessous reprennent ses noms de services.
+
+### Échelle de gravité (commune à EBIOS et à l'AMDEC)
+
+Décision du 19/10 : une seule échelle à 4 niveaux (proposition de définitions, à valider en équipe).
+
+| Niveau | Libellé | Repère |
+|---|---|---|
+| 1 | Mineure | Gêne sans impact sur le paiement |
+| 2 | Significative | Dégradation temporaire, reprise automatique attendue |
+| 3 | Grave | Paiement indisponible ou atteinte limitée aux données |
+| 4 | Critique | Fuite/altération de données ou perte de contrôle du moteur de remédiation |
 
 ### Valeurs métier et biens supports
 
@@ -24,10 +35,21 @@ Statut : squelette. Responsable : Antoine. Données techniques : Hugo, Kevin.
 | ER1 | Paiement indisponible (flood / saturation) | Traitement d'un paiement | Coût d'arrêt : À DÉFINIR | À DÉFINIR |
 | ER2 | Exfiltration de données (SQLi) | Confidentialité | À DÉFINIR | À DÉFINIR |
 | ER3 | Altération de transactions | Intégrité | À DÉFINIR | À DÉFINIR |
-| ER4 | Détournement du moteur de remédiation (droits élevés) | Détection et reprise | À DÉFINIR | À DÉFINIR |
+| ER4 | Détournement du moteur de remédiation (droits élevés) ou du `docker-socket-proxy` | Détection et reprise | À DÉFINIR | À DÉFINIR |
+| ER5 | Faux positif ou contournement du modèle ML (coupure inutile, ou attaque non vue) | Détection et reprise, Traitement d'un paiement | À DÉFINIR | À DÉFINIR |
+| ER6 | Abus de l'assistant RAG (injection de prompt, fuite de documents indexés) | Confidentialité | À DÉFINIR | À DÉFINIR |
 
 ### Socle de sécurité (écarts)
-Référentiel retenu : À DÉFINIR. Pour chaque règle, état (appliquée / partielle / absente) + preuve dans le dépôt.
+Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l'ANSSI**, limité aux règles pertinentes pour le démonstrateur. Pour chaque règle : état (appliquée / partielle / absente) + preuve dans le dépôt. Les numéros de règles sont à reporter depuis le guide.
+
+| Thème | Règle retenue (n° à reporter) | État | Preuve dans le dépôt |
+|---|---|---|---|
+| Cloisonnement réseau | Réseaux Docker internes, seul le WAF publié | À ÉVALUER | `infra/compose/` |
+| Comptes et moindre privilège | `docker-socket-proxy`, pas d'interface d'admin exposée | À ÉVALUER | `infra/compose/`, `services/remediation/app/adapters/docker_proxy.py` |
+| Secrets | Vault ou SOPS, aucun secret en clair | À ÉVALUER | `infra/secrets/`, `.gitignore` |
+| Journalisation et détection | Logs JSON centralisés (Loki), détection ML | À ÉVALUER | `infra/observability/`, `services/remediation/app/adapters/json_publisher.py` |
+| Sauvegarde | Sauvegarde et restauration de la BDD | À ÉVALUER | À DÉFINIR |
+| Dépendances et images | Versions épinglées | À ÉVALUER | `services/*/requirements.txt` |
 
 ## Atelier 2 — Sources de risque
 
@@ -45,6 +67,8 @@ Référentiel retenu : À DÉFINIR. Pour chaque règle, état (appliquée / part
 | SS1 | Attaquant externe | Saturer le paiement | Flood HTTP via le WAF | À DÉFINIR | |
 | SS2 | Attaquant externe | Exfiltrer la BDD | SQLi via API métier | À DÉFINIR | |
 | SS3 | Attaquant externe | Compromettre la chaîne logicielle | Image/dépendance piégée | À DÉFINIR | |
+| SS4 | Attaquant externe | Prendre le contrôle de l'hôte | Détournement du moteur de remédiation ou du `docker-socket-proxy` | À DÉFINIR | |
+| SS5 | Attaquant externe | Rendre la détection aveugle ou déclencher des coupures | Données forgées pour tromper le modèle ML (faux négatifs / faux positifs) | À DÉFINIR | |
 
 ## Atelier 4 — Scénarios opérationnels
 
@@ -60,6 +84,8 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 | Risque | Niveau initial | Mesure | Où dans le dépôt | Preuve (test/démo) | Risque résiduel |
 |---|---|---|---|---|---|
 | Flood | À DÉFINIR | Blocage IP + restart + vérif transaction | `services/remediation/` | Démo n°… | À DÉFINIR |
-| SQLi | À DÉFINIR | WAF + rotation de secrets + investigation | | | |
+| SQLi | À DÉFINIR | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | | |
+| Détournement du moteur | À DÉFINIR | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config | |
+| Faux positif / contournement ML | À DÉFINIR | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | Résultats d'essais | |
 
 Les lignes alimentent [04-matrice-tracabilite.md](04-matrice-tracabilite.md).
