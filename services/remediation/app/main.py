@@ -34,7 +34,12 @@ class _NoDetector:
 def build_pipeline(
     settings: Settings, client: httpx.Client, store: IncidentStore
 ) -> RemediationPipeline:
-    docker = DockerProxyClient(client, settings.docker_proxy_url, settings.container_names)
+    docker = DockerProxyClient(
+        client,
+        settings.docker_proxy_url,
+        settings.container_names,
+        restart_timeout_s=settings.restart_timeout_s,
+    )
     # TODO(WAF, rotation de secrets) : ajouter BlockIpAction / RotateSecretAction dès que les
     # adaptateurs WafIpBlocker / VaultSecretRotator existent. Sans action, l'incident est
     # déclaré en échec (jamais « résolu » à tort).
@@ -42,6 +47,7 @@ def build_pipeline(
     verifier = HealthAndProbeVerifier(
         HttpHealthChecker(client, {"api": settings.api_health_url}),
         ApiTransactionProbe(client, settings.api_base_url, settings.probe_token),
+        health_wait_s=settings.verify_wait_s,
     )
     return RemediationPipeline(
         _NoDetector(), policy, verifier, JsonStdoutPublisher(sys.stdout), store=store
