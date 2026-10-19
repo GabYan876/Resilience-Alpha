@@ -1,5 +1,6 @@
 import pytest
 
+from app.adapters.memory_store import InMemoryIncidentStore
 from app.config import DEFAULT_CONTAINER_NAMES, Settings, parse_container_names
 from app.main import build_pipeline
 
@@ -45,7 +46,7 @@ def test_pipeline_restarts_the_compose_container_name():
         probe_token="",
     )
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    pipeline = build_pipeline(settings, client)
+    pipeline = build_pipeline(settings, client, InMemoryIncidentStore())
 
     from app.domain.models import Anomaly, IncidentKind
 
