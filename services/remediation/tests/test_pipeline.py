@@ -153,3 +153,23 @@ def test_all_events_share_the_incident_trace_id():
     incident = s.pipeline.run_once()
     assert {e.trace_id for e in s.publisher.events} == {incident.trace_id}
     assert {e.service for e in s.publisher.events} == {"remediation"}
+
+
+def test_no_action_is_failed_not_resolved():
+    """Sans action décidée, une API saine ne doit pas être comptée comme une reprise."""
+    publisher = InMemoryPublisher()
+    pipeline = RemediationPipeline(
+        FakeDetector([anomaly(IncidentKind.COMPROMISE)]),
+        KindBasedPolicy({}),
+        HealthAndProbeVerifier(FakeHealthChecker(True), FakeTransactionProbe(True)),
+        publisher,
+    )
+    incident = pipeline.run_once()
+    assert incident.status is IncidentStatus.FAILED
+    assert publisher.names[-1] == "incident.failed"
+
+
+def test_handle_processes_a_pushed_anomaly():
+    s = Setup(FakeDetector(), FakeHealthChecker(True), FakeTransactionProbe(True))
+    incident = s.pipeline.handle(anomaly(IncidentKind.AVAILABILITY))
+    assert incident.status is IncidentStatus.RESOLVED

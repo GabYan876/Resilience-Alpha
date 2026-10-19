@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.domain.models import (
     ActionResult,
+    Anomaly,
     Incident,
     IncidentStatus,
     PipelineEvent,
@@ -39,7 +40,10 @@ class RemediationPipeline:
         anomaly = self._detector.detect()
         if anomaly is None:
             return None
+        return self.handle(anomaly)
 
+    def handle(self, anomaly: Anomaly) -> Incident:
+        """Traite une anomalie déjà détectée (ex. remontée par le détecteur via l'API)."""
         incident = Incident(anomaly)
         self._emit(
             incident,
@@ -60,6 +64,11 @@ class RemediationPipeline:
                 attempt=attempt,
                 actions=[a.name for a in actions],
             )
+            if not actions:
+                # Sans action, une API « saine » ne prouverait aucune remédiation.
+                incident.status = IncidentStatus.FAILED
+                self._emit(incident, "incident.failed", reason="no_action")
+                return incident
             for action in actions:
                 self._emit_action(incident, self._execute(action, incident))
 
