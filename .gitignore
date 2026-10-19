@@ -48,6 +48,7 @@ volumes/
 *.retry
 
 # IDE / OS
+.claude/settings.local.json
 .idea/
 .vscode/
 .DS_Store

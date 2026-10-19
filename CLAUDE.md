@@ -107,6 +107,26 @@ services/<service>/
 
 Dossier `Workshop2026-M2-G<n>/` : `-Dossier.pdf` (8–12 p.), `-Pres.pptx`, `-VidChrono.mp4` (≤ 60 s, sans coupe), `-Code.zip` (sources, infra, scripts attaque/ML, tests, doc API, README, **sans secret**).
 
+## Outillage Claude Code (équipe)
+
+Configuration versionnée : `.claude/settings.json` (plugins, hooks) et `.mcp.json` (serveurs MCP), donc
+même comportement sur les 5 postes. Liste des outils, installation et dépannage : [`docs/dev.md`](docs/dev.md).
+
+Règles applicables à tout agent travaillant sur ce dépôt :
+
+- **context7 (MCP) est un service externe** : les requêtes de documentation quittent le poste. Documentation
+  publique de bibliothèques uniquement — jamais de secret, de donnée du projet ni de document de
+  gouvernance. Application directe de « ne jamais envoyer de clé, secret, donnée perso réelle ou document
+  confidentiel à une IA ».
+- **Ne pas brancher le dépôt sur une passerelle LLM tierce** (`caveman-setup` et les compétences Caveman
+  Cloud) : cela ferait sortir du code du projet hors du périmètre. Décision à prendre explicitement, hors
+  de ce dépôt.
+- **Réflexe avant d'ajouter du code** : est-ce nécessaire, est-ce que ça existe déjà dans le dépôt, est-ce
+  que la bibliothèque standard le fait ? Même question pour chaque dépendance et chaque conteneur, à cause
+  de la contrainte de 16 Go de RAM.
+- Réglages personnels dans `.claude/settings.local.json` (ignoré par Git), jamais dans
+  `.claude/settings.json` qui est partagé.
+
 ## Comment travailler avec Claude ici
 
 - Respecter SOLID et la structure ci-dessus ; proposer l'abstraction avant l'implémentation concrète.
