@@ -20,6 +20,10 @@ c'est l'image qui compte.
 Aucun secret en clair dans le dépôt. Les valeurs chiffrées vivent dans `infra/secrets/*.enc.yaml`,
 la clé privée reste sur le poste.
 
+> **À venir (Hugo).** `.sops.yaml` et `infra/secrets/dev.enc.yaml` n'existent pas encore. En attendant,
+> chacun renseigne son `.env` à partir de `.env.example` et les valeurs se transmettent hors dépôt.
+> La procédure ci-dessous est la cible, à appliquer dès que les deux fichiers sont en place.
+
 ```bash
 # une seule fois par poste
 age-keygen -o ~/.config/sops/age/keys.txt    # clé privée : JAMAIS dans le dépôt
@@ -56,13 +60,50 @@ Le dépôt versionne la configuration des agents pour que tout le monde obtienne
 /plugin marketplace add DietrichGebert/ponytail
 /plugin            # vérifier que caveman et ponytail sont « enabled »
 
-# rtk (optionnel, condensation de sortie)
+# rtk (optionnel, condensation de sortie) — https://github.com/rtk-ai/rtk
 # binaire attendu dans le PATH, par exemple ~/.local/bin/rtk
 rtk --version
 ```
 
-Le hook `rtk` est protégé par `command -v rtk` : un poste sans `rtk` fonctionne normalement,
-la sortie des commandes est simplement complète au lieu d'être condensée.
+### Versions épinglées des plugins
+
+`.claude/settings.json` épingle chaque marketplace à un tag (`ref`), **sans `autoUpdate`** : du code tiers
+ne doit pas se mettre à jour tout seul sur les 5 postes. Une montée de version est un acte volontaire,
+relu, et committé.
+
+| Marketplace | Tag épinglé | Commit résolu |
+|---|---|---|
+| `JuliusBrussee/caveman` | `v4.0.1` | `d262ab3882952a59312ff3537cd86d894523c5ab` |
+| `DietrichGebert/ponytail` | `v5.3.2` | `16352ac229eb08a9598dcae48fe9f2b342567d86` |
+
+Un tag Git peut être déplacé par son auteur. Vérifier que ce n'est pas arrivé :
+
+```bash
+git ls-remote --tags https://github.com/JuliusBrussee/caveman   refs/tags/v4.0.1^{}
+git ls-remote --tags https://github.com/DietrichGebert/ponytail refs/tags/v5.3.2^{}
+```
+
+Les SHA affichés doivent correspondre au tableau. Pour changer de version : modifier le `ref`, relire le
+diff amont, mettre à jour le tableau, et passer par une PR.
+
+### Ce que ces outils exécutent
+
+À connaître avant d'accepter la configuration : caveman et ponytail installent des hooks qui lancent
+**`node` sur du code tiers**, à chaque démarrage de session et à chaque soumission de prompt. Le hook rtk
+lance un binaire local avant chaque appel Bash. Ce code tourne sur un poste qui contient le dépôt, les
+clés `age` et les secrets du projet.
+
+Le hook `rtk` est protégé par `command -v rtk` : un poste sans `rtk` fonctionne normalement, la sortie des
+commandes est simplement complète au lieu d'être condensée.
+
+**rtk envoie de la télémétrie** à `https://telemetry.rtk-ai.app/ping` ; le suivi est actif par défaut
+(`[tracking] enabled = true` dans `~/.config/rtk/config.toml`). Pour le couper :
+
+```bash
+rtk config          # inspecter la configuration courante
+# puis passer [tracking] enabled = false dans ~/.config/rtk/config.toml
+export RTK_DISABLED=1   # désactive rtk entièrement pour une session
+```
 
 context7 est interrogé sans clé par défaut (quotas limités). Pour lever les quotas, exporter la clé
 dans le profil shell — **pas** dans `.env`, qui est réservé au runtime des conteneurs :
@@ -102,8 +143,19 @@ Deux points qui ne concernent que le poste :
 
 ## 4. Vérification du poste
 
+Les tests se lancent **service par service** : chacun a ses propres dépendances et son propre
+`pythonpath` dans son `pyproject.toml`. Un `pytest services/` depuis la racine échoue, les paquets `app`
+des différents services entrant en collision.
+
 ```bash
-pytest services/                                    # tests unitaires
-docker compose -f infra/compose/docker-compose.yml config   # compose valide
-./scripts/check_transaction.sh                      # API saine + transaction de test
+# Un service à la fois, avec ses dépendances installées
+cd services/api        && pip install -r requirements.txt && python -m pytest -q
+cd services/remediation && pip install -r requirements.txt && python -m pytest -q
+
+# Compose valide (le fichier lit .env, d'où --env-file)
+docker compose --env-file .env -f infra/compose/docker-compose.yml config --quiet
+
+# Preuve de vie : API saine + vraie transaction (pile démarrée au préalable)
+docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait --build
+./scripts/check_transaction.sh
 ```

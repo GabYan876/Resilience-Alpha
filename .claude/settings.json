@@ -1,21 +1,35 @@
 {
-  "enabledPlugins": {
-    "caveman@caveman": true,
-    "ponytail@ponytail": true
-  },
   "extraKnownMarketplaces": {
     "caveman": {
       "source": {
         "source": "github",
-        "repo": "JuliusBrussee/caveman"
-      },
-      "autoUpdate": true
+        "repo": "JuliusBrussee/caveman",
+        "ref": "v4.0.1"
+      }
     },
     "ponytail": {
       "source": {
         "source": "github",
-        "repo": "DietrichGebert/ponytail"
+        "repo": "DietrichGebert/ponytail",
+        "ref": "v5.3.2"
       }
     }
+  },
+  "enabledPlugins": {
+    "caveman@caveman": true,
+    "ponytail@ponytail": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v rtk >/dev/null 2>&1 && rtk hook claude || exit 0"
+          }
+        ]
+      }
+    ]
   }
 }
