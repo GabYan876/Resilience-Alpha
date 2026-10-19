@@ -1,0 +1,58 @@
+# Secrets (jamais en clair dans le dépôt)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+age-keys.txt
+*.keys.txt
+infra/secrets/*
+!infra/secrets/.gitkeep
+!infra/secrets/*.enc.*
+vault-data/
+.vault-token
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Node / front
+node_modules/
+dist/
+build/
+.vite/
+
+# ML (modèles et données volumineuses régénérables)
+ml/models/*
+!ml/models/.gitkeep
+ml/data/*.csv
+ml/data/*.parquet
+.ipynb_checkpoints/
+
+# Docker / données locales
+*.log
+data/
+volumes/
+
+# Ansible
+*.retry
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Livrables générés
+*.zip
+*.mp4
