@@ -31,7 +31,7 @@ compose run --rm --no-deps --entrypoint sh migrate -c \
 # `app_ro`, que downgrade/upgrade vient de supprimer puis recréer, et la première
 # transaction échoue en « permission denied ». Le `pool_pre_ping` ne le voit pas :
 # son `SELECT 1` ne touche aucune table, donc aucun contrôle d'ACL.
-echo "[reset] recréation de l'API (pool de connexions remis à neuf)"
-compose up -d --force-recreate --no-deps --wait api
+echo "[reset] recréation de l'API et de l'authentification (pools de connexions remis à neuf)"
+compose up -d --force-recreate --no-deps --wait api auth
 
 echo "[reset] terminé : base rejouable"

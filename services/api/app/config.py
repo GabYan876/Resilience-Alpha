@@ -11,6 +11,7 @@ class Settings:
     database_url: str  # postgresql+asyncpg://... (asyncpg ignore `sslmode`, utiliser `ssl`)
     probe_token: str  # jeton partagé avec la sonde du moteur de remédiation
     probe_account_iban: str
+    jwt_secret: str = ""  # partagé avec `auth` ; vide = routes /me refusent tout jeton
     sql_echo: bool = False
     pool_size: int = 5
 
@@ -20,6 +21,7 @@ class Settings:
             database_url=os.environ["DATABASE_URL"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
             probe_account_iban=os.environ.get("PROBE_ACCOUNT_IBAN", "TEST-0001"),
+            jwt_secret=os.environ.get("JWT_SECRET", ""),
             sql_echo=os.environ.get("SQL_ECHO", "0") == "1",
             pool_size=int(os.environ.get("DB_POOL_SIZE", "5")),
         )

@@ -66,24 +66,28 @@ def _users(password_hash: str) -> list[dict[str, object]]:
     return [
         {
             "id": _uid("user:probe"),
+            "full_name": "Compte de sonde",
             "email": PROBE_EMAIL,
             "password_hash": password_hash,
             "role": UserRole.PROBE,
         },
         {
             "id": _uid("user:alice"),
+            "full_name": "Alice Martin",
             "email": "alice@resilience.local",
             "password_hash": password_hash,
             "role": UserRole.CUSTOMER,
         },
         {
             "id": _uid("user:bob"),
+            "full_name": "Bob Durand",
             "email": "bob@resilience.local",
             "password_hash": password_hash,
             "role": UserRole.CUSTOMER,
         },
         {
             "id": _uid("user:shop"),
+            "full_name": "Boutique Alpha",
             "email": "shop@resilience.local",
             "password_hash": password_hash,
             "role": UserRole.MERCHANT,
@@ -163,7 +167,10 @@ async def seed() -> None:
             await session.execute(
                 users.on_conflict_do_update(
                     index_elements=[UserRow.email],
-                    set_={"password_hash": users.excluded.password_hash},
+                    set_={
+                        "password_hash": users.excluded.password_hash,
+                        "full_name": users.excluded.full_name,
+                    },
                 )
             )
             merchants = insert(MerchantRow).values(_merchants(api_key_hash))

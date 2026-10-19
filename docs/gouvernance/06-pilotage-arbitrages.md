@@ -33,6 +33,7 @@ Documentation des décisions : tableau de la section 2.
 | 19/10 | RTO mesuré de début d'attaque à `incident.resolved` | Détection → résolution seulement | Mesure réaliste, inclut la détection | Journal d'attaque + Loki | Kevin (à valider en équipe) |
 | 19/10 | S2 : automatique sauf investigation (manuelle, assumée) | Tout automatique, tout manuel | L'absence de fuite ne se prouve pas automatiquement | `02-pca-pra.md` | Kevin (à valider en équipe) |
 | 19/10 | S3 par health check périodique ; S4 par `RestoreDatabaseAction` | Tout par le ML ; restauration manuelle | Un crash est une panne binaire ; Zero-Touch sur la BDD | `02-pca-pra.md` | Kevin (à valider en équipe) |
+| 19/10 | Service `auth` + front Pay-Now de la PR #4 repris sur notre API et notre base (jeton JWT HS256 vérifié par l'API, routes `/me/*`) ; périmètre : inscription, connexion, solde, virement, historique | Prendre l'API et la base de la PR ; tout refaire | La sonde de remédiation et le grand livre en double écriture restent inchangés | `services/auth`, `services/api/README.md` | Kevin (à valider en équipe) |
 
 ## 3. Services jugés critiques et coût d'un arrêt
 À DÉFINIR : quelles fonctions, pourquoi, quel coût pour l'activité fictive (hypothèses explicitées).

@@ -5,7 +5,8 @@
 # Exposition réseau minimale (règle du projet) : PostgreSQL reste sur le réseau
 # interne `db-internal` et ne publie aucun port sur l'hôte ; l'API n'est pas
 # publiée non plus, elle est joignable sous le nom d'hôte `api` sur le port 8000
-# depuis `resilience-net`. Seul le WAF/front sera publié.
+# depuis `resilience-net`. Seule la passerelle (`gateway`, front + routage) est publiée,
+# et seulement sur 127.0.0.1:8080 : le WAF s'y substituera ou s'y ajoutera.
 #
 # `resilience-net` est déclaré ici avec un nom fixe (`name: resilience-net`), sans
 # préfixe de projet : les autres piles Compose (observabilité, WAF) le référencent
@@ -63,6 +64,83 @@ services:
       retries: 10
       start_period: 15s
 
+  # Authentification : inscription, connexion, émission du jeton JWT. Mêmes droits base que
+  # l'API (`app_rw`). Le secret JWT est partagé avec l'API, qui vérifie les jetons.
+  auth:
+    image: resilience-alpha/auth:dev
+    build:
+      context: ../..
+      dockerfile: services/auth/Dockerfile
+    container_name: resilience-auth
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - db-internal # accès à PostgreSQL
+      - resilience-net # joignable par la passerelle
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET doit etre defini (voir .env.example)}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-7200}
+      WELCOME_BALANCE_CENTS: ${WELCOME_BALANCE_CENTS:-100000}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/health').is_success else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # Passerelle : front React + routage /auth -> auth, /me -> api. Seul service publié, et
+  # seulement en local (127.0.0.1) : le PC Attaquant passe par le réseau de l'hôte, jamais
+  # par un port ouvert sur toutes les interfaces.
+  gateway:
+    image: resilience-alpha/gateway:dev
+    build:
+      context: ../..
+      dockerfile: infra/compose/gateway/Dockerfile
+    container_name: resilience-gateway
+    restart: unless-stopped
+    mem_limit: 64m
+    networks:
+      - resilience-net
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /data # état Caddy
+      - /config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE # le binaire Caddy porte cette capability : sans elle, exec échoue
+    security_opt:
+      - no-new-privileges:true
+
   # Service éphémère : seul détenteur des droits DDL (rôle propriétaire).
   # L'API, elle, tourne avec `app_rw` qui ne peut pas modifier le schéma.
   migrate:
@@ -110,6 +188,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
       PROBE_TOKEN: ${PROBE_TOKEN:-}
       PROBE_ACCOUNT_IBAN: ${PROBE_ACCOUNT_IBAN:-TEST-0001}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET doit etre defini (voir .env.example)}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
       SQL_ECHO: ${SQL_ECHO:-0}
     healthcheck:

@@ -5,11 +5,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.adapters.persistence.models import AccountRow, LedgerEntryRow, TransactionRow
-from app.domain.models import Account, LedgerEntry, Transaction
+from app.domain.models import Account, LedgerEntry, Transaction, TransactionView
 
 
 def _to_account(row: AccountRow) -> Account:
@@ -51,6 +52,17 @@ class SqlAlchemyAccountRepository:
         statement = select(AccountRow).where(AccountRow.iban_fake == iban_fake).with_for_update()
         row = (await self._session.execute(statement)).scalar_one_or_none()
         return self._track(row)
+
+    async def get_by_user_id(self, user_id: UUID) -> Account | None:
+        # Lecture seule (pas de verrou). Un client a un compte ; au besoin le premier IBAN.
+        statement = (
+            select(AccountRow)
+            .where(AccountRow.user_id == user_id)
+            .order_by(AccountRow.iban_fake)
+            .limit(1)
+        )
+        row = (await self._session.execute(statement)).scalar_one_or_none()
+        return _to_account(row) if row is not None else None
 
     async def save(self, account: Account) -> None:
         row = self._rows.get(account.id) or await self._session.get(AccountRow, account.id)
@@ -112,3 +124,21 @@ class SqlAlchemyTransactionRepository:
                 for entry in entries
             ]
         )
+
+    async def list_for_account(self, account_id: UUID, limit: int) -> Sequence[TransactionView]:
+        source, target = aliased(AccountRow), aliased(AccountRow)
+        statement = (
+            select(TransactionRow, source.iban_fake, target.iban_fake)
+            .join(source, TransactionRow.account_from == source.id)
+            .join(target, TransactionRow.account_to == target.id)
+            .where(
+                or_(
+                    TransactionRow.account_from == account_id,
+                    TransactionRow.account_to == account_id,
+                )
+            )
+            .order_by(TransactionRow.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.execute(statement)).all()
+        return [TransactionView(_to_transaction(t), src, dst) for t, src, dst in rows]

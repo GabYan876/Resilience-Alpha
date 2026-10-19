@@ -1,0 +1,48 @@
+# Point d'entrée unique (préfigure le WAF) : sert le front React et route /auth et /me.
+# Écoute sur 8080 (port non privilégié) ; seule NET_BIND_SERVICE est conservée (voir compose).
+# Seul ce conteneur est publié, et uniquement sur 127.0.0.1 de l'hôte.
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode gzip
+
+	# Corps limité : aucune route ne reçoit plus que quelques champs JSON.
+	request_body {
+		max_size 16KB
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# Authentification -> services/auth
+	handle /auth/* {
+		# lb_try_duration : une requête attend jusqu'à 6 s un service en cours de redémarrage
+		# (remédiation) au lieu d'échouer aussitôt.
+		reverse_proxy auth:8000 {
+			lb_try_duration 6s
+		}
+	}
+
+	# Espace client -> services/api. Ni /metrics, ni /health, ni /transactions (sonde) ne
+	# sont exposés : ils restent sur le réseau interne.
+	handle /me/* {
+		reverse_proxy api:8000 {
+			lb_try_duration 6s
+		}
+	}
+
+	# Tout le reste = front React (SPA)
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
