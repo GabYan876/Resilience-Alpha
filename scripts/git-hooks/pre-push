@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Refuse tout push direct sur main : on passe par une PR relue (voir CONTRIBUTING.md).
+# Garde-fou local, pas une protection GitHub (dépôt privé, offre gratuite) :
+# `git push --no-verify` le contourne, donc ne le faites pas.
+
+protected_branch="refs/heads/main"
+
+# Git fournit sur stdin : <ref locale> <sha local> <ref distante> <sha distant>
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    if [ "$remote_ref" = "$protected_branch" ]; then
+        echo "Push direct sur main refusé." >&2
+        echo "Créez une branche (feat/..., fix/..., docs/...), poussez-la et ouvrez une PR relue par le tech lead." >&2
+        exit 1
+    fi
+done
+
+exit 0
