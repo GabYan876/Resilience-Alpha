@@ -3,7 +3,19 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from types import MappingProxyType
+
+DEFAULT_CONTAINER_NAMES = {"api": "resilience-api"}
+
+
+def parse_container_names(raw: str) -> dict[str, str]:
+    """Lit `service=conteneur,service=conteneur` ; vide = valeurs par défaut."""
+    if not raw.strip():
+        return dict(DEFAULT_CONTAINER_NAMES)
+    pairs = (item.split("=", 1) for item in raw.split(",") if item.strip())
+    return {service.strip(): container.strip() for service, container in pairs}
 
 
 @dataclass(frozen=True)
@@ -14,6 +26,10 @@ class Settings:
     ingest_token: str  # protège POST /incidents (appelé par le détecteur)
     probe_token: str  # jeton du compte de test utilisé par la sonde de transaction
     http_timeout_s: float = 3.0
+    # Service Compose -> nom réel du conteneur (`container_name`) que Docker accepte dans l'URL.
+    container_names: Mapping[str, str] = field(
+        default_factory=lambda: MappingProxyType(dict(DEFAULT_CONTAINER_NAMES))
+    )
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -25,4 +41,5 @@ class Settings:
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
+            container_names=parse_container_names(os.environ.get("CONTAINER_NAMES", "")),
         )
