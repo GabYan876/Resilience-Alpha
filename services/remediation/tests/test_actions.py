@@ -1,13 +1,17 @@
+from datetime import timedelta
+
 from app.application.actions import (
     BlockIpAction,
     BlockSubjectAction,
     RestartServiceAction,
+    RestoreDatabaseAction,
     RotateSecretAction,
     ScaleServiceAction,
 )
 from app.domain.models import Anomaly, Incident, IncidentKind
 from tests.fakes import (
     FakeContainerRestarter,
+    FakeDatabaseRestorer,
     FakeIpBlocker,
     FakeSecretRotator,
     FakeServiceScaler,
@@ -39,6 +43,16 @@ def test_restart_targets_incident_service():
     restarter = FakeContainerRestarter()
     assert RestartServiceAction(restarter).execute(make_incident()).success
     assert restarter.restarted == ["api"]
+
+
+def test_restore_database_uses_latest_backup_and_is_required():
+    restorer = FakeDatabaseRestorer()
+    incident = make_incident()
+    result = RestoreDatabaseAction(restorer, safety_margin_s=60).execute(incident)
+    assert result.success and result.required
+    assert restorer.restores == 1
+    # jamais d'archive postérieure à la détection (moins la marge) : elle pourrait être altérée
+    assert restorer.before == incident.anomaly.detected_at - timedelta(seconds=60)
 
 
 def test_scale_uses_configured_replicas():

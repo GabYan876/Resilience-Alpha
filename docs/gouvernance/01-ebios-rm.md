@@ -48,7 +48,7 @@ Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l
 | Comptes et moindre privilège | `docker-socket-proxy`, pas d'interface d'admin exposée | Appliquée | `infra/compose/`, `services/remediation/app/adapters/docker_proxy.py` |
 | Secrets | Vault ou SOPS, aucun secret en clair | Partielle : `.env` ignoré par Git, Vault/SOPS absent | `infra/secrets/`, `.gitignore` |
 | Journalisation et détection | Logs JSON centralisés (Loki), détection ML | Appliquée | `infra/observability/`, `services/remediation/app/adapters/json_publisher.py` |
-| Sauvegarde | Sauvegarde et restauration de la BDD | Absente | Aucune (S4 à développer) |
+| Sauvegarde | Sauvegarde et restauration de la BDD | Partielle : archives planifiées sur le même hôte ; chiffrement et essai réel restant | `services/db/recovery/`, `services/db/README.md` |
 | Dépendances et images | Versions épinglées | Partielle : versions fixes, pas de scan de vulnérabilités | `services/*/requirements.txt` |
 
 ## Atelier 2 — Sources de risque

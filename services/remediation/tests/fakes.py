@@ -23,6 +23,16 @@ class FakeContainerRestarter:
         self.restarted.append(service)
 
 
+class FakeDatabaseRestorer:
+    def __init__(self) -> None:
+        self.restores = 0
+        self.before = None
+
+    def restore_latest(self, before) -> None:
+        self.restores += 1
+        self.before = before
+
+
 class FakeServiceScaler:
     def __init__(self) -> None:
         self.scaled: list[tuple[str, int]] = []

@@ -104,7 +104,17 @@ class RemediationPipeline:
                 self._emit(incident, "incident.failed", reason="no_action")
                 return incident
             for action in actions:
-                self._emit_action(incident, self._execute(action, incident))
+                result = self._execute(action, incident)
+                self._emit_action(incident, result)
+                if result.required and not result.success:
+                    incident.status = IncidentStatus.FAILED
+                    self._emit(
+                        incident,
+                        "incident.failed",
+                        reason="required_action_failed",
+                        action=result.action,
+                    )
+                    return incident
 
             incident.status = IncidentStatus.VERIFYING
             report = self._verifier.verify(incident)
@@ -129,8 +139,13 @@ class RemediationPipeline:
     def _execute(action: RemediationAction, incident: Incident) -> ActionResult:
         try:
             return action.execute(incident)
-        except Exception as exc:  # une action en échec n'arrête pas les suivantes
-            return ActionResult(action.name, False, f"exception : {exc}")
+        except Exception as exc:  # seules les actions requises arrêtent la reprise
+            return ActionResult(
+                action.name,
+                False,
+                f"exception : {exc}",
+                required=action.required,
+            )
 
     def _emit_action(self, incident: Incident, result: ActionResult) -> None:
         self._emit(

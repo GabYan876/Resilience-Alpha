@@ -44,6 +44,7 @@ def test_pipeline_restarts_the_compose_container_name():
         api_base_url="http://api:8000",
         api_health_url="http://api:8000/health",
         docker_proxy_url="http://docker-proxy:2375",
+        database_recovery_url="http://db-recovery:8001",
         ingest_token="t",
         probe_token="",
     )
@@ -61,6 +62,49 @@ def test_pipeline_restarts_the_compose_container_name():
         )
     )
     assert "http://docker-proxy:2375/containers/resilience-api/restart" in seen
+
+
+def test_database_corruption_restores_then_restarts_and_probes_with_probe_token():
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.path == "/restore":
+            return httpx.Response(200)
+        if request.url.path.endswith("/restart"):
+            return httpx.Response(204)
+        if request.url.path == "/health":
+            return httpx.Response(200)
+        if request.url.path == "/transactions":
+            return httpx.Response(201)
+        return httpx.Response(404)
+
+    settings = Settings(
+        api_base_url="http://api:8000",
+        api_health_url="http://api:8000/health",
+        docker_proxy_url="http://docker-proxy:2375",
+        database_recovery_url="http://db-recovery:8001",
+        ingest_token="ingest",
+        probe_token="probe-secret",
+    )
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    pipeline = build_pipeline(settings, client, InMemoryIncidentStore())
+
+    from app.domain.models import Anomaly, IncidentKind, IncidentStatus
+
+    incident = pipeline.handle(
+        Anomaly(score=1.0, source="test", kind_hint=IncidentKind.DATABASE_CORRUPTION)
+    )
+
+    assert incident.status is IncidentStatus.RESOLVED
+    assert [request.url.path for request in seen] == [
+        "/restore",
+        "/containers/resilience-api/restart",
+        "/health",
+        "/transactions",
+    ]
+    assert seen[0].headers["authorization"] == "Bearer probe-secret"
+    assert seen[-1].headers["authorization"] == "Bearer probe-secret"
 
 
 def test_restart_request_uses_its_own_longer_timeout():

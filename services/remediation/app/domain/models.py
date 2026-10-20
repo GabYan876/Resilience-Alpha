@@ -14,6 +14,7 @@ class IncidentKind(StrEnum):
     AVAILABILITY = "availability"  # flood / DoS : restaurer le service
     COMPROMISE = "compromise"  # SQLi / exfiltration : corriger la compromission
     CRASH = "crash"  # service tombé sans attaquant à bloquer : le relancer suffit
+    DATABASE_CORRUPTION = "database_corruption"  # altération de données : restaurer la sauvegarde
 
 
 class IncidentStatus(StrEnum):
@@ -55,6 +56,7 @@ class ActionResult:
     action: str
     success: bool
     detail: str = ""
+    required: bool = False
 
 
 @dataclass(frozen=True)

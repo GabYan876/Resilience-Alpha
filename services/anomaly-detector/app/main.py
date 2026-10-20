@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from prometheus_client import CollectorRegistry
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from app.adapters.db_integrity_source import HttpIntegritySource
 from app.adapters.http_reporter import HttpAnomalyReporter
 from app.adapters.isolation_forest import JoblibModelStore
 from app.adapters.loki_locator import LokiAttackerLocator
@@ -20,6 +21,7 @@ from app.adapters.prometheus_observer import PrometheusVerdictObserver
 from app.adapters.prometheus_source import PrometheusMetricsSource
 from app.api.routes import build_router
 from app.application.detection import DetectionService
+from app.application.integrity import IntegrityWatchService
 from app.config import Settings
 from app.logging_json import configure_logging
 
@@ -53,7 +55,22 @@ def build_service(
     )
 
 
-async def _watch(service: DetectionService, interval_s: float) -> None:
+def build_integrity_service(settings: Settings, client: httpx.Client) -> IntegrityWatchService:
+    return IntegrityWatchService(
+        HttpIntegritySource(client, settings.integrity_url),
+        HttpAnomalyReporter(
+            client,
+            settings.remediation_url,
+            settings.ingest_token,
+            timeout_s=settings.report_timeout_s,
+        ),
+        target_service=settings.target_service,
+        cooldown_s=settings.cooldown_s,
+        clock=time.monotonic,
+    )
+
+
+async def _watch(service: DetectionService | IntegrityWatchService, interval_s: float) -> None:
     while True:
         detection = await asyncio.to_thread(service.tick)
         if detection is not None:
@@ -75,12 +92,17 @@ def create_app(settings: Settings | None = None, client: httpx.Client | None = N
     client = client or httpx.Client(timeout=settings.http_timeout_s)
     registry = CollectorRegistry()
     service = build_service(settings, client, registry)
+    integrity_service = build_integrity_service(settings, client)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        task = asyncio.create_task(_watch(service, settings.poll_interval_s))
+        tasks = [
+            asyncio.create_task(_watch(watched, settings.poll_interval_s))
+            for watched in (service, integrity_service)
+        ]
         yield
-        task.cancel()
+        for task in tasks:
+            task.cancel()
 
     app = FastAPI(title="anomaly-detector", lifespan=lifespan)
     app.include_router(build_router())

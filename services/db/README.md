@@ -62,6 +62,9 @@ les identifiants du rôle propriétaire) :
 # Déploiement complet : migrate s'exécute avant l'API
 docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait
 
+# Vérification des tests unitaires du service de sauvegarde/restauration
+(cd services/db/recovery && PYTHONPATH=app python -m pytest -q)
+
 # Remise à zéro rejouable (schéma reconstruit + jeu de données rechargé)
 ./scripts/reset_demo.sh
 
@@ -107,6 +110,45 @@ puis `scripts/seed_demo.py`. Le seed est idempotent (UPSERT) et les identifiants
 sont déterministes (UUID v5), donc l'état de la base est identique à chaque
 passage : la démonstration peut être rejouée au moins cinq fois sans intervention.
 
+## Sauvegarde et restauration (S4)
+
+Le service Compose `db-recovery` utilise les outils PostgreSQL 16 et le rôle
+propriétaire, sans exposer de port à l'hôte. Il crée une archive custom-format
+`pg_dump` au démarrage puis toutes les `DB_BACKUP_INTERVAL_S` secondes (300 s par
+défaut), et conserve les `DB_BACKUP_RETENTION` dernières (12 par défaut) dans
+le volume dédié `postgres-backups`. Les fichiers sont écrits en mode `0600` et
+remplacés atomiquement après la réussite de `pg_dump`.
+
+`POST /backup` et `POST /restore` ne sont joignables que sur le réseau interne
+`control-internal` et exigent `Authorization: Bearer $PROBE_TOKEN`. Le moteur
+appelle `/restore?before=<détection - marge>` pour un incident `DATABASE_CORRUPTION`
+(jamais `COMPROMISE`, traité par rotation de secrets et investigation). La
+restauration ignore les archives plus récentes que `before` : la corruption précède
+la détection et une sauvegarde planifiée entre les deux contiendrait déjà la donnée
+altérée. Le moteur redémarre ensuite l'API afin
+de renouveler son pool PostgreSQL, puis exige une API saine et une transaction
+réussie avec le même `PROBE_TOKEN`. Sans archive ou si l'étape de restauration
+échoue, l'action obligatoire fait échouer l'incident : une API saine seule ne
+peut pas être prise pour une reprise S4.
+
+`scripts/reset_demo.sh` purge les archives puis en crée une de l'état propre, pour
+que chaque passage de démo restaure son propre point de départ.
+
+Limite connue : si la corruption est plus ancienne que la rétention (12 × 5 min) ou
+que la marge `DB_RESTORE_SAFETY_MARGIN_S`, aucune archive saine n'est garantie.
+Le détecteur (`IntegrityWatchService`) signale `database_corruption` sans intervention
+dès que les compteurs du grand livre reculent ou qu'une transaction ne s'équilibre plus
+(`GET /integrity`). Limite : une altération qui garde les compteurs et l'équilibre (un montant
+modifié) n'est pas vue ; c'est un invariant, pas du ML.
+
+La cible RPO provisoire est donc ≤ 5 minutes. Essai réel du 20/10 : restauration
+en ≈ 5 s, 6 passages, détails dans `docs/procedures/s4-corruption-bdd.md`. Pire cas
+théorique : intervalle (300 s) + marge (15 s), soit un peu plus que la cible. Les archives
+restent sur le même hôte Docker et ne sont pas chiffrées : elles protègent d'une
+corruption logique récupérable, pas d'une perte du PC Hôte ou du volume, et ne
+constituent pas une sauvegarde hors site. Données exclusivement fictives ;
+chiffrement et copie hors hôte restent des limites à traiter avant un usage réel.
+
 Deux pièges réglés, à ne pas réintroduire — ils se manifestent uniquement contre
 un vrai PostgreSQL, jamais en test unitaire :
 
@@ -126,12 +168,10 @@ un vrai PostgreSQL, jamais en test unitaire :
 
 Ce qui n'existe pas encore, par ordre d'importance pour la preuve de reprise.
 
-1. **Sauvegarde et restauration (scénario S4)** : aucune sauvegarde n'est produite
-   (pas de `pg_dump`, pas de volume ni de planning), donc `RestoreDatabaseAction`
-   du moteur de remédiation n'a rien à restaurer et le RPO n'est pas mesurable.
-   À définir avec Hugo : fréquence, emplacement hors du conteneur `postgres`,
-   chiffrement (SOPS/age), et un rôle de restauration distinct de `app_rw`, dont
-   les droits élevés sont à encadrer (pas d'accès direct à la base depuis le moteur).
+1. **Sauvegarde et restauration (scénario S4)** : le mécanisme local, la tâche
+   planifiée et `RestoreDatabaseAction` sont implémentés. Reste à mesurer le RPO
+   lors d'un essai réel et à traiter les limites décrites ci-dessus (chiffrement
+   et copie hors hôte) avant tout usage de données réelles.
 2. **Contrôle automatique de l'équilibre comptable** : la requête `SUM` ci-dessus
    n'est jouée par aucun test ni script. Ajouter un test sur PostgreSQL réel et un
    contrôle dans `check_transaction.sh`, voire une contrainte différée, pour détecter

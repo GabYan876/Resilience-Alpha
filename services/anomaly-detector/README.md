@@ -12,6 +12,13 @@ Prometheus ──> PrometheusMetricsSource ──> DetectionService ──> Http
                                             └─ confirmation x3, délai de grâce 90 s
 ```
 
+Un second cas d'usage, `IntegrityWatchService`, surveille la **base** (scénario S4) : il lit
+`GET /integrity` de `db-recovery` (3 compteurs, aucune donnée) toutes les `POLL_INTERVAL_S` et signale
+`database_corruption` dès qu'un invariant du grand livre est violé : nombre de transactions ou
+d'écritures qui **baisse** (les tables sont en ajout seul, `app_rw` n'a pas de `DELETE`), ou
+transaction dont les écritures ne s'équilibrent pas. Après un signalement, la référence est oubliée
+et réapprise (la restauration fait reculer les compteurs légitimement), puis `COOLDOWN_S` de silence.
+
 Les 4 mesures (`app/domain/models.py`) : débit de requêtes, part de 5xx, latence p95, `up`.
 
 Pas de règle codée en dur : le seuil d'alerte est **appris** à l'entraînement (plus mauvais score
@@ -66,7 +73,9 @@ Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mie
   périodique (scénario S3).
 - `attacker_ip` n'est pas renseigné : l'IP viendra des logs du WAF (Loki) quand `BlockIpAction`
   existera. Tant que la politique n'a que `RestartServiceAction`, ce n'est pas bloquant.
-- Seul `IncidentKind.AVAILABILITY` est émis. La compromission (SQLi/exfiltration) demandera un
+- `database_corruption` repose sur des **invariants** (compteurs en ajout seul), pas sur le ML : une
+  altération qui conserve les compteurs et l'équilibre des écritures (un montant modifié) n'est pas vue.
+- Hors corruption de base, seul `IncidentKind.AVAILABILITY` est émis. La compromission (SQLi/exfiltration) demandera un
   second détecteur (logs WAF) : on ajoute une classe, on ne modifie pas `DetectionService`.
 - Le fichier `.joblib` est du code désérialisé : monté en lecture seule, jamais issu d'une source
   non fiable.
