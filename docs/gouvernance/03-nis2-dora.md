@@ -16,7 +16,7 @@ Position retenue (décision du 19/10, à vérifier dans les textes) :
 | Thème | Exigence (résumé) | Réf. à vérifier | Ce que fait le démonstrateur | Preuve | Couverture |
 |---|---|---|---|---|---|
 | Gestion des risques | Analyse de risques documentée | NIS2 art. 21 / DORA chap. II | EBIOS RM | `01-ebios-rm.md` | À DÉFINIR |
-| Gestion des incidents | Détection, traitement, classification | NIS2 art. 21-23 / DORA chap. III | Détection ML + remédiation + événements JSON | Loki, dashboard | À DÉFINIR |
+| Gestion des incidents | Détection, traitement, classification | NIS2 art. 21-23 / DORA chap. III | Détection ML + remédiation + événements JSON | Loki, dashboard Grafana | À DÉFINIR |
 | Continuité | PCA/PRA, sauvegardes | NIS2 art. 21 / DORA chap. II | PCA/PRA, reset d'état | `02-pca-pra.md` | À DÉFINIR |
 | Tests de résilience | Tests réguliers | DORA chap. IV | Chaos du jeudi, ≥ 5 démos | Journal des essais | À DÉFINIR |
 | Cryptographie / secrets | Gestion des clés | NIS2 art. 21 | Vault ou SOPS, rotation | | À DÉFINIR |

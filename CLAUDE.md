@@ -10,7 +10,7 @@ Un conteneur qui redémarre ne prouve rien : la remédiation n'est « réussie �
 
 ## Les 5 piliers (tous obligatoires)
 
-1. **Dev** : microservices (BDD, API métier, auth, front), moteur de remédiation, dashboard React + Tailwind.
+1. **Dev** : microservices (BDD, API métier, auth, front), moteur de remédiation, dashboard de supervision **Grafana** (provisionné, `infra/observability/grafana/dashboards/resilience-alpha.json`), front de paiement React + Tailwind.
 2. **Infra** : Docker Compose, Ansible, Prometheus, Grafana, Loki (pas d'Elastic).
 3. **IA/Data** : détection d'anomalies par ML (pas de règles codées en dur) branchée sur la remédiation ; assistant RAG Ollama + LangChain (modèle ≤ 8B paramètres).
 4. **Cyber** : attaque réelle depuis le PC Attaquant, WAF (ModSecurity/Coraza), SIEM ou fonction SOC (Loki/Grafana, ou Wazuh si RAM), durcissement, Vault ou SOPS.
@@ -19,7 +19,8 @@ Un conteneur qui redémarre ne prouve rien : la remédiation n'est « réussie �
 ## Stack retenue
 
 - Services : **Python / FastAPI** partout (suggestion du debrief : simplifie ML + remédiation). Node.js ou Go uniquement si justifié.
-- Front + dashboard : React + Tailwind CSS.
+- Front de paiement : React + Tailwind CSS.
+- Dashboard de supervision (avant / pendant / après) : **Grafana** alimenté par Prometheus et Loki. **Pas de dashboard React à développer** : décision du 20/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`.
 - Orchestration : Docker Compose ; automatisation : playbooks Ansible.
 - Observabilité : Prometheus, Grafana, Loki (+ Promtail/Alloy).
 - ML : scikit-learn (ex. IsolationForest) sur métriques/logs. RAG : Ollama + LangChain.
@@ -55,7 +56,7 @@ services/<service>/
 - `DecisionPolicy` : choisit les actions selon le type d'incident (disponibilité ≠ compromission).
 - `RemediationAction` : stratégies (`BlockIpAction`, `RestartServiceAction`, `ScaleServiceAction`, `RotateSecretAction`…).
 - `RecoveryVerifier` : vérifie **API saine + transaction de test réussie** avant de déclarer l'incident clos.
-- Chaque étape émet un événement structuré (JSON) consommé par le dashboard et Loki.
+- Chaque étape émet un événement structuré (JSON) consommé par Loki, donc par le dashboard Grafana.
 
 ## Règles de sécurité (non négociables)
 
@@ -92,7 +93,7 @@ services/<service>/
 | Hugo | Infra + Cyber | Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau |
 | Kevin | Tech lead + remédiation | Architecture, moteur de remédiation, ML d'anomalies, intégration |
 | Antoine | Dev backend | BDD, API métier, auth, script de vérif. transaction, tests, doc API ; EBIOS RM + PCA/PRA |
-| Gabriel | Dev front | Front paiement, dashboard, Clip Chrono ; NIS2/DORA, pitch, Pres.pptx |
+| Gabriel | Dev front | Front paiement, Clip Chrono, vérification du dashboard Grafana ; NIS2/DORA, pitch, Pres.pptx |
 | François | IA RAG + Red Team | Assistant RAG, scripts d'attaque, chaos jeudi ; assemblage du Dossier PDF |
 
 ## Jalons

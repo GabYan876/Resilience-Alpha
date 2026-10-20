@@ -25,7 +25,7 @@ Distinguer **restauration de disponibilité** (S1, S3) et **correction de compro
 | Service | Criticité | RTO cible | RTO mesuré | RPO cible | RPO mesuré | Source de la mesure |
 |---|---|---|---|---|---|---|
 | Paiement (API + auth + BDD) | À DÉFINIR | À DÉFINIR | À MESURER | À DÉFINIR | À MESURER | Événements JSON de remédiation (Loki) |
-| Dashboard | À DÉFINIR | | | | | |
+| Dashboard (Grafana) | À DÉFINIR | | | | | |
 | Observabilité | À DÉFINIR | | | | | |
 
 Définition de la reprise : **API saine ET transaction de test réussie** (pas seulement un conteneur relancé).
@@ -41,7 +41,7 @@ Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles dé
 | Pilotage / décision | Kevin | Relit les événements, confirme la clôture, ajuste le seuil ML |
 | Infra / WAF | Hugo | Vérifie le WAF et les réseaux, exécute le script de reset d'état |
 | Backend / BDD | Antoine | Contrôle l'intégrité de la BDD et la restauration |
-| Front / dashboard | Gabriel | Vérifie l'affichage avant / pendant / après |
+| Front / dashboard Grafana | Gabriel | Vérifie le front de paiement et l'affichage Grafana avant / pendant / après |
 | Investigation / red team | François | Investigue S2 (fuite éventuelle), rapporte l'attaque jouée |
 
 ## 5. Choix de restauration
