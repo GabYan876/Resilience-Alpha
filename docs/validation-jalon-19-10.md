@@ -24,9 +24,9 @@ Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 - **Question** : source des données du dashboard : flux d'événements du moteur, Loki ou Grafana ?
 
 ### François (RAG, red team)
-- [x] Le RAG est isolé (réseau `rag`, lecture seule, aucun accès privilégié).
+- [ ] Le RAG est isolé (réseau `rag`, lecture seule, aucun accès privilégié) : codé et vérifié en conteneur, mais ER6 reste EN COURS (injection de prompt non prouvée, voir `04-matrice-tracabilite.md`).
 - [x] Le script de flood journalise un **horodatage de début d'attaque** (sert au calcul du RTO).
-- **Question** : Ollama sur un 3e PC si la RAM est insuffisante (< 32 Go) ?
+- **Question** : Ollama sur un 3e PC si la RAM est insuffisante (< 32 Go) ? **Réponse** : oui, Ollama tourne sur un PC Linux dédié (procédure `ufw` de `docs/dev.md`).
 
 ### Kevin (tech lead)
 - **Question 2 — transport détecteur → remédiation** : HTTP direct sur `POST /incidents` (token) retenu pour mardi. D'accord ?

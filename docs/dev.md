@@ -143,7 +143,9 @@ Deux points qui ne concernent que le poste :
 
 ## Ollama (assistant RAG)
 
-Un seul Ollama suffit : seul le conteneur `rag-assistant` l'appelle. Chacun peut lancer le sien (défaut
+Un seul Ollama suffit : seul le conteneur `rag-assistant` l'appelle. Il tourne sur un **PC Linux dédié**
+(les commandes `systemd` et `ufw` ci-dessous valent pour ce poste ; sous Windows/Docker Desktop, il faudrait
+adapter l'écoute et le pare-feu). Chacun peut aussi lancer le sien (défaut
 `OLLAMA_URL=http://host.docker.internal:11434`) ou pointer vers celui d'un autre via `OLLAMA_URL`.
 Ollama n'a aucune authentification et le hotspot est un réseau plat où se trouve aussi le PC
 Attaquant : ne jamais le faire écouter sur `0.0.0.0`.
