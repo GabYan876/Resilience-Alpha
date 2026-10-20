@@ -9,10 +9,10 @@ Les cases déjà cochées ont une preuve dans le dépôt ; les autres attendent 
 Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-10.md) : à solder avant d'ouvrir le jalon du 20/10.
 
 - [ ] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; reste à trancher Loki/Grafana seuls ou Wazuh.
-- [ ] Antoine : `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 (fait). Essai réel et automatique fait le 20/10 (détecteur d'intégrité, 5 passages sans intervention, voir `docs/procedures/s4-corruption-bdd.md`).
+- [x] Antoine : `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 (fait). Essai réel et automatique fait le 20/10 (détecteur d'intégrité, 5 passages sans intervention, voir `docs/procedures/s4-corruption-bdd.md`).
 - [ ] François : RAG isolé (codé, ER6 EN COURS), horodatage de début d'attaque dans le flood (fait), Ollama sur un PC Linux dédié (décidé).
 - [x] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).
-- [ ] Antoine : EBIOS ateliers 1 à 3 (échelle de gravité, valeurs métier, ER1 à ER6, sources de risque, SS1 à SS5, socle ANSSI).
+- [x] Antoine : EBIOS ateliers 1 à 3 (échelle de gravité, valeurs métier, ER1 à ER6, sources de risque, SS1 à SS5, socle ANSSI).
 - [ ] Tous : `ruff format` fonctionne sur chaque PC.
 - [ ] Tous : hotspot `RESILIENCE-G<n>`, PC Hôte en `192.168.137.1`, PC Attaquant joint l'hôte et ne vise que lui.
 
@@ -29,7 +29,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 - [x] BDD (migrations 0001 et 0002), API métier (`/health`, `/transactions`, `/me/*`), auth (JWT), tests présents.
 - [x] Correctif des deadlocks de virement (#19).
-- [ ] `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 ; `RestoreDatabaseAction` restaure la dernière archive, redémarre l'API puis la reprise est vérifiée par une transaction. RPO configuré à 5 min ; essai de corruption et mesure réelle à faire (voir `services/db/README.md`).
+- [x] `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 ; `RestoreDatabaseAction` restaure la dernière archive, redémarre l'API puis la reprise est vérifiée par une transaction. RPO configuré à 5 min ; essai de corruption et mesure réelle à faire (voir `services/db/README.md`).
 - [x] Doc d'API à jour (`services/api/README.md`) avec les routes d'auth.
 
 ## 3. Front et dashboard — Gabriel
@@ -49,7 +49,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 ## 5. EBIOS RM, ateliers 4 et 5 — Antoine
 
-- [ ] Ateliers 1 à 3 validés (voir § 0). Les colonnes `À DÉFINIR` de `01-ebios-rm.md` sont remplies en propositions (PR #27) : validation d'Antoine attendue.
+- [x] Ateliers 1 à 3 validés (voir § 0). Les colonnes `À DÉFINIR` de `01-ebios-rm.md` sont remplies en propositions (PR #27) : validés par Kevin (tech lead) le 20/10.
 - [x] Atelier 4 (scénarios opérationnels) : SO1 flood, SO2 SQLi ; renvoyer vers les démos mesurées.
 - [x] Atelier 5 (traitement du risque) : tableau Flood / SQLi / détournement du moteur / faux positif ML, preuves liées.
 - [x] `02-pca-pra.md` : RTO provisoires posés (60 s paiement, base : RTO flood mesuré 33-48 s). RPO à définir avec la sauvegarde (S4).
