@@ -82,7 +82,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité. Le WAF, le détecteur ML, l'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). Le WAF, l'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
