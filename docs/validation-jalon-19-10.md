@@ -16,8 +16,8 @@ Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 ### Antoine (API, auth, BDD)
 - [x] Contrat de la sonde de transaction : `POST /transactions` avec `{from_account, to_account, amount}` (comptes de test fictifs), réponse 2xx si succès.
 - [x] `GET /health` sur l'API métier.
-- **Question** : faut-il un jeton d'authentification pour la sonde ? (variable `PROBE_TOKEN`, un compte de test dédié).
-- **Question** : sauvegarde et restauration de la BDD (scénario S4, `RestoreDatabaseAction`) : faisable cette semaine ? Quel mécanisme ?
+- ~~Question : faut-il un jeton d'authentification pour la sonde ?~~ **Réponse (20/10)** : oui, `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4.
+- ~~Question : sauvegarde et restauration de la BDD (S4, `RestoreDatabaseAction`)~~ **Réponse (20/10)** : faisable et fait. Le service `db-recovery` restaure la dernière archive, un détecteur d'intégrité déclenche la reprise ; essai réel de 5 passages sans intervention (voir `procedures/s4-corruption-bdd.md`).
 
 ### Gabriel (front, vérification du dashboard Grafana)
 - [x] Le dashboard affiche l'état avant / pendant / après depuis les événements JSON du moteur (`incident.detected`, `decision.made`, `action.executed`, `verification.completed`, `incident.resolved` / `incident.failed`).
@@ -29,18 +29,20 @@ Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 - **Question** : Ollama sur un 3e PC si la RAM est insuffisante (< 32 Go) ? **Réponse** : oui, Ollama tourne sur un PC Linux dédié (procédure `ufw` de `docs/dev.md`).
 
 ### Kevin (tech lead)
-- **Question 2 — transport détecteur → remédiation** : HTTP direct sur `POST /incidents` (token) retenu pour mardi. D'accord ?
+- ~~Question 2 : transport détecteur → remédiation~~ **Réponse (20/10)** : HTTP direct sur `POST /incidents` (token), déjà en place et consigné le 19/10.
 
 ## 2. EBIOS RM, ateliers 1 à 3 — [`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md)
 
 Responsable : Antoine. Contributeurs : Hugo (infra), Kevin (remédiation).
 
-- [ ] **Échelle de gravité** à 4 niveaux (1 Mineure, 2 Significative, 3 Grave, 4 Critique) et ses définitions.
-- [ ] **Valeurs métier** : criticité de chacune (colonne « Critique ? »).
-- [ ] **Événements redoutés** ER1 à ER6 : gravité de chacun et coût d'arrêt retenu pour ER1.
-- [ ] **Sources de risque** : l'initié malveillant ou négligent est-il retenu ?
-- [ ] **Scénarios stratégiques** SS1 à SS5 : gravité et mesures liées à l'écosystème.
-- [ ] **Socle de sécurité** : référentiel ANSSI retenu ; états et numéros de règles à remplir (peut attendre mardi).
+Ateliers 1 à 3 validés par le tech lead le 20/10 (voir `validation-jalon-20-10.md`, § 0 et § 5).
+
+- [x] **Échelle de gravité** à 4 niveaux (1 Mineure, 2 Significative, 3 Grave, 4 Critique) et ses définitions.
+- [x] **Valeurs métier** : criticité de chacune (colonne « Critique ? »).
+- [x] **Événements redoutés** ER1 à ER6 : gravité de chacun et coût d'arrêt retenu pour ER1.
+- [x] **Sources de risque** : l'initié malveillant ou négligent est-il retenu ?
+- [x] **Scénarios stratégiques** SS1 à SS5 : gravité et mesures liées à l'écosystème.
+- [x] **Socle de sécurité** : référentiel ANSSI retenu ; états et numéros de règles à remplir (peut attendre mardi).
 
 ## 3. Conventions — [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 
