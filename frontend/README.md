@@ -13,6 +13,16 @@ npm run dev      # http://localhost:5173
 Les appels `/auth` et `/me` sont relayés par Vite vers le WAF publié en local (`http://127.0.0.1:8080`) :
 la pile Docker Compose doit tourner. Les données sont fictives.
 
+## Déploiement
+
+Le front est construit dans l'image `gateway` (`infra/compose/gateway/Dockerfile`) et servi par Caddy derrière le WAF :
+`docker compose -f infra/compose/docker-compose.yml up -d --build`, puis `http://127.0.0.1:8080`.
+
+## Session
+
+Jeton et profil restent en `sessionStorage` : un rafraîchissement ne déconnecte pas. Au chargement, le solde est relu
+via `GET /me/account` ; un 401 (jeton expiré) déconnecte. Voir `src/session.ts`.
+
 ## Contrôles
 
 ```bash

@@ -9,6 +9,7 @@ import { baseurl, navatom, userinfo } from "../../recoil/atom";
 export default function Transfer() {
 
     const set = useSetRecoilState(navatom);
+    const setUser = useSetRecoilState(userinfo);
     useEffect(() => { set(4); }, [set]);
 
     const url = useRecoilValue(baseurl);
@@ -36,6 +37,10 @@ export default function Transfer() {
                 idemKey.current = crypto.randomUUID();
                 setMessage({ ok: true, text: "Virement effectué ✅" });
                 el.reset();
+                // Solde relu auprès du back : il a changé avec le virement.
+                axios.get(url + "/me/account", { headers: { Authorization: "Bearer " + h } })
+                    .then((res) => setUser((u: object) => ({ ...u, balance: res.data.balance_cents })))
+                    .catch(() => undefined);
             }).catch((err) => {
                 const d = err.response?.data;
                 const txt = (err.response?.status === 409) ? "Virement refusé : solde insuffisant"

@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { baseurl, logined, userinfo } from "../recoil/atom";
 import axios from "axios";
+import { saveSession, toUser } from "../session";
 import { useEffect, useState } from "react";
 import Navtop from './Naviagtion/navtop';
 
@@ -58,11 +59,8 @@ function LoginBox(){
         }
         axios.post(url + "/auth/login",data)
         .then((res)=>{
-            sessionStorage.setItem("token", res.data.token);
-            const r = res.data.resp;
-            // Le back renvoie { _id, name, email, number, iban, balance_cents }.
-            // On mappe vers les champs attendus par l'UI d'origine (uid, balance).
-            setuser({ ...r, uid: r.iban, balance: r.balance_cents });
+            saveSession(res.data.token, res.data.resp);
+            setuser(toUser(res.data.resp));
             setLogined(true);
             navigate("/home")
         }).catch((err)=>{

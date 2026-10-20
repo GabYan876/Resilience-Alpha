@@ -1,9 +1,12 @@
 import {atom} from 'recoil';
+import { loadSession } from '../session';
+
+const session = loadSession();
 
 
 export const logined = atom({
     key:"logined",
-    default:false
+    default:session.token !== null
 })
 
 export const baseurl = atom({
@@ -18,7 +21,7 @@ export const navatom = atom({
 
 export const userinfo = atom({
     key:"userinfo",
-    default:{}
+    default:session.user
 })
 
 export const payment = atom({
