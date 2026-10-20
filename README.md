@@ -86,7 +86,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 >
 > **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), assistant RAG (`services/rag-assistant/`, aucun code), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
 
-**Prérequis** (poste Windows) : Docker Desktop (Docker ≥ 28, Compose ≥ v2.30, moteur WSL 2), Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. La RAM de la pile complète reste à mesurer (voir `docs/validation-jalon-20-10.md`). Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
+Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
