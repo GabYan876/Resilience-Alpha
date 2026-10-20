@@ -40,3 +40,23 @@ RPO ; le déclencheur reste manuel tant qu'aucun détecteur ne signale `database
 
 `./scripts/reset_demo.sh`, puis rejouer. Reporter RPO et RTO dans `docs/gouvernance/02-pca-pra.md`
 (section 3).
+
+## Essai réel du 20/10 (Kevin, Docker Desktop, pile S4 seule)
+
+Déclenchement manuel (`POST /incidents`, `kind=database_corruption`) ; corruption = `DELETE` sur
+`ledger_entries` et `transactions` avec le rôle propriétaire ; archive prise 20 s avant la corruption.
+
+| Passage | Cas | Résultat | RTO (`incident.detected` → `incident.resolved`) |
+|---|---|---|---|
+| 1 | marge 60 s (ancien défaut), reset < 60 s avant | **échec voulu** : aucune archive éligible, `503 backup_unavailable`, `incident.failed` | — |
+| 2 | marge 15 s | résolu, 3 transactions + 1 de sonde revenues | 4,7 s |
+| 3 | archive prise **après** la corruption (Tc + 7 s) | résolu, l'archive postérieure est ignorée, données saines restaurées | ≈ 5 s |
+| 4 à 6 | marge 15 s, après `reset_demo.sh` | 3 × résolu, mêmes comptes avant/après | ≈ 5 s |
+
+Enseignements :
+- Une marge de 60 s est trop grande : elle exclut les archives récentes et dégrade le RPO. Défaut ramené à
+  15 s (3 confirmations × 5 s du détecteur).
+- **RPO mesuré : 20 s** ici, mais c'est l'écart que j'ai imposé entre archive et corruption. Dans le pire cas
+  il vaut l'intervalle de sauvegarde (300 s) **plus** la marge (15 s) : environ 5 min 15 s, soit juste au-dessus de la
+  cible de 5 min. Pour la tenir strictement, passer `DB_BACKUP_INTERVAL_S` à 240.
+- Le déclencheur automatique (détecteur ML) n'est pas couvert : l'essai est semi-manuel.

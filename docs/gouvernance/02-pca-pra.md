@@ -13,7 +13,7 @@ Statut : première version du 20/10 (RTO/RPO provisoires, à valider). Responsab
 | S1 | Flood sur l'API | Disponibilité | Blocage IP + restart + vérif transaction | Oui (Zero-Touch) |
 | S2 | SQLi / exfiltration | Compromission | Blocage IP + rotation des secrets + vérif transaction ; **investigation manuelle** (on ne peut pas prouver l'absence de fuite) | Partielle : automatique sauf l'investigation |
 | S3 | Crash d'un conteneur | Disponibilité | Détection par health check périodique (`HealthWatchDetector` dans le moteur), restart + vérif | Oui (essai réel du 20/10 : arrêt de l'API, reprise en 34 s) |
-| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Mécanisme implémenté ; ni détecteur automatique de corruption ni essai réel : pas encore Zero-Touch |
+| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Mécanisme implémenté et essayé le 20/10 (6 passages, RTO ≈ 5 s) ; pas de détecteur automatique de corruption : déclenchement manuel, donc pas encore Zero-Touch |
 | S5 | Perte du PC Hôte | Site | Hors périmètre démontrable | Non |
 
 Distinguer **restauration de disponibilité** (S1, S3) et **correction de compromission** (S2) : les actions sont différentes.
@@ -24,7 +24,7 @@ Distinguer **restauration de disponibilité** (S1, S3) et **correction de compro
 
 | Service | Criticité | RTO cible | RTO mesuré | RPO cible | RPO mesuré | Source de la mesure |
 |---|---|---|---|---|---|---|
-| Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5) ; crash : 34 s | ≤ 5 min (intervalle de sauvegarde configuré) | À mesurer lors d'un essai S4 réel | Événements JSON de remédiation (Loki) |
+| Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5) ; crash : 34 s | ≤ 5 min (intervalle de sauvegarde configuré) | 20 s sur l'essai du 20/10 (écart archive/corruption imposé) ; pire cas 300 s + marge 15 s | Événements JSON de remédiation (Loki) |
 | Dashboard (Grafana) | Importante | 5 min (proposition) | À MESURER | Sans objet (provisionné par fichiers) | Sans objet | |
 | Observabilité | Importante : sans elle la détection est aveugle | 5 min (proposition) | À MESURER | Logs perdus pendant l'arrêt | À MESURER | |
 
@@ -45,7 +45,7 @@ Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles dé
 | Investigation / red team | François | Investigue S2 (fuite éventuelle), rapporte l'attaque jouée |
 
 ## 5. Choix de restauration
-`db-recovery` produit des archives custom-format PostgreSQL toutes les 300 s et conserve les 12 dernières dans le volume Compose `postgres-backups`. La restauration choisit la dernière archive valide **antérieure à la détection** (moins une marge de 60 s), car une sauvegarde planifiée après la corruption contiendrait déjà la donnée altérée ; le moteur redémarre l'API et ne clôt l'incident qu'après une transaction de sonde authentifiée. Le RPO cible provisoire est ≤ 5 min, à mesurer en essai réel. Limites : volume sur le même PC Hôte, archives non chiffrées, donc aucune protection contre la perte de l'hôte/volume ; archives utilisables uniquement avec les données fictives de la démonstration.
+`db-recovery` produit des archives custom-format PostgreSQL toutes les 300 s et conserve les 12 dernières dans le volume Compose `postgres-backups`. La restauration choisit la dernière archive valide **antérieure à la détection** (moins une marge de 15 s), car une sauvegarde planifiée après la corruption contiendrait déjà la donnée altérée ; le moteur redémarre l'API et ne clôt l'incident qu'après une transaction de sonde authentifiée. Le RPO cible provisoire est ≤ 5 min, à mesurer en essai réel. Limites : volume sur le même PC Hôte, archives non chiffrées, donc aucune protection contre la perte de l'hôte/volume ; archives utilisables uniquement avec les données fictives de la démonstration.
 
 ## 6. Procédures
 Les procédures opérationnelles vont dans `docs/procedures/`. Une procédure par scénario.

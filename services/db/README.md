@@ -140,8 +140,9 @@ Aucun détecteur ML ne signale encore `database_corruption` : l'incident n'est p
 l'instant créé que par `POST /incidents` (jeton d'ingestion), donc la preuve Zero-Touch
 de S4 reste à construire.
 
-La cible RPO provisoire est donc ≤ 5 minutes ; elle devra être confirmée par un
-essai de corruption/restauration et non déduite du seul planning. Les archives
+La cible RPO provisoire est donc ≤ 5 minutes. Essai réel du 20/10 : restauration
+en ≈ 5 s, 6 passages, détails dans `docs/procedures/s4-corruption-bdd.md`. Pire cas
+théorique : intervalle (300 s) + marge (15 s), soit un peu plus que la cible. Les archives
 restent sur le même hôte Docker et ne sont pas chiffrées : elles protègent d'une
 corruption logique récupérable, pas d'une perte du PC Hôte ou du volume, et ne
 constituent pas une sauvegarde hors site. Données exclusivement fictives ;

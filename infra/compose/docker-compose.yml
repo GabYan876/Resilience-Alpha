@@ -384,7 +384,7 @@ services:
       API_BASE_URL: http://api:8000
       DOCKER_PROXY_URL: http://docker-proxy-ctl:2375
       DATABASE_RECOVERY_URL: http://db-recovery:8001
-      DB_RESTORE_SAFETY_MARGIN_S: ${DB_RESTORE_SAFETY_MARGIN_S:-60}
+      DB_RESTORE_SAFETY_MARGIN_S: ${DB_RESTORE_SAFETY_MARGIN_S:-15}
       PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
       CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api}
       WAF_BLOCKLIST_PATH: /blocklist/blocked.txt
