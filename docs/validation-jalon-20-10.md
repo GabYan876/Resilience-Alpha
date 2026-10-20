@@ -57,10 +57,10 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 ## 6. Cohérence d'intégration — Kevin
 
 - [x] Matrice de traçabilité, 1re version, avec les mesures du 20/10.
-- [ ] Mise à jour de `docs/architecture/architecture.md` avec le WAF, la détection de crash et le blocage par compte.
+- [x] Mise à jour de `docs/architecture/architecture.md` avec le WAF, la détection de crash et le blocage par compte.
 - [ ] Valider avec Hugo les arbitrages marqués « à valider » du 20/10 (passerelles Docker, WAF par compte).
-- [ ] README : retirer « à venir » sur le WAF une fois la section relue, lister l'écart Ansible/RAG.
-- [ ] Supprimer les dossiers parasites `ml/data;C` et `services/anomaly-detector;C`.
+- [x] README : retirer « à venir » sur le WAF une fois la section relue, lister l'écart Ansible/RAG.
+- [x] Supprimer les dossiers parasites `ml/data;C` et `services/anomaly-detector;C`.
 
 ## 7. Critères de sortie du jalon
 
