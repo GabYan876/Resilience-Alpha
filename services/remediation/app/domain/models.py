@@ -13,6 +13,7 @@ class IncidentKind(StrEnum):
 
     AVAILABILITY = "availability"  # flood / DoS : restaurer le service
     COMPROMISE = "compromise"  # SQLi / exfiltration : corriger la compromission
+    CRASH = "crash"  # service tombé sans attaquant à bloquer : le relancer suffit
 
 
 class IncidentStatus(StrEnum):

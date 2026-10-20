@@ -106,12 +106,15 @@ Accès actuel (poste hôte uniquement) : front Pay-Now sur `http://127.0.0.1:808
 ## Lancer la démonstration
 
 ```bash
-# Sur le PC Attaquant (script à écrire dans attack/)
-./attack/http_flood.sh 192.168.137.1
+# Sur le PC Attaquant : flood authentifié (voir attack/flood_http.py pour les garde-fous)
+python attack/flood_http.py --base-url http://192.168.137.1:8080 --duration 30
 
 # Sur le PC Hôte : observer le dashboard / Grafana, puis vérifier la reprise
 ./scripts/check_transaction.sh
 ./scripts/reset_demo.sh         # remise à zéro pour rejouer
+
+# Preuve de rejouabilité : N cycles reset -> flood -> reprise -> transaction, RTO mesuré
+python scripts/demo_loop.py --runs 5
 ```
 
 Critère de réussite : **aucune intervention humaine** entre l'attaque et la nouvelle transaction réussie.

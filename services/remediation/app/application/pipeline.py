@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 from app.domain.models import (
     ActionResult,
     Anomaly,
@@ -37,16 +39,32 @@ class RemediationPipeline:
         self._publisher = publisher
         self._max_attempts = max_attempts
         self._store = store
+        # Un seul incident à la fois : un flood et un crash simultanés visent le même service,
+        # deux redémarrages concurrents se perturberaient et fausseraient la vérification.
+        self._lock = threading.Lock()
 
     def run_once(self) -> Incident | None:
-        """Traite au plus un incident. Retourne None si aucune anomalie n'est détectée."""
-        anomaly = self._detector.detect()
-        if anomaly is None:
+        """Traite au plus un incident. Retourne None si aucune anomalie n'est détectée.
+
+        Ne bloque jamais : si un incident est déjà en cours, la sonde passe son tour (la santé
+        mesurée pendant un redémarrage n'est pas un nouvel incident).
+        """
+        if not self._lock.acquire(blocking=False):
             return None
-        return self.handle(anomaly)
+        try:
+            anomaly = self._detector.detect()
+            if anomaly is None:
+                return None
+            return self._handle_unlocked(anomaly)
+        finally:
+            self._lock.release()
 
     def handle(self, anomaly: Anomaly) -> Incident:
         """Traite une anomalie déjà détectée (ex. remontée par le détecteur via l'API)."""
+        with self._lock:
+            return self._handle_unlocked(anomaly)
+
+    def _handle_unlocked(self, anomaly: Anomaly) -> Incident:
         incident = Incident(anomaly)
         self._save(incident)
         try:

@@ -29,6 +29,8 @@ class Settings:
     http_timeout_s: float = 3.0
     restart_timeout_s: float = 30.0  # délai de la requête de redémarrage Docker
     verify_wait_s: float = 30.0  # temps laissé à l'API pour redevenir saine avant de conclure
+    watch_interval_s: float = 0.0  # sondage de santé (détection de crash) ; 0 = désactivé
+    watch_failures: int = 3  # sondages consécutifs en échec avant de déclarer une panne
     # Service Compose -> nom réel du conteneur (`container_name`) que Docker accepte dans l'URL.
     container_names: Mapping[str, str] = field(
         default_factory=lambda: MappingProxyType(dict(DEFAULT_CONTAINER_NAMES))
@@ -47,5 +49,7 @@ class Settings:
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
             restart_timeout_s=float(os.environ.get("RESTART_TIMEOUT_S", "30")),
             verify_wait_s=float(os.environ.get("VERIFY_WAIT_S", "30")),
+            watch_interval_s=float(os.environ.get("WATCH_INTERVAL_S", "5")),
+            watch_failures=int(os.environ.get("WATCH_FAILURES", "3")),
             container_names=parse_container_names(os.environ.get("CONTAINER_NAMES", "")),
         )
