@@ -16,8 +16,10 @@ def test_restore_uses_probe_token():
         return httpx.Response(200)
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    HttpDatabaseRestorer(client, "http://db-recovery:8001/", "probe-secret").restore_latest(INCIDENT_TIME)
-    assert seen[0].url == "http://db-recovery:8001/restore"
+    restorer = HttpDatabaseRestorer(client, "http://db-recovery:8001/", "probe-secret")
+    restorer.restore_latest(INCIDENT_TIME)
+    assert seen[0].url.path == "/restore"
+    assert seen[0].url.host == "db-recovery"
     assert seen[0].headers["authorization"] == "Bearer probe-secret"
     assert seen[0].url.params["before"] == "2026-10-20T10:30:00+00:00"
 
@@ -25,4 +27,5 @@ def test_restore_uses_probe_token():
 def test_restore_surfaces_service_failure():
     client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(503)))
     with pytest.raises(httpx.HTTPStatusError):
-        HttpDatabaseRestorer(client, "http://db-recovery:8001", "probe-secret").restore_latest(INCIDENT_TIME)
+        restorer = HttpDatabaseRestorer(client, "http://db-recovery:8001", "probe-secret")
+        restorer.restore_latest(INCIDENT_TIME)
