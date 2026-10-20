@@ -16,11 +16,13 @@ class InMemoryAccountRepository:
     def __init__(self, accounts: Sequence[Account] = ()) -> None:
         self.by_id: dict[UUID, Account] = {a.id: a for a in accounts}
         self.saved: list[UUID] = []
+        self.lookups: list[str] = []  # ordre des verrouillages par IBAN
 
     async def get_by_id(self, account_id: UUID) -> Account | None:
         return self.by_id.get(account_id)
 
     async def get_by_iban(self, iban_fake: str) -> Account | None:
+        self.lookups.append(iban_fake)
         return next((a for a in self.by_id.values() if a.iban_fake == iban_fake), None)
 
     async def get_by_user_id(self, user_id: UUID) -> Account | None:

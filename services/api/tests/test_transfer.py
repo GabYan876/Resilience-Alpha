@@ -117,3 +117,13 @@ async def test_chaque_evenement_porte_le_meme_trace_id() -> None:
 
     assert transaction.trace_id == "trace-demo"
     assert {trace_id for _, trace_id, _ in publisher.events} == {"trace-demo"}
+
+
+async def test_les_verrous_sont_pris_dans_l_ordre_des_iban_quel_que_soit_le_sens() -> None:
+    # Régression : A -> B et B -> A prenaient les verrous en sens inverse (deadlock PostgreSQL).
+    for from_iban, to_iban in (("TEST-0001", "TEST-0002"), ("TEST-0002", "TEST-0001")):
+        transfer, uow, _ = _setup()
+
+        await transfer.execute(_command(from_iban=from_iban, to_iban=to_iban))
+
+        assert uow.accounts.lookups == ["TEST-0001", "TEST-0002"]
