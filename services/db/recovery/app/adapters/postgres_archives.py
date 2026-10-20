@@ -12,6 +12,19 @@ from pathlib import Path
 from app.domain.ports import BackupUnavailable
 
 
+_ARCHIVE_TIME_FORMAT = "%Y%m%dT%H%M%S.%fZ"
+
+
+def _archive_time(path: Path) -> datetime:
+    """Date de création lue dans le nom `backup-<horodatage>.dump` (UTC)."""
+    stamp = path.stem.removeprefix("backup-")
+    try:
+        return datetime.strptime(stamp, _ARCHIVE_TIME_FORMAT).replace(tzinfo=UTC)
+    except ValueError:
+        # Nom non reconnu : traité comme trop récent, donc jamais choisi pour une restauration.
+        return datetime.max.replace(tzinfo=UTC)
+
+
 class PostgresArchiveStore:
     def __init__(
         self,
@@ -37,7 +50,7 @@ class PostgresArchiveStore:
 
     def create_backup(self) -> str:
         self._backup_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+        timestamp = datetime.now(UTC).strftime(_ARCHIVE_TIME_FORMAT)
         destination = self._backup_dir / f"backup-{timestamp}.dump"
         temporary: Path | None = None
         try:
@@ -68,8 +81,12 @@ class PostgresArchiveStore:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
 
-    def restore_latest(self) -> str:
+    def restore_latest(self, before: datetime | None = None) -> str:
         backups = self._list_backups()
+        if before is not None:
+            # Une archive prise après le début de l'incident peut contenir la donnée altérée.
+            cutoff = before if before.tzinfo else before.replace(tzinfo=UTC)
+            backups = [b for b in backups if _archive_time(b) < cutoff]
         if not backups:
             raise BackupUnavailable("aucune sauvegarde PostgreSQL disponible")
 

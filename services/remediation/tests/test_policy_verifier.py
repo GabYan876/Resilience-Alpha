@@ -11,6 +11,7 @@ def make_incident(kind: IncidentKind) -> Incident:
 class StubAction:
     def __init__(self, name: str) -> None:
         self.name = name
+        self.required = False
 
     def execute(self, incident: Incident) -> ActionResult:
         return ActionResult(self.name, True)

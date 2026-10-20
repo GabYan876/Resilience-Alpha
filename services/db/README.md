@@ -121,11 +121,24 @@ remplacés atomiquement après la réussite de `pg_dump`.
 
 `POST /backup` et `POST /restore` ne sont joignables que sur le réseau interne
 `control-internal` et exigent `Authorization: Bearer $PROBE_TOKEN`. Le moteur
-appelle `/restore` pour un incident `COMPROMISE`, redémarre ensuite l'API afin
+appelle `/restore?before=<détection - marge>` pour un incident `DATABASE_CORRUPTION`
+(jamais `COMPROMISE`, traité par rotation de secrets et investigation). La
+restauration ignore les archives plus récentes que `before` : la corruption précède
+la détection et une sauvegarde planifiée entre les deux contiendrait déjà la donnée
+altérée. Le moteur redémarre ensuite l'API afin
 de renouveler son pool PostgreSQL, puis exige une API saine et une transaction
 réussie avec le même `PROBE_TOKEN`. Sans archive ou si l'étape de restauration
 échoue, l'action obligatoire fait échouer l'incident : une API saine seule ne
 peut pas être prise pour une reprise S4.
+
+`scripts/reset_demo.sh` purge les archives puis en crée une de l'état propre, pour
+que chaque passage de démo restaure son propre point de départ.
+
+Limite connue : si la corruption est plus ancienne que la rétention (12 × 5 min) ou
+que la marge `DB_RESTORE_SAFETY_MARGIN_S`, aucune archive saine n'est garantie.
+Aucun détecteur ML ne signale encore `database_corruption` : l'incident n'est pour
+l'instant créé que par `POST /incidents` (jeton d'ingestion), donc la preuve Zero-Touch
+de S4 reste à construire.
 
 La cible RPO provisoire est donc ≤ 5 minutes ; elle devra être confirmée par un
 essai de corruption/restauration et non déduite du seul planning. Les archives

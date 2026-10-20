@@ -70,7 +70,8 @@ def build_pipeline(
                 RestoreDatabaseAction(
                     HttpDatabaseRestorer(
                         client, settings.database_recovery_url, settings.probe_token
-                    )
+                    ),
+                    settings.restore_safety_margin_s,
                 ),
                 RestartServiceAction(docker),
             ],

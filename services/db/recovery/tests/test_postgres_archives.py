@@ -82,3 +82,31 @@ def test_readiness_requires_a_backup(tmp_path):
     assert not store.has_backups()
     (tmp_path / "backup-20261020T110000.000000Z.dump").write_bytes(b"archive")
     assert store.has_backups()
+
+
+def test_restore_skips_archives_taken_after_the_incident(tmp_path):
+    from datetime import UTC, datetime
+
+    good = tmp_path / "backup-20261020T100000.000000Z.dump"
+    poisoned = tmp_path / "backup-20261020T110000.000000Z.dump"
+    good.write_bytes(b"good")
+    poisoned.write_bytes(b"corrupted")
+    commands: list[list[str]] = []
+
+    def runner(command, **kwargs):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0)
+
+    store, _ = make_store(tmp_path, runner)
+    before = datetime(2026, 10, 20, 10, 30, tzinfo=UTC)
+    assert store.restore_latest(before) == good.name
+    assert commands[1][-1] == str(good)
+
+
+def test_restore_fails_when_every_archive_is_newer_than_the_incident(tmp_path):
+    from datetime import UTC, datetime
+
+    (tmp_path / "backup-20261020T110000.000000Z.dump").write_bytes(b"late")
+    store, _ = make_store(tmp_path)
+    with pytest.raises(BackupUnavailable):
+        store.restore_latest(datetime(2026, 10, 20, 10, 0, tzinfo=UTC))

@@ -26,9 +26,11 @@ class FakeContainerRestarter:
 class FakeDatabaseRestorer:
     def __init__(self) -> None:
         self.restores = 0
+        self.before = None
 
-    def restore_latest(self) -> None:
+    def restore_latest(self, before) -> None:
         self.restores += 1
+        self.before = before
 
 
 class FakeServiceScaler:

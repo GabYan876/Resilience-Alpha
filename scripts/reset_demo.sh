@@ -26,6 +26,16 @@ echo "[reset] schéma : downgrade base puis upgrade head"
 compose run --rm --no-deps --entrypoint sh migrate -c \
   "${ALEMBIC} downgrade base && ${ALEMBIC} upgrade head && python /app/scripts/seed_demo.py"
 
+# Les archives d'une démo précédente ne doivent pas servir de point de restauration :
+# on les purge puis on prend une sauvegarde de l'état propre fraîchement semé.
+echo "[reset] sauvegardes S4 : purge puis archive de l'état propre"
+compose up -d --wait db-recovery
+compose exec -T db-recovery sh -c 'rm -f /backups/backup-*.dump && python3 -c "
+import os, urllib.request
+req = urllib.request.Request(\"http://127.0.0.1:8001/backup\", method=\"POST\",
+    headers={\"Authorization\": \"Bearer \" + os.environ[\"PROBE_TOKEN\"]})
+urllib.request.urlopen(req, timeout=120)"'
+
 # `up -d` ne touche pas un conteneur déjà sain : il faut le recréer. Sans ça, le
 # pool garde des connexions authentifiées sous l'ancien OID des rôles `app_rw` /
 # `app_ro`, que downgrade/upgrade vient de supprimer puis recréer, et la première

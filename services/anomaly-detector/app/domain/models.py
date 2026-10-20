@@ -13,6 +13,7 @@ class IncidentKind(StrEnum):
 
     AVAILABILITY = "availability"
     COMPROMISE = "compromise"
+    DATABASE_CORRUPTION = "database_corruption"  # accepté par le moteur ; aucun signal ML encore
 
 
 @dataclass(frozen=True)

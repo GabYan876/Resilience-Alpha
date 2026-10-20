@@ -5,6 +5,8 @@ Chaque action ne dépend que du petit port dont elle a besoin (ISP).
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from app.domain.models import ActionResult, Incident
 from app.domain.ports import (
     ContainerRestarter,
@@ -18,6 +20,7 @@ from app.domain.ports import (
 
 class BlockIpAction:
     name = "block_ip"
+    required = False
 
     def __init__(self, blocker: IpBlocker) -> None:
         self._blocker = blocker
@@ -32,6 +35,7 @@ class BlockIpAction:
 
 class BlockSubjectAction:
     name = "block_subject"
+    required = False
 
     def __init__(self, blocker: SubjectBlocker) -> None:
         self._blocker = blocker
@@ -46,6 +50,7 @@ class BlockSubjectAction:
 
 class RestartServiceAction:
     name = "restart_service"
+    required = False
 
     def __init__(self, restarter: ContainerRestarter) -> None:
         self._restarter = restarter
@@ -60,18 +65,24 @@ class RestoreDatabaseAction:
     name = "restore_database"
     required = True
 
-    def __init__(self, restorer: DatabaseRestorer) -> None:
+    def __init__(self, restorer: DatabaseRestorer, safety_margin_s: float = 0.0) -> None:
         self._restorer = restorer
+        self._margin = timedelta(seconds=safety_margin_s)
 
     def execute(self, incident: Incident) -> ActionResult:
-        self._restorer.restore_latest()
+        # La corruption précède la détection : on exclut les archives prises après, sinon on
+        # restaurerait la donnée déjà altérée.
+        before = incident.anomaly.detected_at - self._margin
+        self._restorer.restore_latest(before)
         return ActionResult(
-            self.name, True, "restauration=derniere_sauvegarde", required=self.required
+            self.name, True, f"restauration=derniere_sauvegarde_avant:{before.isoformat()}",
+            required=self.required,
         )
 
 
 class ScaleServiceAction:
     name = "scale_service"
+    required = False
 
     def __init__(self, scaler: ServiceScaler, replicas: int = 2) -> None:
         self._scaler = scaler
@@ -85,6 +96,7 @@ class ScaleServiceAction:
 
 class RotateSecretAction:
     name = "rotate_secret"
+    required = False
 
     def __init__(self, rotator: SecretRotator, secret_name: str) -> None:
         self._rotator = rotator

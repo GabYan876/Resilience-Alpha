@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from app.application.actions import (
     BlockIpAction,
     BlockSubjectAction,
@@ -45,10 +47,12 @@ def test_restart_targets_incident_service():
 
 def test_restore_database_uses_latest_backup_and_is_required():
     restorer = FakeDatabaseRestorer()
-    result = RestoreDatabaseAction(restorer).execute(make_incident())
+    incident = make_incident()
+    result = RestoreDatabaseAction(restorer, safety_margin_s=60).execute(incident)
     assert result.success and result.required
-    assert result.detail == "restauration=derniere_sauvegarde"
     assert restorer.restores == 1
+    # jamais d'archive postérieure à la détection (moins la marge) : elle pourrait être altérée
+    assert restorer.before == incident.anomaly.detected_at - timedelta(seconds=60)
 
 
 def test_scale_uses_configured_replicas():

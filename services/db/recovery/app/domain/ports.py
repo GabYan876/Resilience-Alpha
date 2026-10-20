@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 
 class DatabaseArchive(Protocol):
     def create_backup(self) -> str: ...
 
-    def restore_latest(self) -> str: ...
+    def restore_latest(self, before: datetime | None = None) -> str: ...
 
     def has_backups(self) -> bool: ...
 

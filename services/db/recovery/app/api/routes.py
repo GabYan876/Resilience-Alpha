@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import subprocess
+from datetime import datetime
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -48,9 +49,9 @@ def build_router(
         return {"status": "ok", "archive": archive}
 
     @router.post("/restore", dependencies=[Depends(require_probe_token)])
-    async def restore_latest() -> dict[str, str]:
+    async def restore_latest(before: datetime | None = None) -> dict[str, str]:
         try:
-            archive = await run_in_threadpool(recovery.restore_latest)
+            archive = await run_in_threadpool(recovery.restore_latest, before)
         except BackupUnavailable as exc:
             publish_event("database.restore.failed", error="backup_unavailable")
             raise HTTPException(

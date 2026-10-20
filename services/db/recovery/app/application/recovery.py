@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from datetime import datetime
 
 from app.domain.ports import DatabaseArchive
 
@@ -16,9 +17,9 @@ class DatabaseRecoveryService:
         with self._lock:
             return self._archive.create_backup()
 
-    def restore_latest(self) -> str:
+    def restore_latest(self, before: datetime | None = None) -> str:
         with self._lock:
-            return self._archive.restore_latest()
+            return self._archive.restore_latest(before)
 
     def is_database_healthy(self) -> bool:
         return self._archive.is_database_healthy() and self._archive.has_backups()

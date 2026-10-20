@@ -95,7 +95,7 @@ def test_compromise_rotates_secret_without_restart():
 
 def test_required_restore_failure_prevents_recovery_verification():
     class BrokenRestorer:
-        def restore_latest(self) -> None:
+        def restore_latest(self, before) -> None:
             raise RuntimeError("aucune sauvegarde")
 
     publisher = InMemoryPublisher()
@@ -146,6 +146,7 @@ def test_second_attempt_can_recover():
 def test_failing_action_does_not_stop_the_others():
     class BoomAction:
         name = "boom"
+        required = False
 
         def execute(self, incident: Incident) -> ActionResult:
             raise RuntimeError("proxy docker indisponible")
@@ -183,7 +184,7 @@ def test_no_action_is_failed_not_resolved():
     """Sans action décidée, une API saine ne doit pas être comptée comme une reprise."""
     publisher = InMemoryPublisher()
     pipeline = RemediationPipeline(
-        FakeDetector([anomaly(IncidentKind.DATABASE_CORRUPTION)]),
+        FakeDetector([anomaly(IncidentKind.COMPROMISE)]),
         KindBasedPolicy({}),
         HealthAndProbeVerifier(FakeHealthChecker(True), FakeTransactionProbe(True)),
         publisher,

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.config import Settings
@@ -8,7 +10,8 @@ class FakeArchive:
     def create_backup(self) -> str:
         return "backup-test.dump"
 
-    def restore_latest(self) -> str:
+    def restore_latest(self, before=None) -> str:
+        self.before = before
         return "backup-test.dump"
 
     def is_database_healthy(self) -> bool:
@@ -18,10 +21,10 @@ class FakeArchive:
         return True
 
 
-def make_client():
-    settings = Settings(
+def _settings():
+    return Settings(
         database="resilience",
-        backup_dir=__import__("pathlib").Path("/tmp"),
+        backup_dir=Path("/tmp"),
         backup_interval_s=300,
         backup_retention=12,
         pg_host="postgres",
@@ -30,7 +33,10 @@ def make_client():
         pg_password="db-secret",
         probe_token="probe-secret",
     )
-    return TestClient(create_app(settings, FakeArchive()))
+
+
+def make_client():
+    return TestClient(create_app(_settings(), FakeArchive()))
 
 
 def test_restore_requires_probe_token():
@@ -51,3 +57,16 @@ def test_restore_is_available_with_probe_token():
         )
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "archive": "backup-test.dump"}
+
+
+def test_restore_forwards_the_incident_time_to_the_archive():
+    archive = FakeArchive()
+    client = TestClient(create_app(_settings(), archive))
+    with client:
+        response = client.post(
+            "/restore",
+            params={"before": "2026-10-20T10:30:00+00:00"},
+            headers={"Authorization": "Bearer probe-secret"},
+        )
+    assert response.status_code == 200
+    assert archive.before.isoformat() == "2026-10-20T10:30:00+00:00"

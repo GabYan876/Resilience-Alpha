@@ -9,7 +9,7 @@ Les cases déjà cochées ont une preuve dans le dépôt ; les autres attendent 
 Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-10.md) : à solder avant d'ouvrir le jalon du 20/10.
 
 - [ ] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; reste à trancher Loki/Grafana seuls ou Wazuh.
-- [x] Antoine : `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 ; essai réel à faire.
+- [ ] Antoine : `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 (fait). Reste : essai réel de corruption/restauration, mesure du RPO, déclencheur automatique de `database_corruption`.
 - [ ] François : RAG isolé (codé, ER6 EN COURS), horodatage de début d'attaque dans le flood (fait), Ollama sur un PC Linux dédié (décidé).
 - [x] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).
 - [ ] Antoine : EBIOS ateliers 1 à 3 (échelle de gravité, valeurs métier, ER1 à ER6, sources de risque, SS1 à SS5, socle ANSSI).
@@ -29,7 +29,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 - [x] BDD (migrations 0001 et 0002), API métier (`/health`, `/transactions`, `/me/*`), auth (JWT), tests présents.
 - [x] Correctif des deadlocks de virement (#19).
-- [x] `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 ; `RestoreDatabaseAction` restaure la dernière archive, redémarre l'API puis la reprise est vérifiée par une transaction. RPO configuré à 5 min ; essai de corruption et mesure réelle à faire (voir `services/db/README.md`).
+- [ ] `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 ; `RestoreDatabaseAction` restaure la dernière archive, redémarre l'API puis la reprise est vérifiée par une transaction. RPO configuré à 5 min ; essai de corruption et mesure réelle à faire (voir `services/db/README.md`).
 - [x] Doc d'API à jour (`services/api/README.md`) avec les routes d'auth.
 
 ## 3. Front et dashboard — Gabriel

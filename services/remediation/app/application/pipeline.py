@@ -139,12 +139,12 @@ class RemediationPipeline:
     def _execute(action: RemediationAction, incident: Incident) -> ActionResult:
         try:
             return action.execute(incident)
-        except Exception as exc:  # seules les actions explicitement requises arrêtent la reprise
+        except Exception as exc:  # seules les actions requises arrêtent la reprise
             return ActionResult(
                 action.name,
                 False,
                 f"exception : {exc}",
-                required=getattr(action, "required", False),
+                required=action.required,
             )
 
     def _emit_action(self, incident: Incident, result: ActionResult) -> None:

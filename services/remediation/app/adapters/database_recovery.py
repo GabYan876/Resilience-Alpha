@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import httpx
 
 
@@ -11,6 +13,9 @@ class HttpDatabaseRestorer:
         self._url = f"{base_url.rstrip('/')}/restore"
         self._headers = {"Authorization": f"Bearer {token}"} if token else {}
 
-    def restore_latest(self) -> None:
-        response = self._client.post(self._url, headers=self._headers, timeout=120.0)
+    def restore_latest(self, before: datetime) -> None:
+        stamp = before.astimezone(UTC).isoformat() if before.tzinfo else before.isoformat()
+        response = self._client.post(
+            self._url, headers=self._headers, params={"before": stamp}, timeout=120.0
+        )
         response.raise_for_status()

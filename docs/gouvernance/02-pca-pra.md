@@ -13,7 +13,7 @@ Statut : première version du 20/10 (RTO/RPO provisoires, à valider). Responsab
 | S1 | Flood sur l'API | Disponibilité | Blocage IP + restart + vérif transaction | Oui (Zero-Touch) |
 | S2 | SQLi / exfiltration | Compromission | Blocage IP + rotation des secrets + vérif transaction ; **investigation manuelle** (on ne peut pas prouver l'absence de fuite) | Partielle : automatique sauf l'investigation |
 | S3 | Crash d'un conteneur | Disponibilité | Détection par health check périodique (`HealthWatchDetector` dans le moteur), restart + vérif | Oui (essai réel du 20/10 : arrêt de l'API, reprise en 34 s) |
-| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Cible implémentée ; essai réel de corruption/restauration à faire |
+| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Mécanisme implémenté ; ni détecteur automatique de corruption ni essai réel : pas encore Zero-Touch |
 | S5 | Perte du PC Hôte | Site | Hors périmètre démontrable | Non |
 
 Distinguer **restauration de disponibilité** (S1, S3) et **correction de compromission** (S2) : les actions sont différentes.
@@ -45,7 +45,7 @@ Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles dé
 | Investigation / red team | François | Investigue S2 (fuite éventuelle), rapporte l'attaque jouée |
 
 ## 5. Choix de restauration
-`db-recovery` produit des archives custom-format PostgreSQL toutes les 300 s et conserve les 12 dernières dans le volume Compose `postgres-backups`. La restauration choisit la dernière archive valide ; le moteur redémarre l'API et ne clôt l'incident qu'après une transaction de sonde authentifiée. Le RPO cible provisoire est ≤ 5 min, à mesurer en essai réel. Limites : volume sur le même PC Hôte, archives non chiffrées, donc aucune protection contre la perte de l'hôte/volume ; archives utilisables uniquement avec les données fictives de la démonstration.
+`db-recovery` produit des archives custom-format PostgreSQL toutes les 300 s et conserve les 12 dernières dans le volume Compose `postgres-backups`. La restauration choisit la dernière archive valide **antérieure à la détection** (moins une marge de 60 s), car une sauvegarde planifiée après la corruption contiendrait déjà la donnée altérée ; le moteur redémarre l'API et ne clôt l'incident qu'après une transaction de sonde authentifiée. Le RPO cible provisoire est ≤ 5 min, à mesurer en essai réel. Limites : volume sur le même PC Hôte, archives non chiffrées, donc aucune protection contre la perte de l'hôte/volume ; archives utilisables uniquement avec les données fictives de la démonstration.
 
 ## 6. Procédures
 Les procédures opérationnelles vont dans `docs/procedures/`. Une procédure par scénario.

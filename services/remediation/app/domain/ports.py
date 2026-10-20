@@ -8,6 +8,7 @@ petits (ISP) : une action ne dépend que de ce dont elle a besoin.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
 from app.domain.models import (
@@ -31,6 +32,7 @@ class RemediationAction(Protocol):
     """Stratégie de remédiation. Ajouter une action = ajouter une classe (OCP)."""
 
     name: str
+    required: bool  # True : un échec interdit de clore l'incident comme résolu
 
     def execute(self, incident: Incident) -> ActionResult: ...
 
@@ -77,7 +79,9 @@ class SecretRotator(Protocol):
 
 
 class DatabaseRestorer(Protocol):
-    def restore_latest(self) -> None: ...
+    def restore_latest(self, before: datetime) -> None:
+        """Restaure la dernière archive antérieure à `before` (jamais une archive postérieure)."""
+        ...
 
 
 # --- Capacités utilisées par la vérification -------------------------------
