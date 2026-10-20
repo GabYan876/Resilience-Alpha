@@ -29,7 +29,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
         Moteur de remédiation : Décision ─► Actions ─► Vérification
                                         │  (via docker-socket-proxy)
                                         ▼
-                               Dashboard de supervision
+                               Dashboard Grafana (supervision)
 
  Assistant RAG (Ollama + LangChain) — isolé, lecture seule, sans droits privilégiés
 ```
@@ -40,7 +40,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 | Pilier | Contenu |
 |---|---|
-| Développement | Microservices FastAPI (BDD, API, auth), front React/Tailwind, moteur de remédiation, dashboard |
+| Développement | Microservices FastAPI (BDD, API, auth), front de paiement React/Tailwind, moteur de remédiation, dashboard de supervision Grafana |
 | Infrastructure | Docker Compose, Ansible, Prometheus, Grafana, Loki |
 | IA / Data | Détection d'anomalies (ML), assistant RAG Ollama + LangChain (≤ 8B) |
 | Cybersécurité | Attaques Red Team, WAF, SIEM/SOC, durcissement, Vault/SOPS |
@@ -57,7 +57,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 │   ├── anomaly-detector/ # ML d'anomalies
 │   ├── rag-assistant/    # assistant Ollama + LangChain
 │   └── db/               # schéma et migrations
-├── frontend/             # front paiement + dashboard (React/Tailwind)
+├── frontend/             # front de paiement (React/Tailwind) ; le dashboard est dans infra/observability (Grafana)
 ├── infra/
 │   ├── compose/          # docker-compose*.yml
 │   ├── ansible/          # playbooks
@@ -142,7 +142,7 @@ cd services/remediation && python -m pytest -q
 | Hugo | Infra + Cyber |
 | Kevin | Tech lead + remédiation / ML |
 | Antoine | Dev backend, EBIOS RM, PCA/PRA |
-| Gabriel | Dev front, dashboard, NIS2/DORA, pitch |
+| Gabriel | Dev front, NIS2/DORA, pitch, vérification du dashboard Grafana |
 | François | IA RAG, Red Team, assemblage du Dossier |
 
 ## Planning

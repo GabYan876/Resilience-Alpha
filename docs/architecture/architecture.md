@@ -11,7 +11,7 @@ flowchart LR
         direction LR
         subgraph PUB[réseau public]
             WAF[WAF<br/>ModSecurity/Coraza]
-            FRONT[Front React<br/>paiement + dashboard]
+            FRONT[Front React<br/>paiement]
         end
         subgraph APP[réseau app — interne]
             API[API métier]
@@ -61,7 +61,7 @@ flowchart LR
 | Service | Rôle | Réseaux | Publié ? | Propriétaire |
 |---|---|---|---|---|
 | `waf` | Filtrage, blocage IP, logs d'accès | public, app | **oui** (seul point d'entrée) | Hugo |
-| `frontend` | Front paiement + dashboard | public, app | via WAF | Gabriel |
+| `frontend` | Front paiement (le dashboard de supervision est Grafana, pile d'observabilité) | public, app | via WAF | Gabriel |
 | `api` | API métier (transactions) | app | non | Antoine |
 | `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
 | `gateway` | Caddy : sert le front, route `/auth/*` → `auth` et `/me/*` → `api`. Préfigure le WAF | app | **oui**, `127.0.0.1:8080` | Gabriel / Hugo |
@@ -100,7 +100,7 @@ flowchart LR
     A --> V[RecoveryVerifier]
     V -->|API saine ET transaction OK| C[Incident clos]
     V -->|échec| P
-    D -.event.-> E[(EventPublisher<br/>JSON → Loki + dashboard)]
+    D -.event.-> E[(EventPublisher<br/>JSON → Loki → dashboard Grafana)]
     P -.event.-> E
     A -.event.-> E
     V -.event.-> E
@@ -147,7 +147,7 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 | detector → remediation | `POST /incidents` (token) | remontée d'anomalie |
 | remediation → docker-socket-proxy | restart / scale uniquement | `ContainerRestarter`, `ServiceScaler` |
 | remediation → waf | API restreinte (token) | `IpBlocker` |
-| dashboard → remediation | `GET /incidents` (liste, plus récents d'abord) et `GET /incidents/{id}`, protégés par jeton ; le flux d'événements passe par Loki | affichage avant / pendant / après |
+| Grafana → remediation (optionnel) | `GET /incidents` (liste, plus récents d'abord) et `GET /incidents/{id}`, protégés par jeton ; le flux d'événements passe par Loki | affichage avant / pendant / après |
 
 ## 5. Sécurité & RAM
 
