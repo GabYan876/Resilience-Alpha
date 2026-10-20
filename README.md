@@ -11,7 +11,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
 1. **Avant** : le dashboard montre les services sains ; une transaction de test réussit.
 2. **Attaque** : flood HTTP contrôlé depuis le PC Attaquant vers l'API (bonus : injection SQL bloquée par le WAF).
 3. **Détection** : métriques (Prometheus) et logs (Loki) montrent un pic anormal ; le modèle ML signale l'anomalie.
-4. **Remédiation automatique** : décision → blocage de l'IP (WAF/pare-feu) → redémarrage/mise à l'échelle de l'API.
+4. **Remédiation automatique** : décision → blocage de la source (IP et compte, via le WAF) → redémarrage/mise à l'échelle de l'API.
 5. **Vérification** : l'API répond **et** une nouvelle transaction passe → incident clos.
 
 ## Architecture
@@ -62,7 +62,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 │   ├── compose/          # docker-compose*.yml
 │   ├── ansible/          # playbooks
 │   ├── observability/    # Prometheus, Grafana, Loki
-│   ├── waf/              # règles ModSecurity/Coraza
+│   ├── waf/              # ModSecurity + OWASP CRS, liste de blocage (njs)
 │   └── secrets/          # Vault / SOPS (chiffré uniquement)
 ├── attack/               # scripts Red Team (PC Attaquant)
 ├── ml/                   # jeux de données, notebooks, entraînement
@@ -82,7 +82,9 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`). L'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`) et le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`).
+>
+> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), assistant RAG (`services/rag-assistant/`, aucun code), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
