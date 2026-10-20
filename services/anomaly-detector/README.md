@@ -42,6 +42,10 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm \
   anomaly-detector python -m app.cli train
 ```
 
+Sous Git Bash (Windows), préfixer ces deux commandes par `MSYS_NO_PATHCONV=1` : sinon Bash
+réécrit `./ml/data:/data` en chemin Windows et le montage CLI ne remplace plus le `/models:ro`
+défini dans le compose, ce qui fait échouer l'entraînement (`OSError: Read-only file system`).
+
 Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mieux qu'un détecteur muet.
 
 ## Limites connues
@@ -54,6 +58,11 @@ Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mie
   second détecteur (logs WAF) : on ajoute une classe, on ne modifie pas `DetectionService`.
 - Le fichier `.joblib` est du code désérialisé : monté en lecture seule, jamais issu d'une source
   non fiable.
+- Le score brut d'IsolationForest **sature** : au-delà d'un certain débit de requêtes, le score ne
+  bouge plus (confirmé par sonde directe du modèle entraîné). Un flood qui n'augmente que le débit
+  (sur une route non authentifiée, par ex.) ne franchit donc jamais le seuil : il faut une vraie
+  dégradation de `latency_p95_s` et/ou `error_ratio` (voir `attack/flood_http.py`, qui épuise le
+  pool de connexions DB de l'API pour provoquer cette dégradation).
 
 ## Tests
 
@@ -61,5 +70,11 @@ Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mie
 cd services/anomaly-detector && python -m pytest
 ```
 
-Sur un PC où une stratégie de contrôle d'application bloque les DLL de numpy/scipy, lancer les
-tests dans un conteneur (`docker run --rm -v .:/w -w /w python:3.12-slim sh -c "pip install -r requirements.txt pytest && pytest"`).
+Sur un PC où une stratégie de contrôle d'application bloque les DLL de numpy/scipy, ou si
+l'environnement local n'a pas joblib/scikit-learn, lancer les tests dans un conteneur jetable
+(le conteneur de service tourne en lecture seule, donc pas celui-là) :
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/app" -w /app python:3.12-slim \
+  sh -c "pip install -q -r requirements.txt pytest && python -m pytest tests/ -q"
+```
