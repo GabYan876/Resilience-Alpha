@@ -32,6 +32,7 @@ networks:
 
 volumes:
   postgres-data:
+  waf-blocklist: # liste de sources bloquées : écrite par le moteur, lue par le WAF
 
 x-api-image: &api-image
   image: resilience-alpha/api:dev
@@ -161,11 +162,22 @@ services:
       PORT: "8080"
       BACKEND: http://gateway:8080
       MODSEC_RULE_ENGINE: "on"
+      # Journal d'audit sans en-têtes de requête (B), corps de requête (I) ni corps de réponse
+      # (E) : ils contiendraient jetons JWT, mots de passe et données clients, qui n'ont rien à
+      # faire dans Loki. Restent l'en-tête (A), les en-têtes de réponse (F), les règles
+      # déclenchées (H) et la fin d'enregistrement (Z).
+      MODSEC_AUDIT_LOG_PARTS: AFHZ
       # Niveau 1 : le moins de faux positifs sur le trafic légitime ; à relever après essais.
       BLOCKING_PARANOIA: ${WAF_PARANOIA:-1}
       ANOMALY_INBOUND: ${WAF_ANOMALY_INBOUND:-5}
       # L'IP du client est celle vue par le WAF : aucun en-tête X-Real-IP forgé n'est cru.
       SET_REAL_IP_FROM: ""
+    volumes:
+      - waf-blocklist:/blocklist:ro
+      # Modèles nginx de l'image, complétés pour charger njs et refuser les sources bloquées.
+      - ../waf/templates/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ../waf/templates/includes/proxy_backend.conf.template:/etc/nginx/templates/includes/proxy_backend.conf.template:ro
+      - ../waf/njs:/etc/nginx/njs:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 10s
@@ -311,6 +323,9 @@ services:
       DOCKER_PROXY_URL: http://docker-proxy-ctl:2375
       PROBE_TOKEN: ${PROBE_TOKEN:-}
       CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api}
+      WAF_BLOCKLIST_PATH: /blocklist/blocked.txt
+    volumes:
+      - waf-blocklist:/blocklist # écriture de la liste de blocage ; le WAF la lit en lecture seule
     healthcheck:
       test:
         - CMD

@@ -1,5 +1,6 @@
 from app.application.actions import (
     BlockIpAction,
+    BlockSubjectAction,
     RestartServiceAction,
     RotateSecretAction,
     ScaleServiceAction,
@@ -10,6 +11,7 @@ from tests.fakes import (
     FakeIpBlocker,
     FakeSecretRotator,
     FakeServiceScaler,
+    FakeSubjectBlocker,
 )
 
 
@@ -50,3 +52,20 @@ def test_rotate_secret_never_leaks_value():
     result = RotateSecretAction(rotator, "db_password").execute(make_incident())
     assert rotator.rotated == ["db_password"]
     assert result.detail == "secret=db_password"
+
+
+def test_block_subject_blocks_attacker_account():
+    blocker = FakeSubjectBlocker()
+    incident = Incident(
+        Anomaly(
+            score=0.9, source="test", kind_hint=IncidentKind.AVAILABILITY, attacker_subject="u-1"
+        )
+    )
+    assert BlockSubjectAction(blocker).execute(incident).success
+    assert blocker.blocked == {"u-1"}
+
+
+def test_block_subject_fails_without_subject():
+    blocker = FakeSubjectBlocker()
+    assert not BlockSubjectAction(blocker).execute(make_incident()).success
+    assert blocker.blocked == set()

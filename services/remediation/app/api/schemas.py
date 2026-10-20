@@ -12,6 +12,7 @@ class AnomalyIn(BaseModel):
     source: str
     kind: IncidentKind
     attacker_ip: str | None = None
+    attacker_subject: str | None = None
     target_service: str = Field(default="api")
 
     def to_domain(self) -> Anomaly:
@@ -20,6 +21,7 @@ class AnomalyIn(BaseModel):
             source=self.source,
             kind_hint=self.kind,
             attacker_ip=self.attacker_ip,
+            attacker_subject=self.attacker_subject,
             target_service=self.target_service,
         )
 
@@ -34,6 +36,7 @@ class IncidentOut(BaseModel):
     source: str
     score: float
     attacker_ip: str | None = None
+    attacker_subject: str | None = None
 
     @classmethod
     def from_domain(cls, incident: Incident) -> IncidentOut:
@@ -47,4 +50,5 @@ class IncidentOut(BaseModel):
             source=incident.anomaly.source,
             score=incident.anomaly.score,
             attacker_ip=incident.anomaly.attacker_ip,
+            attacker_subject=incident.anomaly.attacker_subject,
         )

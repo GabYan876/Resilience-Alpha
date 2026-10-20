@@ -25,6 +25,7 @@ class Settings:
     docker_proxy_url: str
     ingest_token: str  # protège POST /incidents (appelé par le détecteur)
     probe_token: str  # jeton du compte de test utilisé par la sonde de transaction
+    blocklist_path: str = "/blocklist/blocked.txt"  # liste lue par le WAF (volume partagé)
     http_timeout_s: float = 3.0
     restart_timeout_s: float = 30.0  # délai de la requête de redémarrage Docker
     verify_wait_s: float = 30.0  # temps laissé à l'API pour redevenir saine avant de conclure
@@ -42,6 +43,7 @@ class Settings:
             docker_proxy_url=os.environ.get("DOCKER_PROXY_URL", "http://docker-proxy-ctl:2375"),
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
+            blocklist_path=os.environ.get("WAF_BLOCKLIST_PATH", "/blocklist/blocked.txt"),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
             restart_timeout_s=float(os.environ.get("RESTART_TIMEOUT_S", "30")),
             verify_wait_s=float(os.environ.get("VERIFY_WAIT_S", "30")),

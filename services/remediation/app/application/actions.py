@@ -6,7 +6,13 @@ Chaque action ne dépend que du petit port dont elle a besoin (ISP).
 from __future__ import annotations
 
 from app.domain.models import ActionResult, Incident
-from app.domain.ports import ContainerRestarter, IpBlocker, SecretRotator, ServiceScaler
+from app.domain.ports import (
+    ContainerRestarter,
+    IpBlocker,
+    SecretRotator,
+    ServiceScaler,
+    SubjectBlocker,
+)
 
 
 class BlockIpAction:
@@ -21,6 +27,20 @@ class BlockIpAction:
             return ActionResult(self.name, False, "aucune IP source identifiée")
         self._blocker.block(ip)
         return ActionResult(self.name, True, f"ip={ip}")
+
+
+class BlockSubjectAction:
+    name = "block_subject"
+
+    def __init__(self, blocker: SubjectBlocker) -> None:
+        self._blocker = blocker
+
+    def execute(self, incident: Incident) -> ActionResult:
+        subject = incident.anomaly.attacker_subject
+        if subject is None:
+            return ActionResult(self.name, False, "aucun compte source identifié")
+        self._blocker.block(subject)
+        return ActionResult(self.name, True, f"subject={subject}")
 
 
 class RestartServiceAction:
