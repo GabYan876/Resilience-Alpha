@@ -26,6 +26,9 @@ networks:
   db-internal:
     name: resilience-db-internal
     internal: true # aucune sortie vers l'hôte ni Internet
+  logs-query:
+    name: resilience-logs-query
+    internal: true # détecteur <-> Loki (lecture des journaux du WAF), et rien d'autre
   control-internal:
     name: resilience-control-internal
     internal: true # moteur de remédiation <-> sa passerelle Docker, et rien d'autre
@@ -177,6 +180,7 @@ services:
       # Modèles nginx de l'image, complétés pour charger njs et refuser les sources bloquées.
       - ../waf/templates/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ../waf/templates/includes/proxy_backend.conf.template:/etc/nginx/templates/includes/proxy_backend.conf.template:ro
+      - ../waf/templates/conf.d/logging.conf.template:/etc/nginx/templates/conf.d/logging.conf.template:ro
       - ../waf/njs:/etc/nginx/njs:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
@@ -354,6 +358,7 @@ services:
     mem_limit: 256m
     networks:
       - resilience-net # Prometheus (autre pile) et moteur de remédiation
+      - logs-query # Loki : identifier le compte qui émet le flood
     expose:
       - "8000"
     depends_on:
@@ -363,6 +368,10 @@ services:
       REMEDIATION_INGEST_TOKEN: ${REMEDIATION_INGEST_TOKEN:?REMEDIATION_INGEST_TOKEN doit etre defini (voir .env.example)}
       PROMETHEUS_URL: http://prometheus:9090
       REMEDIATION_URL: http://remediation:8000
+      LOKI_URL: http://loki:3100
+      ATTACKER_WINDOW: ${ATTACKER_WINDOW:-30s}
+      ATTACKER_MIN_REQUESTS: ${ATTACKER_MIN_REQUESTS:-100}
+      ATTACKER_MIN_SHARE: ${ATTACKER_MIN_SHARE:-0.5}
       MODEL_PATH: /models/isolation_forest.joblib
       TARGET_SERVICE: ${DETECTOR_TARGET_SERVICE:-api}
       POLL_INTERVAL_S: ${DETECTOR_POLL_INTERVAL_S:-5}

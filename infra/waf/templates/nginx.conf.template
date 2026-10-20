@@ -24,6 +24,7 @@ http {
     js_path /etc/nginx/njs;
     js_import blocklist from blocklist.js;
     js_set $waf_blocked blocklist.blocked;
+    js_set $waf_subject blocklist.subject;
 
     resolver RESOLVERS RESOLVER_CONFIG;
     include /etc/nginx/conf.d/*.conf;

@@ -35,4 +35,4 @@ function blocked(r) {
   return entries.indexOf('ip:' + r.remoteAddress) !== -1 ? '1' : '0';
 }
 
-export default { blocked };
+export default { blocked, subject };

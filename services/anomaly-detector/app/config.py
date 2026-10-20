@@ -14,6 +14,13 @@ class Settings:
     ingest_token: str  # jeton Bearer attendu par POST /incidents du moteur
     model_path: Path
     dataset_path: Path
+    loki_url: str = "http://loki:3100"
+    # Attribution : un compte n'est désigné que s'il émet au moins `attacker_min_requests`
+    # requêtes sur `attacker_window` ET au moins `attacker_min_share` du trafic identifié.
+    # Sans cela, un utilisateur légitime serait bloqué à tort pendant un pic.
+    attacker_window: str = "30s"
+    attacker_min_requests: int = 100
+    attacker_min_share: float = 0.5
     target_service: str = "api"
     poll_interval_s: float = 5.0
     confirmations: int = 3  # jugements anormaux consécutifs avant de signaler
@@ -33,6 +40,10 @@ class Settings:
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             model_path=Path(os.environ.get("MODEL_PATH", "/models/isolation_forest.joblib")),
             dataset_path=Path(os.environ.get("DATASET_PATH", "/data/normal.csv")),
+            loki_url=os.environ.get("LOKI_URL", "http://loki:3100"),
+            attacker_window=os.environ.get("ATTACKER_WINDOW", "30s"),
+            attacker_min_requests=int(os.environ.get("ATTACKER_MIN_REQUESTS", "100")),
+            attacker_min_share=float(os.environ.get("ATTACKER_MIN_SHARE", "0.5")),
             target_service=os.environ.get("TARGET_SERVICE", "api"),
             poll_interval_s=float(os.environ.get("POLL_INTERVAL_S", "5")),
             confirmations=int(os.environ.get("CONFIRMATIONS", "3")),

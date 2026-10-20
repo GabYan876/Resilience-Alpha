@@ -1,0 +1,12 @@
+# Journal d'accès en JSON (convention du projet : service, trace_id, event) : Alloy le pousse
+# dans Loki, où le détecteur y cherche le compte qui émet le flood (`sub`).
+# Ni la query string ni les en-têtes ne sont journalisés : ils peuvent porter des secrets.
+log_format main escape=json
+    '{"service":"waf","event":"waf.request","trace_id":"$request_id",'
+    '"sub":"$waf_subject","remote":"$remote_addr","method":"$request_method",'
+    '"path":"$uri","status":$status,"request_time":$request_time}';
+
+access_log ${ACCESSLOG} main;
+access_log ${METRICSLOG} combined;
+
+error_log ${ERRORLOG} ${LOGLEVEL};
