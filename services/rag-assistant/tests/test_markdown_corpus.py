@@ -1,3 +1,7 @@
+import sys
+
+import pytest
+
 from app.adapters.markdown_corpus import MarkdownCorpus
 
 
@@ -13,6 +17,7 @@ def test_reads_markdown_only_with_relative_sorted_sources(tmp_path):
     assert [(d.source, d.text) for d in documents] == [("a.md", "alpha"), ("docs/b.md", "beta")]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="lien symbolique interdit sous Windows")
 def test_symlink_leaving_the_corpus_is_ignored(tmp_path):
     outside = tmp_path / "outside"
     outside.mkdir()
