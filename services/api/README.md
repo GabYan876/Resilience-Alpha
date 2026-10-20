@@ -155,10 +155,10 @@ Seule l'écriture (`POST /transactions`) est protégée, par un jeton partagé :
 Authorization: Bearer <PROBE_TOKEN>
 ```
 
-- Le jeton attendu vient de la variable d'environnement `PROBE_TOKEN`, la même que celle du moteur de remédiation (`services/remediation`).
+- Le jeton attendu vient de la variable d'environnement `PROBE_TOKEN`, partagée avec la sonde du moteur de remédiation (`services/remediation`) et le service privé de sauvegarde/restauration (`services/db/recovery`).
 - La comparaison se fait en temps constant (`hmac.compare_digest`).
 - Jeton absent ou invalide : `401` `{"detail": "jeton invalide"}`.
-- **Si `PROBE_TOKEN` est vide, la garde est désactivée.** Réservé au développement local, voir [Limites connues](#sécurité-et-limites-connues).
+- **Si `PROBE_TOKEN` est vide, la garde est désactivée dans l'API lancée seule.** Réservé au développement local ; le Compose complet refuse une valeur absente ou vide car le service de récupération S4 l'exige également.
 - Les routes de lecture et `/health` ne demandent pas de jeton.
 
 Les utilisateurs finaux s'inscrivent et se connectent auprès du service `auth` (`services/auth`), qui émet un JWT HS256 `{sub, iat, exp}` signé avec `JWT_SECRET`. L'API vérifie ce jeton (algorithme figé à HS256, `sub` et `exp` requis) et expose l'espace client sous `/me`, joignable par la passerelle :

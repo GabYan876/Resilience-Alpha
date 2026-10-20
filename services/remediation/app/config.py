@@ -25,6 +25,7 @@ class Settings:
     docker_proxy_url: str
     ingest_token: str  # protège POST /incidents (appelé par le détecteur)
     probe_token: str  # jeton du compte de test utilisé par la sonde de transaction
+    database_recovery_url: str = "http://db-recovery:8001"
     blocklist_path: str = "/blocklist/blocked.txt"  # liste lue par le WAF (volume partagé)
     http_timeout_s: float = 3.0
     restart_timeout_s: float = 30.0  # délai de la requête de redémarrage Docker
@@ -43,6 +44,9 @@ class Settings:
             api_base_url=api_base_url,
             api_health_url=os.environ.get("API_HEALTH_URL", f"{api_base_url}/health"),
             docker_proxy_url=os.environ.get("DOCKER_PROXY_URL", "http://docker-proxy-ctl:2375"),
+            database_recovery_url=os.environ.get(
+                "DATABASE_RECOVERY_URL", "http://db-recovery:8001"
+            ),
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
             blocklist_path=os.environ.get("WAF_BLOCKLIST_PATH", "/blocklist/blocked.txt"),

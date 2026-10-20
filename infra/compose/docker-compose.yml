@@ -38,6 +38,7 @@ networks:
 
 volumes:
   postgres-data:
+  postgres-backups:
   waf-blocklist: # liste de sources bloquées : écrite par le moteur, lue par le WAF
 
 x-api-image: &api-image
@@ -241,7 +242,7 @@ services:
     environment:
       # Rôle `app_rw` : SELECT / INSERT / UPDATE, aucun DDL, aucun DELETE.
       DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
-      PROBE_TOKEN: ${PROBE_TOKEN:-}
+      PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
       PROBE_ACCOUNT_IBAN: ${PROBE_ACCOUNT_IBAN:-TEST-0001}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET doit etre defini (voir .env.example)}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
@@ -304,6 +305,58 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Sauvegarde planifiée et restauration PostgreSQL. Le rôle propriétaire reste dans ce
+  # conteneur privé ; seules ses routes fixes backup/restore, protégées par PROBE_TOKEN,
+  # sont joignables depuis le moteur sur control-internal. Les archives résident sur un
+  # volume distinct des données PostgreSQL.
+  db-recovery:
+    image: resilience-alpha/db-recovery:dev
+    build:
+      context: ../..
+      dockerfile: services/db/recovery/Dockerfile
+    container_name: resilience-db-recovery
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - db-internal
+      - control-internal
+    expose:
+      - "8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:-resilience}
+      POSTGRES_USER: ${POSTGRES_USER:-resilience_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit etre defini (voir .env.example)}
+      PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
+      DB_BACKUP_PATH: /backups
+      DB_BACKUP_INTERVAL_S: ${DB_BACKUP_INTERVAL_S:-300}
+      DB_BACKUP_RETENTION: ${DB_BACKUP_RETENTION:-12}
+    volumes:
+      - postgres-backups:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   # Moteur de remédiation : reçoit les anomalies (POST /incidents), redémarre le service
   # touché via la passerelle, puis exige API saine ET transaction de test réussie.
   remediation:
@@ -322,13 +375,16 @@ services:
     depends_on:
       docker-proxy-ctl:
         condition: service_started
+      db-recovery:
+        condition: service_healthy
       api:
         condition: service_healthy
     environment:
       REMEDIATION_INGEST_TOKEN: ${REMEDIATION_INGEST_TOKEN:?REMEDIATION_INGEST_TOKEN doit etre defini (voir .env.example)}
       API_BASE_URL: http://api:8000
       DOCKER_PROXY_URL: http://docker-proxy-ctl:2375
-      PROBE_TOKEN: ${PROBE_TOKEN:-}
+      DATABASE_RECOVERY_URL: http://db-recovery:8001
+      PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
       CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api}
       WAF_BLOCKLIST_PATH: /blocklist/blocked.txt
       WATCH_INTERVAL_S: ${WATCH_INTERVAL_S:-5}

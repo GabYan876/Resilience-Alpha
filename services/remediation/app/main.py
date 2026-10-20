@@ -12,13 +12,19 @@ from prometheus_client import CollectorRegistry
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.adapters.api_probe import ApiTransactionProbe
+from app.adapters.database_recovery import HttpDatabaseRestorer
 from app.adapters.docker_proxy import DockerProxyClient
 from app.adapters.file_blocklist import BlocklistFile, IpBlocklist, SubjectBlocklist
 from app.adapters.http_health import HttpHealthChecker
 from app.adapters.json_publisher import JsonStdoutPublisher
 from app.adapters.memory_store import InMemoryIncidentStore
 from app.api.routes import build_router
-from app.application.actions import BlockIpAction, BlockSubjectAction, RestartServiceAction
+from app.application.actions import (
+    BlockIpAction,
+    BlockSubjectAction,
+    RestartServiceAction,
+    RestoreDatabaseAction,
+)
 from app.application.health_watch import HealthWatchDetector
 from app.application.pipeline import RemediationPipeline
 from app.application.policy import KindBasedPolicy
@@ -58,6 +64,16 @@ def build_pipeline(
             ],
             # Panne sans attaquant : rien à bloquer, on relance puis on vérifie.
             IncidentKind.CRASH: [RestartServiceAction(docker)],
+            # Une altération confirmée de la base est restaurée avant de redémarrer l'API
+            # et de prouver la reprise avec PROBE_TOKEN. Une exfiltration n'est pas un S4.
+            IncidentKind.DATABASE_CORRUPTION: [
+                RestoreDatabaseAction(
+                    HttpDatabaseRestorer(
+                        client, settings.database_recovery_url, settings.probe_token
+                    )
+                ),
+                RestartServiceAction(docker),
+            ],
         }
     )
     health = HttpHealthChecker(client, {"api": settings.api_health_url})

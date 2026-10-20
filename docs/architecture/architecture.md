@@ -114,7 +114,8 @@ flowchart LR
 |---|---|---|
 | `AVAILABILITY` | flood HTTP | `BlockIpAction` → `BlockSubjectAction` → `RestartServiceAction` → (`ScaleServiceAction`) |
 | `CRASH` | conteneur arrêté (S3) | `RestartServiceAction` seule |
-| `COMPROMISE` | SQLi, exfiltration | `BlockIpAction` → `RotateSecretAction` → investigation (événement dédié) |
+| `DATABASE_CORRUPTION` | altération/corruption BDD (S4) | `RestoreDatabaseAction` → `RestartServiceAction` → vérification transactionnelle |
+| `COMPROMISE` | SQLi, exfiltration | investigation et rotation à traiter séparément ; une restauration S4 ne suffit pas |
 
 ### Ports (`services/remediation/app/domain/ports.py`)
 
@@ -125,6 +126,7 @@ flowchart LR
 | `RemediationAction` | exécute une action | `BlockIpAction`, `RestartServiceAction`… | fakes |
 | `RecoveryVerifier` | prouve la reprise | `HealthAndProbeVerifier` | — |
 | `ContainerRestarter` | redémarre un conteneur | `DockerProxyClient` | `FakeDockerClient` |
+| `DatabaseRestorer` | restaure la dernière archive validée | `HttpDatabaseRestorer` (service privé `db-recovery`, `PROBE_TOKEN`) | fake |
 | `ServiceScaler` | change les replicas | `DockerProxyClient` | `FakeDockerClient` |
 | `IpBlocker` | bloque/débloque une IP | `IpBlocklist` (fichier lu par le WAF) | `FakeIpBlocker` |
 | `SubjectBlocker` | bloque/débloque un compte (`sub`) | `SubjectBlocklist` (même fichier) | fake |

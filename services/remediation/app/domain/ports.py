@@ -76,6 +76,10 @@ class SecretRotator(Protocol):
     def rotate(self, secret_name: str) -> None: ...
 
 
+class DatabaseRestorer(Protocol):
+    def restore_latest(self) -> None: ...
+
+
 # --- Capacités utilisées par la vérification -------------------------------
 
 

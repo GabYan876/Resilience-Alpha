@@ -1,6 +1,7 @@
 from app.application.actions import (
     BlockIpAction,
     RestartServiceAction,
+    RestoreDatabaseAction,
     RotateSecretAction,
 )
 from app.application.pipeline import RemediationPipeline
@@ -92,6 +93,29 @@ def test_compromise_rotates_secret_without_restart():
     assert s.restarter.restarted == []
 
 
+def test_required_restore_failure_prevents_recovery_verification():
+    class BrokenRestorer:
+        def restore_latest(self) -> None:
+            raise RuntimeError("aucune sauvegarde")
+
+    publisher = InMemoryPublisher()
+    probe = FakeTransactionProbe(True)
+    pipeline = RemediationPipeline(
+        FakeDetector([anomaly(IncidentKind.DATABASE_CORRUPTION)]),
+        KindBasedPolicy(
+            {IncidentKind.DATABASE_CORRUPTION: [RestoreDatabaseAction(BrokenRestorer())]}
+        ),
+        HealthAndProbeVerifier(FakeHealthChecker(True), probe),
+        publisher,
+    )
+
+    incident = pipeline.run_once()
+
+    assert incident.status is IncidentStatus.FAILED
+    assert probe.calls == 0
+    assert publisher.names[-1] == "incident.failed"
+
+
 def test_not_resolved_while_transaction_fails():
     s = Setup(
         FakeDetector([anomaly(IncidentKind.AVAILABILITY)]),
@@ -159,7 +183,7 @@ def test_no_action_is_failed_not_resolved():
     """Sans action décidée, une API saine ne doit pas être comptée comme une reprise."""
     publisher = InMemoryPublisher()
     pipeline = RemediationPipeline(
-        FakeDetector([anomaly(IncidentKind.COMPROMISE)]),
+        FakeDetector([anomaly(IncidentKind.DATABASE_CORRUPTION)]),
         KindBasedPolicy({}),
         HealthAndProbeVerifier(FakeHealthChecker(True), FakeTransactionProbe(True)),
         publisher,

@@ -8,6 +8,7 @@ from __future__ import annotations
 from app.domain.models import ActionResult, Incident
 from app.domain.ports import (
     ContainerRestarter,
+    DatabaseRestorer,
     IpBlocker,
     SecretRotator,
     ServiceScaler,
@@ -53,6 +54,20 @@ class RestartServiceAction:
         service = incident.anomaly.target_service
         self._restarter.restart(service)
         return ActionResult(self.name, True, f"service={service}")
+
+
+class RestoreDatabaseAction:
+    name = "restore_database"
+    required = True
+
+    def __init__(self, restorer: DatabaseRestorer) -> None:
+        self._restorer = restorer
+
+    def execute(self, incident: Incident) -> ActionResult:
+        self._restorer.restore_latest()
+        return ActionResult(
+            self.name, True, "restauration=derniere_sauvegarde", required=self.required
+        )
 
 
 class ScaleServiceAction:
