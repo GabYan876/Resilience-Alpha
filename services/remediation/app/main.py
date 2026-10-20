@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI
@@ -17,16 +19,18 @@ from app.adapters.json_publisher import JsonStdoutPublisher
 from app.adapters.memory_store import InMemoryIncidentStore
 from app.api.routes import build_router
 from app.application.actions import BlockIpAction, BlockSubjectAction, RestartServiceAction
+from app.application.health_watch import HealthWatchDetector
 from app.application.pipeline import RemediationPipeline
 from app.application.policy import KindBasedPolicy
 from app.application.verifier import HealthAndProbeVerifier
+from app.application.watcher import PipelineWatcher
 from app.config import Settings
 from app.domain.models import Anomaly, IncidentKind
 from app.domain.ports import IncidentStore
 
 
 class _NoDetector:
-    """Détection push : le détecteur ML appelle POST /incidents, aucun polling ici."""
+    """Détection push seule : le détecteur ML appelle POST /incidents (sondage désactivé)."""
 
     def detect(self) -> Anomaly | None:
         return None
@@ -51,16 +55,25 @@ def build_pipeline(
                 BlockIpAction(IpBlocklist(blocklist)),
                 BlockSubjectAction(SubjectBlocklist(blocklist)),
                 RestartServiceAction(docker),
-            ]
+            ],
+            # Panne sans attaquant : rien à bloquer, on relance puis on vérifie.
+            IncidentKind.CRASH: [RestartServiceAction(docker)],
         }
     )
+    health = HttpHealthChecker(client, {"api": settings.api_health_url})
+    # Sondage de santé (crash) si activé ; sinon détection push seule.
+    detector = (
+        HealthWatchDetector(health, ["api"], settings.watch_failures)
+        if settings.watch_interval_s > 0
+        else _NoDetector()
+    )
     verifier = HealthAndProbeVerifier(
-        HttpHealthChecker(client, {"api": settings.api_health_url}),
+        health,
         ApiTransactionProbe(client, settings.api_base_url, settings.probe_token),
         health_wait_s=settings.verify_wait_s,
     )
     return RemediationPipeline(
-        _NoDetector(), policy, verifier, JsonStdoutPublisher(sys.stdout), store=store
+        detector, policy, verifier, JsonStdoutPublisher(sys.stdout), store=store
     )
 
 
@@ -69,7 +82,21 @@ def create_app(settings: Settings | None = None, client: httpx.Client | None = N
     client = client or httpx.Client(timeout=settings.http_timeout_s)
     store = InMemoryIncidentStore()
     pipeline = build_pipeline(settings, client, store)
-    app = FastAPI(title="remediation")
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        watcher = (
+            PipelineWatcher(pipeline, settings.watch_interval_s)
+            if settings.watch_interval_s > 0
+            else None
+        )
+        if watcher:
+            watcher.start()
+        yield
+        if watcher:
+            watcher.stop()
+
+    app = FastAPI(title="remediation", lifespan=lifespan)
     app.include_router(build_router(lambda: pipeline, lambda: settings.ingest_token, lambda: store))
     # /metrics pour Prometheus ; /health et /metrics sont exclus des métriques de latence.
     # Registre propre à chaque app : le registre global lèverait des doublons à chaque create_app.

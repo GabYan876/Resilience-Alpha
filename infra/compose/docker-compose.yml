@@ -328,6 +328,8 @@ services:
       PROBE_TOKEN: ${PROBE_TOKEN:-}
       CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api}
       WAF_BLOCKLIST_PATH: /blocklist/blocked.txt
+      WATCH_INTERVAL_S: ${WATCH_INTERVAL_S:-5}
+      WATCH_FAILURES: ${WATCH_FAILURES:-3}
     volumes:
       - waf-blocklist:/blocklist # écriture de la liste de blocage ; le WAF la lit en lecture seule
     healthcheck:
