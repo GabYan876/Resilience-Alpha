@@ -6,7 +6,13 @@ import logging
 from collections.abc import Callable, Sequence
 
 from app.domain.models import Detection, IncidentKind
-from app.domain.ports import AnomalyModel, AnomalyReporter, MetricsSource, VerdictObserver
+from app.domain.ports import (
+    AnomalyModel,
+    AnomalyReporter,
+    AttackerLocator,
+    MetricsSource,
+    VerdictObserver,
+)
 
 log = logging.getLogger("detector")
 
@@ -29,6 +35,7 @@ class DetectionService:
         cooldown_s: float,
         clock: Callable[[], float],
         observers: Sequence[VerdictObserver] = (),
+        locator: AttackerLocator | None = None,
     ) -> None:
         self._source = source
         self._model = model
@@ -38,6 +45,7 @@ class DetectionService:
         self._cooldown_s = cooldown_s
         self._clock = clock
         self._observers = observers
+        self._locator = locator
         self._streak = 0
         self._quiet_until = 0.0
 
@@ -63,6 +71,7 @@ class DetectionService:
             source=f"prometheus:{self._target}",
             kind=IncidentKind.AVAILABILITY,
             target_service=self._target,
+            attacker_subject=self._locate(),
         )
         try:
             self._reporter.report(detection)
@@ -72,3 +81,13 @@ class DetectionService:
         self._streak = 0
         self._quiet_until = now + self._cooldown_s
         return detection
+
+    def _locate(self) -> str | None:
+        """Nommer l'attaquant est un plus : sans lui, le moteur redémarre quand même."""
+        if self._locator is None:
+            return None
+        try:
+            return self._locator.locate()
+        except Exception:
+            log.exception("source introuvable", extra={"event": "detector.locate_failed"})
+            return None

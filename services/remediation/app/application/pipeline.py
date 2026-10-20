@@ -67,6 +67,7 @@ class RemediationPipeline:
             score=anomaly.score,
             source=anomaly.source,
             attacker_ip=anomaly.attacker_ip,
+            attacker_subject=anomaly.attacker_subject,
             target=anomaly.target_service,
         )
 

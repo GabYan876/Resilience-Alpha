@@ -39,6 +39,12 @@ class SampleReader(Protocol):
     def read_all(self) -> list[MetricSample]: ...
 
 
+class AttackerLocator(Protocol):
+    """Identifie la source du trafic anormal ; `None` si personne ne se détache nettement."""
+
+    def locate(self) -> str | None: ...
+
+
 class AnomalyReporter(Protocol):
     """Transmet une anomalie confirmée au moteur de remédiation."""
 

@@ -49,3 +49,4 @@ class Detection:
     kind: IncidentKind
     target_service: str
     attacker_ip: str | None = None
+    attacker_subject: str | None = None  # compte (`sub` du JWT) qui émet l'essentiel du trafic

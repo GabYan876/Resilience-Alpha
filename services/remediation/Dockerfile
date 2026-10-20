@@ -14,7 +14,8 @@ COPY services/remediation/app ./app
 
 # Exécution sans privilèges : le moteur agit par la passerelle Docker restreinte, pas en root.
 RUN useradd --no-create-home --shell /usr/sbin/nologin --uid 10002 remediation \
-    && chown -R remediation:remediation /app
+    && mkdir /blocklist \
+    && chown -R remediation:remediation /app /blocklist
 USER remediation
 
 EXPOSE 8000

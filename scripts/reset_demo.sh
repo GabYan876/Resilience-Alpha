@@ -34,4 +34,9 @@ compose run --rm --no-deps --entrypoint sh migrate -c \
 echo "[reset] recréation de l'API et de l'authentification (pools de connexions remis à neuf)"
 compose up -d --force-recreate --no-deps --wait api auth
 
+# Les sources bloquées par la remédiation précédente doivent être libérées, sinon la démo
+# suivante démarrerait avec l'attaquant déjà bloqué. Le WAF relit la liste à chaque requête.
+echo "[reset] liste de blocage du WAF vidée"
+compose exec -T remediation sh -c ': > /blocklist/blocked.txt'
+
 echo "[reset] terminé : base rejouable"

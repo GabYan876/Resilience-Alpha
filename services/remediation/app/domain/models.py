@@ -31,6 +31,7 @@ class Anomaly:
     source: str  # ex. "prometheus:http_requests_rate"
     kind_hint: IncidentKind
     attacker_ip: str | None = None
+    attacker_subject: str | None = None  # `sub` du jeton JWT, quand l'IP ne distingue personne
     target_service: str = "api"
     detected_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 

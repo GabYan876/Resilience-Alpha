@@ -11,11 +11,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.adapters.api_probe import ApiTransactionProbe
 from app.adapters.docker_proxy import DockerProxyClient
+from app.adapters.file_blocklist import BlocklistFile, IpBlocklist, SubjectBlocklist
 from app.adapters.http_health import HttpHealthChecker
 from app.adapters.json_publisher import JsonStdoutPublisher
 from app.adapters.memory_store import InMemoryIncidentStore
 from app.api.routes import build_router
-from app.application.actions import RestartServiceAction
+from app.application.actions import BlockIpAction, BlockSubjectAction, RestartServiceAction
 from app.application.pipeline import RemediationPipeline
 from app.application.policy import KindBasedPolicy
 from app.application.verifier import HealthAndProbeVerifier
@@ -40,10 +41,19 @@ def build_pipeline(
         settings.container_names,
         restart_timeout_s=settings.restart_timeout_s,
     )
-    # TODO(WAF, rotation de secrets) : ajouter BlockIpAction / RotateSecretAction dès que les
-    # adaptateurs WafIpBlocker / VaultSecretRotator existent. Sans action, l'incident est
-    # déclaré en échec (jamais « résolu » à tort).
-    policy = KindBasedPolicy({IncidentKind.AVAILABILITY: [RestartServiceAction(docker)]})
+    # TODO(rotation de secrets) : ajouter RotateSecretAction dès que VaultSecretRotator existe.
+    blocklist = BlocklistFile(settings.blocklist_path)
+    # Bloquer la source d'abord, puis redémarrer : sinon le flood reprend aussitôt. Une action
+    # sans cible identifiée échoue sans empêcher les suivantes.
+    policy = KindBasedPolicy(
+        {
+            IncidentKind.AVAILABILITY: [
+                BlockIpAction(IpBlocklist(blocklist)),
+                BlockSubjectAction(SubjectBlocklist(blocklist)),
+                RestartServiceAction(docker),
+            ]
+        }
+    )
     verifier = HealthAndProbeVerifier(
         HttpHealthChecker(client, {"api": settings.api_health_url}),
         ApiTransactionProbe(client, settings.api_base_url, settings.probe_token),

@@ -77,6 +77,7 @@ services:
       - loki-data:/loki
     networks:
       - obs-internal
+      - logs-query # lecture seule par le détecteur (identification de l'attaquant)
     mem_limit: 384m
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3100/ready"]
@@ -233,6 +234,11 @@ services:
     <<: *hardening
 
 networks:
+  # Déclaré par la pile principale (docker-compose.yml) : Loki y rejoint le détecteur.
+  logs-query:
+    name: resilience-logs-query
+    external: true
+
   # Réseau interne de l'observabilité : aucune route vers l'extérieur.
   obs-internal:
     name: resilience-obs-internal
