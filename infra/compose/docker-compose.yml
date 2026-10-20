@@ -104,9 +104,8 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Passerelle : front React + routage /auth -> auth, /me -> api. Seul service publié, et
-  # seulement en local (127.0.0.1) : le PC Attaquant passe par le réseau de l'hôte, jamais
-  # par un port ouvert sur toutes les interfaces.
+  # Passerelle : front React + routage /auth -> auth, /me -> api. Plus publiée : le WAF
+  # (ci-dessous) est le seul point d'entrée.
   gateway:
     image: resilience-alpha/gateway:dev
     build:
@@ -117,8 +116,8 @@ services:
     mem_limit: 64m
     networks:
       - resilience-net
-    ports:
-      - "127.0.0.1:8080:8080"
+    expose:
+      - "8080" # joignable par le WAF seulement : plus aucun port publié ici
     depends_on:
       api:
         condition: service_healthy
@@ -138,6 +137,43 @@ services:
       - ALL
     cap_add:
       - NET_BIND_SERVICE # le binaire Caddy porte cette capability : sans elle, exec échoue
+    security_opt:
+      - no-new-privileges:true
+
+  # WAF : ModSecurity + OWASP Core Rule Set en reverse proxy devant la passerelle. Seul
+  # service publié, et seulement en local (127.0.0.1) : le PC Attaquant passe par le réseau
+  # de l'hôte, jamais par un port ouvert sur toutes les interfaces. Le moteur de règles
+  # bloque (MODSEC_RULE_ENGINE=on) ; les événements bloqués sortent en JSON sur stdout,
+  # collectés par Alloy -> Loki (SIEM). Image épinglée par digest (risque tiers, DORA).
+  waf:
+    image: owasp/modsecurity-crs:nginx-alpine@sha256:873ce68a658d2e3b61484a8a24d215f7d15456e7ce5aec5e7114bf000d743365
+    container_name: resilience-waf
+    restart: unless-stopped
+    mem_limit: 128m
+    networks:
+      - resilience-net
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      BACKEND: http://gateway:8080
+      MODSEC_RULE_ENGINE: "on"
+      # Niveau 1 : le moins de faux positifs sur le trafic légitime ; à relever après essais.
+      BLOCKING_PARANOIA: ${WAF_PARANOIA:-1}
+      ANOMALY_INBOUND: ${WAF_ANOMALY_INBOUND:-5}
+      # L'IP du client est celle vue par le WAF : aucun en-tête X-Real-IP forgé n'est cru.
+      SET_REAL_IP_FROM: ""
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
