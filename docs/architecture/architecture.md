@@ -17,6 +17,7 @@ flowchart LR
             API[API métier]
             AUTH[Auth]
             DB[(BDD)]
+            DBR[db-recovery<br/>sauvegarde / restauration]
         end
         subgraph OBS[réseau obs — interne]
             PROM[Prometheus]
@@ -39,6 +40,7 @@ flowchart LR
     WAF --> FRONT --> API
     API --> AUTH
     API --> DB
+    DBR -->|pg_dump / pg_restore| DB
     WAF -.logs.-> LOKI
     API -.métriques/logs.-> PROM
     API -.-> LOKI
@@ -50,6 +52,7 @@ flowchart LR
     REM -->|sondage /health| API
     REM -->|rotation| VAULT
     REM -->|sonde transaction| API
+    REM -->|POST /restore?before=| DBR
     REM -->|événements JSON| LOKI
     PROM --> GRAF
     LOKI --> GRAF
@@ -67,6 +70,7 @@ flowchart LR
 | `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
 | `gateway` | Caddy : sert le front, route `/auth/*` → `auth` et `/me/*` → `api`. Placée derrière le WAF | app | non (joignable par le WAF seulement) | Gabriel / Hugo |
 | `db` | Base de données (fictive) | app | non | Antoine |
+| `db-recovery` | Sauvegarde `pg_dump` toutes les 5 min (12 gardées, volume `postgres-backups`) et restauration `pg_restore` ; rôle propriétaire, 128 Mo | db-internal, control-internal | non | Antoine |
 | `prometheus`, `loki`, `grafana` | Métriques, logs, SOC | obs | non (Grafana via WAF) | Hugo |
 | `anomaly-detector` | ML (IsolationForest) sur métriques/logs | obs, control | non | Kevin |
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
@@ -84,8 +88,8 @@ Le schéma de la section 1 est logique. Dans les fichiers Compose, il se traduit
 | Réseau Docker | `internal` | Membres | Rôle |
 |---|---|---|---|
 | `resilience-net` | non | `waf`, `api`, `auth`, `gateway`, `remediation`, `prometheus`, `grafana` | trafic entre services ; aucun port publié |
-| `resilience-db-internal` | oui | `postgres`, `migrate`, `api`, `auth` | accès à la base, `api` et `auth` font le lien (rôle `app_rw`) |
-| `resilience-control-internal` | oui | `remediation`, `docker-proxy-ctl` | le moteur et sa passerelle, rien d'autre |
+| `resilience-db-internal` | oui | `postgres`, `migrate`, `db-recovery`, `api`, `auth` | accès à la base, `api` et `auth` font le lien (rôle `app_rw`) |
+| `resilience-control-internal` | oui | `remediation`, `docker-proxy-ctl`, `db-recovery` | le moteur, sa passerelle Docker et le service de restauration (jeton `PROBE_TOKEN`) |
 | `resilience-obs-internal` | oui | `prometheus`, `loki`, `alloy`, `grafana` | observabilité |
 | `resilience-docker-proxy-net` | oui | `alloy`, `docker-proxy` | lecture des logs Docker |
 | `resilience-rag` | non | `rag-assistant` | seul membre : aucun chemin vers l'API, la base, le moteur ni Docker. Non `internal`, car Ollama est hors de Docker (PC hôte ou 3e PC) |
@@ -152,6 +156,8 @@ Sous Docker Desktop, le WAF voit l'IP de la passerelle Docker (172.x) et non cel
 Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at","data":{…}}`.
 Événements : `incident.detected`, `decision.made`, `action.executed`, `verification.completed`, `incident.resolved` / `incident.failed`.
 
+`db-recovery` émet les siens (`service=db-recovery`) : `database.backup.created` / `.failed`, `database.restore.completed` / `.failed`. Ils arrivent dans Loki avec les autres journaux ; aucun panneau Grafana ne les affiche encore.
+
 ## 4. Contrats entre services (à figer mardi)
 
 | Appelant → appelé | Endpoint | Usage |
@@ -161,6 +167,7 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 | detector → prometheus | `/api/v1/query_range` | features ML (débit, latence, taux d'erreur) |
 | detector → loki | `/loki/api/v1/query_range` | features ML (logs WAF) et compte dominant d'une attaque |
 | detector → remediation | `POST /incidents` (token) | remontée d'anomalie |
+| remediation → db-recovery | `POST /restore?before=<détection − marge>` (`PROBE_TOKEN`) | `DatabaseRestorer` |
 | remediation → docker-socket-proxy | restart / scale uniquement | `ContainerRestarter`, `ServiceScaler` |
 | remediation → waf | fichier `blocked.txt` (volume partagé, lecture seule côté WAF) | `IpBlocker`, `SubjectBlocker` |
 | Grafana → remediation (optionnel) | `GET /incidents` (liste, plus récents d'abord) et `GET /incidents/{id}`, protégés par jeton ; le flux d'événements passe par Loki | affichage avant / pendant / après |
@@ -168,9 +175,9 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 ## 5. Sécurité & RAM
 
 - Secrets : Vault ou SOPS, `.env` ignoré, `.env.example` fourni.
-- `mem_limit` sur chaque conteneur (PC Hôte 16 Go) ; Ollama sur un 3e PC si < 32 Go.
+- `mem_limit` sur chaque conteneur (PC Hôte 16 Go ; `db-recovery` : 128 Mo) ; Ollama sur un 3e PC si < 32 Go.
 - Le RAG n'a aucun accès au moteur de remédiation ni à Docker.
-- Reset d'état : `scripts/reset_demo.sh` (débloque les IP, restaure la BDD) pour ≥ 5 passages.
+- Reset d'état : `scripts/reset_demo.sh` (débloque les IP, rejoue le schéma et le seed, purge les archives S4 puis sauvegarde l'état propre) pour ≥ 5 passages.
 
 ## 6. Questions ouvertes
 
