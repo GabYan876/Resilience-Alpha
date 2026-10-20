@@ -141,6 +141,30 @@ Deux points qui ne concernent que le poste :
 - Pour réinitialiser les réglages personnels sans toucher à ceux de l'équipe, éditer
   `.claude/settings.local.json` (ignoré par Git) et non `.claude/settings.json`.
 
+## Ollama (assistant RAG)
+
+Un seul Ollama suffit : seul le conteneur `rag-assistant` l'appelle. Chacun peut lancer le sien (défaut
+`OLLAMA_URL=http://host.docker.internal:11434`) ou pointer vers celui d'un autre via `OLLAMA_URL`.
+Ollama n'a aucune authentification et le hotspot est un réseau plat où se trouve aussi le PC
+Attaquant : ne jamais le faire écouter sur `0.0.0.0`.
+
+```bash
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=172.17.0.1:11434"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+OLLAMA_HOST=172.17.0.1:11434 ollama pull llama3.2:3b   # 3b pour valider, llama3.1:8b pour la démo
+OLLAMA_HOST=172.17.0.1:11434 ollama pull nomic-embed-text
+```
+
+Sur un 3e PC, écouter sur son IP du hotspot et n'accepter que le PC hôte (`ufw allow from 192.168.137.1
+to any port 11434 proto tcp`, puis `ufw deny 11434/tcp`).
+
+**Partager son Ollama pour un test d'équipe** : écouter sur son IP du hotspot (`OLLAMA_HOST=<IP>:11434`),
+autoriser **une règle `ufw allow from <IP du coéquipier>` par poste** (jamais `0.0.0.0` ni le sous-réseau
+entier : le PC Attaquant y est aussi), puis le coéquipier met `OLLAMA_URL=http://<IP>:11434` dans son `.env`.
+Retirer les règles après le test (`ufw status numbered`, `ufw delete <n>`). Le conteneur `rag-assistant` de
+l'hôte n'a plus alors besoin que de cette URL ; un Ollama local n'est plus nécessaire.
+
 ## 4. Vérification du poste
 
 Les tests se lancent **service par service** : chacun a ses propres dépendances et son propre
@@ -151,6 +175,7 @@ des différents services entrant en collision.
 # Un service à la fois, avec ses dépendances installées
 cd services/api        && pip install -r requirements.txt && python -m pytest -q
 cd services/remediation && pip install -r requirements.txt && python -m pytest -q
+cd services/rag-assistant && pip install -r requirements.txt && python -m pytest -q
 
 # Compose valide (le fichier lit .env, d'où --env-file)
 docker compose --env-file .env -f infra/compose/docker-compose.yml config --quiet

@@ -72,7 +72,7 @@ flowchart LR
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
 | `docker-proxy` | Passerelle Docker d'Alloy : lecture seule (`GET /containers`, `/networks`) | pile obs | non | Hugo |
 | `vault` | Secrets | control | non | Hugo |
-| `rag-assistant` | Assistant RAG (Ollama + LangChain ≤ 8B) | rag | non | François |
+| `rag-assistant` | Assistant RAG (LangChain ; modèle Ollama ≤ 8B hébergé hors Compose) | rag | non (interrogé par `docker compose exec`) | François |
 
 **Règle d'exposition** : seul le WAF publie un port (en attendant le WAF, Grafana est lié à `127.0.0.1:3000`). Aucun composant, hors les deux passerelles `docker-proxy-ctl` et `docker-proxy`, ne touche `docker.sock`.
 
@@ -87,6 +87,7 @@ Le schéma de la section 1 est logique. Dans les fichiers Compose, il se traduit
 | `resilience-control-internal` | oui | `remediation`, `docker-proxy-ctl` | le moteur et sa passerelle, rien d'autre |
 | `resilience-obs-internal` | oui | `prometheus`, `loki`, `alloy`, `grafana` | observabilité |
 | `resilience-docker-proxy-net` | oui | `alloy`, `docker-proxy` | lecture des logs Docker |
+| `resilience-rag` | non | `rag-assistant` | seul membre : aucun chemin vers l'API, la base, le moteur ni Docker. Non `internal`, car Ollama est hors de Docker (PC hôte ou 3e PC) |
 
 La collecte des logs est faite par **Alloy** (et non Promtail). `infra/compose/docker-compose.yml` (socle) et `docker-compose.observability.yml` sont deux piles autonomes, à ne pas fusionner par `-f` multiples.
 

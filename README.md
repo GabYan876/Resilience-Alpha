@@ -82,7 +82,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`). L'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`). L'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README). Les playbooks Ansible (`infra/ansible/`) restent à venir.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
@@ -125,6 +125,7 @@ Critère de réussite : **aucune intervention humaine** entre l'attaque et la no
 # Un service à la fois : les paquets `app` de chaque service entrent en collision
 cd services/api         && python -m pytest -q   # unitaires (domaine sans I/O, adaptateurs avec doubles)
 cd services/remediation && python -m pytest -q
+cd services/rag-assistant && python -m pytest -q
 ./scripts/chaos.sh          # injection de défaillances (jeudi, à écrire)
 ```
 
