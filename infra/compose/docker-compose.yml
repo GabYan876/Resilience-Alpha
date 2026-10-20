@@ -169,7 +169,7 @@ services:
       # (E) : ils contiendraient jetons JWT, mots de passe et données clients, qui n'ont rien à
       # faire dans Loki. Restent l'en-tête (A), les en-têtes de réponse (F), les règles
       # déclenchées (H) et la fin d'enregistrement (Z).
-      MODSEC_AUDIT_LOG_PARTS: AFHZ
+      MODSEC_AUDIT_LOG_PARTS: AFHKZ
       # Niveau 1 : le moins de faux positifs sur le trafic légitime ; à relever après essais.
       BLOCKING_PARANOIA: ${WAF_PARANOIA:-1}
       ANOMALY_INBOUND: ${WAF_ANOMALY_INBOUND:-5}
