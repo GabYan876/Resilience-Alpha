@@ -32,6 +32,9 @@ networks:
   control-internal:
     name: resilience-control-internal
     internal: true # moteur de remédiation <-> sa passerelle Docker, et rien d'autre
+  rag:
+    name: resilience-rag
+    driver: bridge # pas `internal` : Ollama tourne sur le PC hôte ou un 3e PC, hors de Docker
 
 volumes:
   postgres-data:
@@ -381,6 +384,50 @@ services:
       COOLDOWN_S: ${DETECTOR_COOLDOWN_S:-90}
     volumes:
       - ../../ml/models:/models:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/health').is_success else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+
+  # Assistant RAG (Ollama + LangChain). Isolé : seul membre du réseau `rag`, donc aucun chemin
+  # vers l'API, la base, le moteur de remédiation ni Docker. Corpus monté en lecture seule
+  # (documentation du dépôt), système de fichiers en lecture seule. Non publié : on l'interroge
+  # par `docker compose exec rag-assistant python -m app.cli ask "..."`. Ollama est joint par
+  # OLLAMA_URL (PC hôte par défaut ; voir .env.example pour le 3e PC).
+  rag-assistant:
+    image: resilience-alpha/rag-assistant:dev
+    build:
+      context: ../..
+      dockerfile: services/rag-assistant/Dockerfile
+    container_name: resilience-rag-assistant
+    restart: unless-stopped
+    mem_limit: 384m # les modèles tournent dans Ollama, pas ici
+    networks:
+      - rag
+    expose:
+      - "8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Ollama sur l'hôte Linux
+    environment:
+      RAG_TOKEN: ${RAG_TOKEN:?RAG_TOKEN doit etre defini (voir .env.example)}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      LLM_MODEL: ${RAG_LLM_MODEL:-llama3.1:8b}
+      EMBED_MODEL: ${RAG_EMBED_MODEL:-nomic-embed-text}
+      CORPUS_PATH: /corpus
+    volumes:
+      - ../../docs:/corpus/docs:ro
+      - ../../README.md:/corpus/README.md:ro
     healthcheck:
       test:
         - CMD
