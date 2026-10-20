@@ -112,7 +112,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.observability.yml
 ./scripts/check_transaction.sh  # API saine + transaction de test réglée
 ```
 
-Dépannage : `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
+Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
