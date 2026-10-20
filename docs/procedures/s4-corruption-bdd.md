@@ -1,7 +1,8 @@
 # Procédure S4 — corruption de la base
 
 Responsable : Antoine (BDD) avec Kevin (moteur). Statut : **procédure d'essai**, à jouer pour mesurer le
-RPO ; le déclencheur reste manuel tant qu'aucun détecteur ne signale `database_corruption`.
+RPO et RTO. Le détecteur signale `database_corruption` tout seul (invariants du grand livre) ; le
+`POST /incidents` manuel ne sert plus qu'à rejouer un cas particulier.
 
 ## Pré-requis
 
@@ -15,9 +16,11 @@ RPO ; le déclencheur reste manuel tant qu'aucun détecteur ne signale `database
 1. Noter l'heure `T0` et vérifier l'état : `./scripts/check_transaction.sh`.
 2. **Corrompre** (données fictives) : par exemple, dans `postgres`, supprimer les transactions du compte de
    test avec le rôle propriétaire (`app_rw` n'a pas de `DELETE`). Noter l'heure `Tc`.
-3. Déclarer l'incident (équivalent du détecteur) rapidement : une sauvegarde planifiée prise après `Tc`
-   contiendrait la donnée altérée. `POST /incidents` du moteur avec le jeton d'ingestion et
-   `kind=database_corruption` (corps : `services/remediation/app/api/schemas.py`).
+3. **Ne rien déclarer** : le détecteur lit `GET /integrity` toutes les 5 s et signale dès que les
+   compteurs reculent. Variante manuelle (cas particulier) : `POST /incidents` du moteur avec le
+   jeton d'ingestion et `kind=database_corruption` (corps : `services/remediation/app/api/schemas.py`).
+   Une sauvegarde planifiée prise après `Tc` contiendrait la donnée altérée : c'est pour cela que la
+   restauration ignore les archives postérieures à la détection.
 4. Observer, sans intervenir : `incident.detected` → `action.executed` (`restore_database`, puis
    `restart_service`) → `verification.completed` → `incident.resolved`.
 
@@ -59,4 +62,20 @@ Enseignements :
 - **RPO mesuré : 20 s** ici, mais c'est l'écart que j'ai imposé entre archive et corruption. Dans le pire cas
   il vaut l'intervalle de sauvegarde (300 s) **plus** la marge (15 s) : environ 5 min 15 s, soit juste au-dessus de la
   cible de 5 min. Pour la tenir strictement, passer `DB_BACKUP_INTERVAL_S` à 240.
-- Le déclencheur automatique (détecteur ML) n'est pas couvert : l'essai est semi-manuel.
+- Ces 6 passages étaient semi-manuels (incident déclaré par `POST /incidents`) ; voir la section
+  suivante pour le déclenchement automatique.
+
+## Essai automatique du 20/10 (Kevin, Docker Desktop)
+
+Aucun appel à `POST /incidents` : `DELETE` sur `ledger_entries` et `transactions`, puis observation.
+Le détecteur (`IntegrityWatchService`) voit les compteurs reculer, signale `database_corruption`,
+le moteur restaure l'archive antérieure à la détection, redémarre l'API et vérifie par transaction.
+
+| Passage | Résultat | `incident.detected` → `incident.resolved` |
+|---|---|---|
+| 1 (corruption 17:23:21) | résolu, données revenues, aucune intervention | 17:23:22 → 17:23:27, soit ≈ 5 s |
+| 2 à 5 | 4 × résolu, mêmes comptes avant/après (+ 1 transaction de sonde) | ≈ 5 s chacun |
+
+Enseignement : `reset_demo.sh` vide les tables, ce que le détecteur prenait pour une corruption (une
+restauration se déclenchait en plein reset). Le script met désormais le détecteur en pause puis le
+relance à la fin : il réapprend sa référence sur la base propre.

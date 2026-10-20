@@ -421,16 +421,20 @@ services:
     networks:
       - resilience-net # Prometheus (autre pile) et moteur de remédiation
       - logs-query # Loki : identifier le compte qui émet le flood
+      - control-internal # db-recovery : compteurs d'intégrité (GET /integrity, sans donnée)
     expose:
       - "8000"
     depends_on:
       remediation:
+        condition: service_healthy
+      db-recovery:
         condition: service_healthy
     environment:
       REMEDIATION_INGEST_TOKEN: ${REMEDIATION_INGEST_TOKEN:?REMEDIATION_INGEST_TOKEN doit etre defini (voir .env.example)}
       PROMETHEUS_URL: http://prometheus:9090
       REMEDIATION_URL: http://remediation:8000
       LOKI_URL: http://loki:3100
+      INTEGRITY_URL: http://db-recovery:8001
       ATTACKER_WINDOW: ${ATTACKER_WINDOW:-30s}
       ATTACKER_MIN_REQUESTS: ${ATTACKER_MIN_REQUESTS:-100}
       ATTACKER_MIN_SHARE: ${ATTACKER_MIN_SHARE:-0.5}

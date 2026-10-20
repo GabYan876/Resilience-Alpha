@@ -18,6 +18,15 @@ compose() {
   docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" "$@"
 }
 
+# Le détecteur d'intégrité prendrait la remise à zéro pour une corruption (compteurs qui
+# reculent) et déclencherait une restauration en plein reset : on l'arrête puis on le relance
+# à la fin, ce qui lui fait réapprendre sa référence sur la base propre.
+DETECTOR_WAS_RUNNING="$(compose ps -q --status running anomaly-detector 2>/dev/null || true)"
+if [[ -n "${DETECTOR_WAS_RUNNING}" ]]; then
+  echo "[reset] détecteur mis en pause pendant la remise à zéro"
+  compose stop anomaly-detector
+fi
+
 echo "[reset] démarrage de PostgreSQL"
 compose up -d --wait postgres
 
@@ -48,5 +57,10 @@ compose up -d --force-recreate --no-deps --wait api auth
 # suivante démarrerait avec l'attaquant déjà bloqué. Le WAF relit la liste à chaque requête.
 echo "[reset] liste de blocage du WAF vidée"
 compose exec -T remediation sh -c ': > /blocklist/blocked.txt'
+
+if [[ -n "${DETECTOR_WAS_RUNNING}" ]]; then
+  echo "[reset] détecteur relancé"
+  compose up -d --no-deps --wait anomaly-detector
+fi
 
 echo "[reset] terminé : base rejouable"

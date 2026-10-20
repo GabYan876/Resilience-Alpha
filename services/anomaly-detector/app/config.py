@@ -15,6 +15,7 @@ class Settings:
     model_path: Path
     dataset_path: Path
     loki_url: str = "http://loki:3100"
+    integrity_url: str = "http://db-recovery:8001"  # compteurs d'intégrité de la base
     # Attribution : un compte n'est désigné que s'il émet au moins `attacker_min_requests`
     # requêtes sur `attacker_window` ET au moins `attacker_min_share` du trafic identifié.
     # Sans cela, un utilisateur légitime serait bloqué à tort pendant un pic.
@@ -41,6 +42,7 @@ class Settings:
             model_path=Path(os.environ.get("MODEL_PATH", "/models/isolation_forest.joblib")),
             dataset_path=Path(os.environ.get("DATASET_PATH", "/data/normal.csv")),
             loki_url=os.environ.get("LOKI_URL", "http://loki:3100"),
+            integrity_url=os.environ.get("INTEGRITY_URL", "http://db-recovery:8001"),
             attacker_window=os.environ.get("ATTACKER_WINDOW", "30s"),
             attacker_min_requests=int(os.environ.get("ATTACKER_MIN_REQUESTS", "100")),
             attacker_min_share=float(os.environ.get("ATTACKER_MIN_SHARE", "0.5")),

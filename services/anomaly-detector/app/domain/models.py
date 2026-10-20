@@ -13,7 +13,7 @@ class IncidentKind(StrEnum):
 
     AVAILABILITY = "availability"
     COMPROMISE = "compromise"
-    DATABASE_CORRUPTION = "database_corruption"  # accepté par le moteur ; aucun signal ML encore
+    DATABASE_CORRUPTION = "database_corruption"  # signalé par IntegrityWatchService (invariants)
 
 
 @dataclass(frozen=True)
@@ -51,3 +51,12 @@ class Detection:
     target_service: str
     attacker_ip: str | None = None
     attacker_subject: str | None = None  # compte (`sub` du JWT) qui émet l'essentiel du trafic
+
+
+@dataclass(frozen=True)
+class IntegritySnapshot:
+    """Compteurs du grand livre, en ajout seul : ils ne peuvent que croître."""
+
+    transactions: int
+    ledger_entries: int
+    unbalanced_transactions: int  # transactions dont les écritures ne s'équilibrent pas

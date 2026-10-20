@@ -13,10 +13,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.adapters.postgres_archives import PostgresArchiveStore
+from app.adapters.postgres_integrity import PostgresIntegrityProbe
 from app.api.routes import build_router
 from app.application.recovery import DatabaseRecoveryService
 from app.config import Settings
-from app.domain.ports import DatabaseArchive
+from app.domain.ports import DatabaseArchive, DatabaseIntegrity
 
 
 def _log_event(event: str, **data: object) -> None:
@@ -36,7 +37,9 @@ def _log_event(event: str, **data: object) -> None:
 
 
 def create_app(
-    settings: Settings | None = None, archive: DatabaseArchive | None = None
+    settings: Settings | None = None,
+    archive: DatabaseArchive | None = None,
+    integrity: DatabaseIntegrity | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if settings.backup_interval_s < 1:
@@ -49,6 +52,13 @@ def create_app(
         pg_user=settings.pg_user,
         pg_password=settings.pg_password,
         retention=settings.backup_retention,
+    )
+    integrity = integrity or PostgresIntegrityProbe(
+        database=settings.database,
+        pg_host=settings.pg_host,
+        pg_port=settings.pg_port,
+        pg_user=settings.pg_user,
+        pg_password=settings.pg_password,
     )
     recovery = DatabaseRecoveryService(archive)
 
@@ -77,6 +87,7 @@ def create_app(
     app.include_router(
         build_router(
             recovery,
+            integrity,
             lambda: settings.probe_token,
             lambda event, **data: _log_event(event, **data),
         )

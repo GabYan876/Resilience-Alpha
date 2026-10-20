@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.domain.ports import IntegritySnapshot
 from app.main import create_app
 
 
@@ -21,6 +22,11 @@ class FakeArchive:
         return True
 
 
+class FakeIntegrity:
+    def snapshot(self) -> IntegritySnapshot:
+        return IntegritySnapshot(transactions=4, ledger_entries=8, unbalanced_transactions=0)
+
+
 def _settings():
     return Settings(
         database="resilience",
@@ -36,7 +42,7 @@ def _settings():
 
 
 def make_client():
-    return TestClient(create_app(_settings(), FakeArchive()))
+    return TestClient(create_app(_settings(), FakeArchive(), FakeIntegrity()))
 
 
 def test_restore_requires_probe_token():
@@ -70,3 +76,14 @@ def test_restore_forwards_the_incident_time_to_the_archive():
         )
     assert response.status_code == 200
     assert archive.before.isoformat() == "2026-10-20T10:30:00+00:00"
+
+
+def test_integrity_exposes_counters_without_token():
+    with make_client() as client:
+        response = client.get("/integrity")
+    assert response.status_code == 200
+    assert response.json() == {
+        "transactions": 4,
+        "ledger_entries": 8,
+        "unbalanced_transactions": 0,
+    }

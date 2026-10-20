@@ -136,9 +136,10 @@ que chaque passage de démo restaure son propre point de départ.
 
 Limite connue : si la corruption est plus ancienne que la rétention (12 × 5 min) ou
 que la marge `DB_RESTORE_SAFETY_MARGIN_S`, aucune archive saine n'est garantie.
-Aucun détecteur ML ne signale encore `database_corruption` : l'incident n'est pour
-l'instant créé que par `POST /incidents` (jeton d'ingestion), donc la preuve Zero-Touch
-de S4 reste à construire.
+Le détecteur (`IntegrityWatchService`) signale `database_corruption` sans intervention
+dès que les compteurs du grand livre reculent ou qu'une transaction ne s'équilibre plus
+(`GET /integrity`). Limite : une altération qui garde les compteurs et l'équilibre (un montant
+modifié) n'est pas vue ; c'est un invariant, pas du ML.
 
 La cible RPO provisoire est donc ≤ 5 minutes. Essai réel du 20/10 : restauration
 en ≈ 5 s, 6 passages, détails dans `docs/procedures/s4-corruption-bdd.md`. Pire cas

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.domain.models import Detection, MetricSample, Verdict
+from app.domain.models import Detection, IntegritySnapshot, MetricSample, Verdict
 
 
 class MetricsSource(Protocol):
@@ -55,3 +55,9 @@ class VerdictObserver(Protocol):
     """Observe chaque jugement (métrique Prometheus, journal) sans influer sur la décision."""
 
     def observe(self, sample: MetricSample, verdict: Verdict) -> None: ...
+
+
+class IntegritySource(Protocol):
+    """Lit les compteurs d'intégrité de la base (sans accès aux données)."""
+
+    def snapshot(self) -> IntegritySnapshot: ...

@@ -13,12 +13,12 @@ Statut : première version du 20/10 (RTO/RPO provisoires, à valider). Responsab
 | S1 | Flood sur l'API | Disponibilité | Blocage IP + restart + vérif transaction | Oui (Zero-Touch) |
 | S2 | SQLi / exfiltration | Compromission | Blocage IP + rotation des secrets + vérif transaction ; **investigation manuelle** (on ne peut pas prouver l'absence de fuite) | Partielle : automatique sauf l'investigation |
 | S3 | Crash d'un conteneur | Disponibilité | Détection par health check périodique (`HealthWatchDetector` dans le moteur), restart + vérif | Oui (essai réel du 20/10 : arrêt de l'API, reprise en 34 s) |
-| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Mécanisme implémenté et essayé le 20/10 (6 passages, RTO ≈ 5 s) ; pas de détecteur automatique de corruption : déclenchement manuel, donc pas encore Zero-Touch |
+| S4 | Perte de la BDD / corruption | Données | Incident `DATABASE_CORRUPTION` : `RestoreDatabaseAction` + redémarrage API + vérif transaction | Mécanisme implémenté et essayé le 20/10 (6 passages, RTO ≈ 5 s) ; détection automatique par invariants du grand livre (compteurs qui reculent, transaction déséquilibrée) : essai automatique du 20/10, 5 passages sans intervention, RTO ≈ 5 s. Limite : une altération qui garde compteurs et équilibre n'est pas vue |
 | S5 | Perte du PC Hôte | Site | Hors périmètre démontrable | Non |
 
 Distinguer **restauration de disponibilité** (S1, S3) et **correction de compromission** (S2) : les actions sont différentes.
 
-État d'avancement (20/10) : le pipeline couvre S1 (blocage de la source par IP et compte, redémarrage, vérification) et S3 (sondage de santé) dans `services/remediation/`. S4 dispose maintenant d'une sauvegarde planifiée et d'une restauration via le service privé `db-recovery`, protégée par `PROBE_TOKEN`, puis prouvée par une transaction. Le type distinct `DATABASE_CORRUPTION` empêche de confondre une altération de données avec une exfiltration. Il reste à réaliser un essai réel de corruption/restauration et à mesurer le RPO. `VaultSecretRotator` (S2) reste à développer.
+État d'avancement (20/10) : le pipeline couvre S1 (blocage de la source par IP et compte, redémarrage, vérification) et S3 (sondage de santé) dans `services/remediation/`. S4 dispose maintenant d'une sauvegarde planifiée et d'une restauration via le service privé `db-recovery`, protégée par `PROBE_TOKEN`, puis prouvée par une transaction. Le type distinct `DATABASE_CORRUPTION` empêche de confondre une altération de données avec une exfiltration. Le détecteur signale `database_corruption` seul ; essai réel et automatique du 20/10 (voir `docs/procedures/s4-corruption-bdd.md`). RPO mesuré 20 s sur l'essai, pire cas 300 s + marge 15 s. `VaultSecretRotator` (S2) reste à développer.
 
 ## 3. Objectifs de continuité et de reprise
 

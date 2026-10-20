@@ -25,6 +25,7 @@ remediation ── POST /restore?before=<date> ──> pg_restore --clean --sing
 | Route | Jeton | Effet |
 |---|---|---|
 | `GET /health` | non | `200` si PostgreSQL répond **et** qu'au moins une archive existe, sinon `503` |
+| `GET /integrity` | non | compteurs `{transactions, ledger_entries, unbalanced_transactions}`, aucune donnée (lu par le détecteur) |
 | `POST /backup` | `Bearer $PROBE_TOKEN` | crée une archive, renvoie `{"status","archive"}` |
 | `POST /restore[?before=<ISO 8601>]` | `Bearer $PROBE_TOKEN` | restaure la dernière archive éligible |
 

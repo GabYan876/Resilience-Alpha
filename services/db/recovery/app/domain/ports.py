@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
@@ -18,3 +19,16 @@ class DatabaseArchive(Protocol):
 
 class BackupUnavailable(Exception):
     """Aucune archive PostgreSQL exploitable n'est disponible."""
+
+
+@dataclass(frozen=True)
+class IntegritySnapshot:
+    """Compteurs d'intégrité du grand livre (transactions et écritures sont en ajout seul)."""
+
+    transactions: int
+    ledger_entries: int
+    unbalanced_transactions: int  # transactions dont les écritures ne s'équilibrent pas
+
+
+class DatabaseIntegrity(Protocol):
+    def snapshot(self) -> IntegritySnapshot: ...

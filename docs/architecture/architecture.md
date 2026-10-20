@@ -72,7 +72,7 @@ flowchart LR
 | `db` | Base de données (fictive) | app | non | Antoine |
 | `db-recovery` | Sauvegarde `pg_dump` toutes les 5 min (12 gardées, volume `postgres-backups`) et restauration `pg_restore` ; rôle propriétaire, 128 Mo | db-internal, control-internal | non | Antoine |
 | `prometheus`, `loki`, `grafana` | Métriques, logs, SOC | obs | non (Grafana via WAF) | Hugo |
-| `anomaly-detector` | ML (IsolationForest) sur métriques/logs | obs, control | non | Kevin |
+| `anomaly-detector` | ML (IsolationForest) sur métriques/logs ; invariants du grand livre pour `database_corruption` | obs, control | non | Kevin |
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
 | `docker-proxy` | Passerelle Docker d'Alloy : lecture seule (`GET /containers`, `/networks`) | pile obs | non | Hugo |
@@ -167,6 +167,7 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 | detector → prometheus | `/api/v1/query_range` | features ML (débit, latence, taux d'erreur) |
 | detector → loki | `/loki/api/v1/query_range` | features ML (logs WAF) et compte dominant d'une attaque |
 | detector → remediation | `POST /incidents` (token) | remontée d'anomalie |
+| anomaly-detector → db-recovery | `GET /integrity` (compteurs, sans jeton ni donnée) | `IntegritySource` |
 | remediation → db-recovery | `POST /restore?before=<détection − marge>` (`PROBE_TOKEN`) | `DatabaseRestorer` |
 | remediation → docker-socket-proxy | restart / scale uniquement | `ContainerRestarter`, `ServiceScaler` |
 | remediation → waf | fichier `blocked.txt` (volume partagé, lecture seule côté WAF) | `IpBlocker`, `SubjectBlocker` |

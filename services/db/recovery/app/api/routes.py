@@ -5,17 +5,19 @@ from __future__ import annotations
 import hmac
 import subprocess
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from starlette.concurrency import run_in_threadpool
 
 from app.application.recovery import DatabaseRecoveryService
-from app.domain.ports import BackupUnavailable
+from app.domain.ports import BackupUnavailable, DatabaseIntegrity
 
 
 def build_router(
     recovery: DatabaseRecoveryService,
+    integrity: DatabaseIntegrity,
     get_probe_token: Callable[[], str],
     publish_event: Callable[..., None],
 ) -> APIRouter:
@@ -35,6 +37,17 @@ def build_router(
                 status.HTTP_503_SERVICE_UNAVAILABLE, "base ou sauvegarde initiale indisponible"
             )
         return {"status": "ok"}
+
+    @router.get("/integrity")
+    async def integrity_snapshot() -> dict[str, int]:
+        # Compteurs seuls, aucune donnée : lus par le détecteur pour repérer une suppression.
+        try:
+            snapshot = await run_in_threadpool(integrity.snapshot)
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "mesure d'intégrité impossible"
+            ) from exc
+        return asdict(snapshot)
 
     @router.post("/backup", dependencies=[Depends(require_probe_token)])
     async def create_backup() -> dict[str, str]:
