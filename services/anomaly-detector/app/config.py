@@ -18,7 +18,12 @@ class Settings:
     poll_interval_s: float = 5.0
     confirmations: int = 3  # jugements anormaux consécutifs avant de signaler
     cooldown_s: float = 90.0  # silence après un signalement, le temps de la remédiation
-    http_timeout_s: float = 3.0
+    http_timeout_s: float = 3.0  # requêtes Prometheus : rapides
+    # POST /incidents attend que le moteur ait fini (décision + action + vérification) avant
+    # de répondre : il lui faut bien plus de temps qu'une requête Prometheus. Un timeout trop
+    # court ferait croire à un échec de signalement alors que le moteur a bien agi, et
+    # empêcherait le délai de grâce de s'enclencher (voir HttpAnomalyReporter).
+    report_timeout_s: float = 75.0
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -33,4 +38,5 @@ class Settings:
             confirmations=int(os.environ.get("CONFIRMATIONS", "3")),
             cooldown_s=float(os.environ.get("COOLDOWN_S", "90")),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
+            report_timeout_s=float(os.environ.get("REPORT_TIMEOUT_S", "75")),
         )

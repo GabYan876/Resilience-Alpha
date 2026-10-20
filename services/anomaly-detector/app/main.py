@@ -31,7 +31,12 @@ def build_service(
     return DetectionService(
         PrometheusMetricsSource(client, settings.prometheus_url, settings.target_service),
         JoblibModelStore(settings.model_path).load(),
-        HttpAnomalyReporter(client, settings.remediation_url, settings.ingest_token),
+        HttpAnomalyReporter(
+            client,
+            settings.remediation_url,
+            settings.ingest_token,
+            timeout_s=settings.report_timeout_s,
+        ),
         target_service=settings.target_service,
         confirmations=settings.confirmations,
         cooldown_s=settings.cooldown_s,
