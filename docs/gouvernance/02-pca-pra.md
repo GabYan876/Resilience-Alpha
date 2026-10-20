@@ -12,13 +12,13 @@ Statut : squelette. Responsable : Antoine. Valeurs RTO/RPO : mesurées par Kevin
 |---|---|---|---|---|
 | S1 | Flood sur l'API | Disponibilité | Blocage IP + restart + vérif transaction | Oui (Zero-Touch) |
 | S2 | SQLi / exfiltration | Compromission | Blocage IP + rotation des secrets + vérif transaction ; **investigation manuelle** (on ne peut pas prouver l'absence de fuite) | Partielle : automatique sauf l'investigation |
-| S3 | Crash d'un conteneur | Disponibilité | Détection par health check périodique (`POST /incidents`), restart + vérif | Oui (watcher à développer) |
+| S3 | Crash d'un conteneur | Disponibilité | Détection par health check périodique (`HealthWatchDetector` dans le moteur), restart + vérif | Oui (essai réel du 20/10 : arrêt de l'API, reprise en 34 s) |
 | S4 | Perte de la BDD / corruption | Données | `RestoreDatabaseAction` (restauration de sauvegarde) + vérif transaction | Oui (cible ; action à développer) |
 | S5 | Perte du PC Hôte | Site | Hors périmètre démontrable | Non |
 
 Distinguer **restauration de disponibilité** (S1, S3) et **correction de compromission** (S2) : les actions sont différentes.
 
-État d'avancement (19/10) : le pipeline couvre S1 (redémarrage + vérification) dans `services/remediation/`. Restent à développer : `WafIpBlocker`, `VaultSecretRotator` (S1/S2), le watcher de health check (S3) et `RestoreDatabaseAction` (S4, droits élevés sur la BDD à encadrer). Tant qu'ils n'existent pas, ces scénarios ne sont **pas** automatiques : le moteur déclare l'incident en échec plutôt que résolu.
+État d'avancement (19/10) : le pipeline couvre S1 (redémarrage + vérification) dans `services/remediation/`. Restent à développer : `WafIpBlocker`, `VaultSecretRotator` (S1/S2), `RestoreDatabaseAction` (S4, droits élevés sur la BDD à encadrer). Tant qu'ils n'existent pas, ces scénarios ne sont **pas** automatiques : le moteur déclare l'incident en échec plutôt que résolu.
 
 ## 3. Objectifs de continuité et de reprise
 
