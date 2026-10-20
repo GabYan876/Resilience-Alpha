@@ -27,7 +27,11 @@ Le modèle (`ml/models/`) et les données (`ml/data/*.csv`) sont ignorés par Gi
 La pile (API, Prometheus) doit tourner, avec du **trafic normal** (pas d'attaque pendant la collecte).
 
 ```bash
-# 1. trafic de fond réaliste pendant la collecte, puis ~10 min d'échantillons
+# 0. dans un autre terminal : trafic de fond normal (alterne calme / normal / chargé).
+#    Prérequis : pile démarrée et `scripts/seed_demo.py` lancé. Laisser tourner pendant la collecte.
+python scripts/background_traffic.py --duration 900
+
+# 1. ~10 min d'échantillons pendant que le trafic tourne
 docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm \
   -v ./ml/data:/data -e DATASET_PATH=/data/normal.csv anomaly-detector \
   python -m app.cli collect --count 120 --interval 5
