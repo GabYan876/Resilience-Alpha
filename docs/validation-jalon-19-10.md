@@ -9,19 +9,19 @@ Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 
 ### Hugo (infra, WAF, réseaux)
 - [ ] Les 5 réseaux Docker (public, app, obs, control, rag) et l'exposition (seul le WAF est publié) sont réalisables dans le Compose.
-- [ ] Le `docker-socket-proxy` n'expose que `restart` pour le moteur de remédiation.
+- [x] Le `docker-socket-proxy` n'expose que `restart` pour le moteur de remédiation.
 - **Question 1 — WAF** : ModSecurity ou Coraza ? Quel mécanisme de blocage d'IP (liste dynamique, API restreinte) ? Le moteur appellera un port `IpBlocker`.
 - **Question 3 — SOC** : Loki/Grafana seuls, ou Wazuh si la RAM le permet ? (PC Hôte : 16 Go, `mem_limit` partout.)
 
 ### Antoine (API, auth, BDD)
-- [ ] Contrat de la sonde de transaction : `POST /transactions` avec `{from_account, to_account, amount}` (comptes de test fictifs), réponse 2xx si succès.
-- [ ] `GET /health` sur l'API métier.
+- [x] Contrat de la sonde de transaction : `POST /transactions` avec `{from_account, to_account, amount}` (comptes de test fictifs), réponse 2xx si succès.
+- [x] `GET /health` sur l'API métier.
 - **Question** : faut-il un jeton d'authentification pour la sonde ? (variable `PROBE_TOKEN`, un compte de test dédié).
 - **Question** : sauvegarde et restauration de la BDD (scénario S4, `RestoreDatabaseAction`) : faisable cette semaine ? Quel mécanisme ?
 
-### Gabriel (front, dashboard)
-- [ ] Le dashboard affiche l'état avant / pendant / après depuis les événements JSON du moteur (`incident.detected`, `decision.made`, `action.executed`, `verification.completed`, `incident.resolved` / `incident.failed`).
-- **Question** : source des données du dashboard : flux d'événements du moteur, Loki ou Grafana ?
+### Gabriel (front, vérification du dashboard Grafana)
+- [x] Le dashboard affiche l'état avant / pendant / après depuis les événements JSON du moteur (`incident.detected`, `decision.made`, `action.executed`, `verification.completed`, `incident.resolved` / `incident.failed`).
+- ~~Question : source des données du dashboard~~ **Réponse (20/10)** : le dashboard est **Grafana** (`resilience-alpha.json`), alimenté par Prometheus et Loki. Aucun dashboard React à écrire.
 
 ### François (RAG, red team)
 - [ ] Le RAG est isolé (réseau `rag`, lecture seule, aucun accès privilégié) : codé et vérifié en conteneur, mais ER6 reste EN COURS (injection de prompt non prouvée, voir `04-matrice-tracabilite.md`).
@@ -46,9 +46,9 @@ Responsable : Antoine. Contributeurs : Hugo (infra), Kevin (remédiation).
 
 Tous : lire `CONTRIBUTING.md` (5 min).
 
-- [ ] Branche par fonctionnalité, PR relue par Kevin, pas de push direct sur `main`.
-- [ ] Conventional Commits en français, **sans co-auteur**.
-- [ ] Aucun secret dans le dépôt, `.env` ignoré.
+- [x] Branche par fonctionnalité, PR relue par Kevin, pas de push direct sur `main`.
+- [x] Conventional Commits en français, **sans co-auteur**.
+- [x] Aucun secret dans le dépôt, `.env` ignoré.
 - [ ] Formatage `ruff format` : confirmer que ça fonctionne sur chaque PC (`black` est bloqué sur un PC par une stratégie de contrôle d'application).
 
 ## 4. Hotspot

@@ -11,7 +11,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
 1. **Avant** : le dashboard montre les services sains ; une transaction de test réussit.
 2. **Attaque** : flood HTTP contrôlé depuis le PC Attaquant vers l'API (bonus : injection SQL bloquée par le WAF).
 3. **Détection** : métriques (Prometheus) et logs (Loki) montrent un pic anormal ; le modèle ML signale l'anomalie.
-4. **Remédiation automatique** : décision → blocage de l'IP (WAF/pare-feu) → redémarrage/mise à l'échelle de l'API.
+4. **Remédiation automatique** : décision → blocage de la source (IP et compte, via le WAF) → redémarrage/mise à l'échelle de l'API.
 5. **Vérification** : l'API répond **et** une nouvelle transaction passe → incident clos.
 
 ## Architecture
@@ -29,7 +29,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
         Moteur de remédiation : Décision ─► Actions ─► Vérification
                                         │  (via docker-socket-proxy)
                                         ▼
-                               Dashboard de supervision
+                               Dashboard Grafana (supervision)
 
  Assistant RAG (Ollama + LangChain) — isolé, lecture seule, sans droits privilégiés
 ```
@@ -40,7 +40,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 | Pilier | Contenu |
 |---|---|
-| Développement | Microservices FastAPI (BDD, API, auth), front React/Tailwind, moteur de remédiation, dashboard |
+| Développement | Microservices FastAPI (BDD, API, auth), front de paiement React/Tailwind, moteur de remédiation, dashboard de supervision Grafana |
 | Infrastructure | Docker Compose, Ansible, Prometheus, Grafana, Loki |
 | IA / Data | Détection d'anomalies (ML), assistant RAG Ollama + LangChain (≤ 8B) |
 | Cybersécurité | Attaques Red Team, WAF, SIEM/SOC, durcissement, Vault/SOPS |
@@ -57,12 +57,12 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 │   ├── anomaly-detector/ # ML d'anomalies
 │   ├── rag-assistant/    # assistant Ollama + LangChain
 │   └── db/               # schéma et migrations
-├── frontend/             # front paiement + dashboard (React/Tailwind)
+├── frontend/             # front de paiement (React/Tailwind) ; le dashboard est dans infra/observability (Grafana)
 ├── infra/
 │   ├── compose/          # docker-compose*.yml
 │   ├── ansible/          # playbooks
 │   ├── observability/    # Prometheus, Grafana, Loki
-│   ├── waf/              # règles ModSecurity/Coraza
+│   ├── waf/              # ModSecurity + OWASP CRS, liste de blocage (njs)
 │   └── secrets/          # Vault / SOPS (chiffré uniquement)
 ├── attack/               # scripts Red Team (PC Attaquant)
 ├── ml/                   # jeux de données, notebooks, entraînement
@@ -82,22 +82,37 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`). L'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README). Les playbooks Ansible (`infra/ansible/`) restent à venir.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
+
+> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
+
+Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
-cp .env.example .env            # puis renseigner les secrets (Vault/SOPS)
+cp .env.example .env
+#    Remplacer chaque « remplacer-par-un-... » : mots de passe, PROBE_TOKEN, REMEDIATION_INGEST_TOKEN,
+#    GRAFANA_ADMIN_PASSWORD, et JWT_SECRET (≥ 32 caractères) :
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 
-# 2. Socle : base, migrations, API, moteur de remédiation
-#    --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
+# 2. Modèle ML : absent d'un clone neuf (ml/models/* est ignoré par Git, un .joblib est du code
+#    désérialisé) et le détecteur refuse de démarrer sans lui. On le construit et on l'entraîne
+#    sur le jeu versionné ml/data/normal.csv. MSYS_NO_PATHCONV=1 évite que Git Bash réécrive les chemins.
+docker compose --env-file .env -f infra/compose/docker-compose.yml build anomaly-detector
+MSYS_NO_PATHCONV=1 docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm --no-deps   -v ./ml/data:/data:ro -v ./ml/models:/models -e DATASET_PATH=/data/normal.csv   anomaly-detector python -m app.cli train
+
+# 3. Socle : base, migrations (avec le jeu de données fictif), API, auth, passerelle, WAF,
+#    moteur de remédiation, détecteur. --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
 docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build --wait
 
-# 3. Observabilité (pile autonome, lancée après le socle qui crée `resilience-net`)
+# 4. Observabilité (pile autonome, lancée après le socle qui crée `resilience-net`)
 docker compose --env-file .env -f infra/compose/docker-compose.observability.yml up -d --wait
 
-# 4. Vérifier le socle
+# 5. Vérifier le socle
 ./scripts/check_transaction.sh  # API saine + transaction de test réglée
 ```
+
+Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
@@ -143,7 +158,7 @@ cd services/rag-assistant && python -m pytest -q
 | Hugo | Infra + Cyber |
 | Kevin | Tech lead + remédiation / ML |
 | Antoine | Dev backend, EBIOS RM, PCA/PRA |
-| Gabriel | Dev front, dashboard, NIS2/DORA, pitch |
+| Gabriel | Dev front, NIS2/DORA, pitch, vérification du dashboard Grafana |
 | François | IA RAG, Red Team, assemblage du Dossier |
 
 ## Planning

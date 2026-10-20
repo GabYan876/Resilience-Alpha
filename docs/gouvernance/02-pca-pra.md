@@ -1,6 +1,6 @@
 # PCA / PRA — Resilience-Alpha
 
-Statut : squelette. Responsable : Antoine. Valeurs RTO/RPO : mesurées par Kevin lors des essais.
+Statut : première version du 20/10 (RTO/RPO provisoires, à valider). Responsable : Antoine. Valeurs RTO/RPO : mesurées par Kevin lors des essais.
 
 ## 1. Périmètre et hypothèses
 - Hébergement : PC Hôte unique (Docker Compose). Pas de site de secours réel : à écrire comme limite.
@@ -18,15 +18,15 @@ Statut : squelette. Responsable : Antoine. Valeurs RTO/RPO : mesurées par Kevin
 
 Distinguer **restauration de disponibilité** (S1, S3) et **correction de compromission** (S2) : les actions sont différentes.
 
-État d'avancement (19/10) : le pipeline couvre S1 (redémarrage + vérification) dans `services/remediation/`. Restent à développer : `WafIpBlocker`, `VaultSecretRotator` (S1/S2), `RestoreDatabaseAction` (S4, droits élevés sur la BDD à encadrer). Tant qu'ils n'existent pas, ces scénarios ne sont **pas** automatiques : le moteur déclare l'incident en échec plutôt que résolu.
+État d'avancement (20/10) : le pipeline couvre S1 (blocage de la source par IP et compte, redémarrage, vérification) et S3 (sondage de santé) dans `services/remediation/`. Restent à développer : `VaultSecretRotator` (S2), `RestoreDatabaseAction` (S4, droits élevés sur la BDD à encadrer). Tant qu'ils n'existent pas, ces scénarios ne sont **pas** automatiques : le moteur déclare l'incident en échec plutôt que résolu.
 
 ## 3. Objectifs de continuité et de reprise
 
 | Service | Criticité | RTO cible | RTO mesuré | RPO cible | RPO mesuré | Source de la mesure |
 |---|---|---|---|---|---|---|
-| Paiement (API + auth + BDD) | À DÉFINIR | À DÉFINIR | À MESURER | À DÉFINIR | À MESURER | Événements JSON de remédiation (Loki) |
-| Dashboard | À DÉFINIR | | | | | |
-| Observabilité | À DÉFINIR | | | | | |
+| Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5) ; crash : 34 s | À DÉFINIR avec la sauvegarde (S4) | Non mesurable : aucune sauvegarde | Événements JSON de remédiation (Loki) |
+| Dashboard (Grafana) | Importante | 5 min (proposition) | À MESURER | Sans objet (provisionné par fichiers) | Sans objet | |
+| Observabilité | Importante : sans elle la détection est aveugle | 5 min (proposition) | À MESURER | Logs perdus pendant l'arrêt | À MESURER | |
 
 Définition de la reprise : **API saine ET transaction de test réussie** (pas seulement un conteneur relancé).
 
@@ -41,7 +41,7 @@ Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles dé
 | Pilotage / décision | Kevin | Relit les événements, confirme la clôture, ajuste le seuil ML |
 | Infra / WAF | Hugo | Vérifie le WAF et les réseaux, exécute le script de reset d'état |
 | Backend / BDD | Antoine | Contrôle l'intégrité de la BDD et la restauration |
-| Front / dashboard | Gabriel | Vérifie l'affichage avant / pendant / après |
+| Front / dashboard Grafana | Gabriel | Vérifie le front de paiement et l'affichage Grafana avant / pendant / après |
 | Investigation / red team | François | Investigue S2 (fuite éventuelle), rapporte l'attaque jouée |
 
 ## 5. Choix de restauration
@@ -55,9 +55,14 @@ Chaque essai : date, scénario, résultat, RTO observé, intervention humaine (o
 
 | Date | Scénario | Résultat | RTO observé | Intervention humaine | Preuve |
 |---|---|---|---|---|---|
-| | | | | | |
+| 20/10 | S1 flood, 5 passages (`scripts/demo_loop.py`) | 5/5 reprises, vérifiées par transaction de test | 33-48 s (moyenne 45 s) | Non | Événements `incident.*` dans Loki |
+| 20/10 | S3 crash de l'API | Reprise automatique | 34 s (détection ~30 s) | Non | Événements `incident.*` (kind `crash`) dans Loki |
 
 Objectif : ≥ 5 passages sans intervention.
 
 ## 8. Risques qui subsistent après la reprise
-À DÉFINIR. À rédiger honnêtement : ex. attaquant qui revient, secret compromis non détecté, SPOF du PC Hôte, faux positif du modèle ML.
+- **Attaquant qui revient** : bloqué par compte, il peut en créer un autre ; sous Docker Desktop l'IP n'est pas distinguée.
+- **Secret compromis non détecté** : rotation codée mais sans Vault/SOPS ; secrets dans `.env`.
+- **Données** : aucune sauvegarde, donc S4 et le RPO ne sont pas tenus.
+- **SPOF** : un seul PC Hôte (S5 hors périmètre).
+- **Faux positif ML** : 0 sur 120 mesures de trafic inédit, mais le score sature et le seuil reste à recalibrer sur trafic réel.

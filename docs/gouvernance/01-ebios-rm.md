@@ -1,6 +1,6 @@
 # EBIOS Risk Manager — Resilience-Alpha
 
-Statut : squelette. Responsable : Antoine. Données techniques : Hugo, Kevin.
+Statut : ateliers 1 à 5 rédigés le 20/10 sous forme de **propositions à valider par Antoine**. Responsable : Antoine. Données techniques : Hugo, Kevin.
 
 ## Atelier 1 — Cadrage et socle de sécurité
 
@@ -23,40 +23,40 @@ Décision du 19/10 : une seule échelle à 4 niveaux (proposition de définition
 
 | Valeur métier | Description | Biens supports (conteneurs, données) | Critique ? |
 |---|---|---|---|
-| Traitement d'un paiement | Une transaction est acceptée et enregistrée | API métier, auth, BDD, WAF | À DÉFINIR |
-| Intégrité des données de transaction | Montants/comptes non altérés | BDD | À DÉFINIR |
-| Confidentialité des données clients (fictives) | Pas de fuite | BDD, secrets (Vault/SOPS) | À DÉFINIR |
-| Capacité de détection et de reprise | Détecter et se réparer sans humain | Moteur de remédiation, Prometheus, Loki, modèle ML | À DÉFINIR |
+| Traitement d'un paiement | Une transaction est acceptée et enregistrée | API métier, auth, BDD, WAF | Oui |
+| Intégrité des données de transaction | Montants/comptes non altérés | BDD | Oui |
+| Confidentialité des données clients (fictives) | Pas de fuite | BDD, secrets (Vault/SOPS) | Oui (données fictives, exigence traitée comme réelle) |
+| Capacité de détection et de reprise | Détecter et se réparer sans humain | Moteur de remédiation, Prometheus, Loki, modèle ML | Oui (c'est l'objet du sujet) |
 
 ### Événements redoutés
 
 | ID | Événement redouté | Valeur impactée | Impact (échelle) | Gravité |
 |---|---|---|---|---|
-| ER1 | Paiement indisponible (flood / saturation) | Traitement d'un paiement | Coût d'arrêt : À DÉFINIR | À DÉFINIR |
-| ER2 | Exfiltration de données (SQLi) | Confidentialité | À DÉFINIR | À DÉFINIR |
-| ER3 | Altération de transactions | Intégrité | À DÉFINIR | À DÉFINIR |
-| ER4 | Détournement du moteur de remédiation (droits élevés) ou du `docker-socket-proxy` | Détection et reprise | À DÉFINIR | À DÉFINIR |
-| ER5 | Faux positif ou contournement du modèle ML (coupure inutile, ou attaque non vue) | Détection et reprise, Traitement d'un paiement | À DÉFINIR | À DÉFINIR |
-| ER6 | Abus de l'assistant RAG (injection de prompt, fuite de documents indexés) | Confidentialité | À DÉFINIR | À DÉFINIR |
+| ER1 | Paiement indisponible (flood / saturation) | Traitement d'un paiement | Arrêt toléré = RTO cible (60 s) ; au-delà, des paiements sont perdus | 3 Grave |
+| ER2 | Exfiltration de données (SQLi) | Confidentialité | Fuite de comptes et de soldes (fictifs) | 4 Critique |
+| ER3 | Altération de transactions | Intégrité | Soldes faux, virements rejoués | 4 Critique |
+| ER4 | Détournement du moteur de remédiation (droits élevés) ou du `docker-socket-proxy` | Détection et reprise | Droits élevés sur les conteneurs, perte de contrôle | 4 Critique |
+| ER5 | Faux positif ou contournement du modèle ML (coupure inutile, ou attaque non vue) | Détection et reprise, Traitement d'un paiement | Coupure inutile ou attaque non vue ; reprise automatique attendue | 2 Significative |
+| ER6 | Abus de l'assistant RAG (injection de prompt, fuite de documents indexés) | Confidentialité | Fuite de la documentation indexée (non confidentielle) | 2 Significative |
 
 ### Socle de sécurité (écarts)
 Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l'ANSSI**, limité aux règles pertinentes pour le démonstrateur. Pour chaque règle : état (appliquée / partielle / absente) + preuve dans le dépôt. Les numéros de règles sont à reporter depuis le guide.
 
 | Thème | Règle retenue (n° à reporter) | État | Preuve dans le dépôt |
 |---|---|---|---|
-| Cloisonnement réseau | Réseaux Docker internes, seul le WAF publié | À ÉVALUER | `infra/compose/` |
-| Comptes et moindre privilège | `docker-socket-proxy`, pas d'interface d'admin exposée | À ÉVALUER | `infra/compose/`, `services/remediation/app/adapters/docker_proxy.py` |
-| Secrets | Vault ou SOPS, aucun secret en clair | À ÉVALUER | `infra/secrets/`, `.gitignore` |
-| Journalisation et détection | Logs JSON centralisés (Loki), détection ML | À ÉVALUER | `infra/observability/`, `services/remediation/app/adapters/json_publisher.py` |
-| Sauvegarde | Sauvegarde et restauration de la BDD | À ÉVALUER | À DÉFINIR |
-| Dépendances et images | Versions épinglées | À ÉVALUER | `services/*/requirements.txt` |
+| Cloisonnement réseau | Réseaux Docker internes, seul le WAF publié | Appliquée | `infra/compose/` |
+| Comptes et moindre privilège | `docker-socket-proxy`, pas d'interface d'admin exposée | Appliquée | `infra/compose/`, `services/remediation/app/adapters/docker_proxy.py` |
+| Secrets | Vault ou SOPS, aucun secret en clair | Partielle : `.env` ignoré par Git, Vault/SOPS absent | `infra/secrets/`, `.gitignore` |
+| Journalisation et détection | Logs JSON centralisés (Loki), détection ML | Appliquée | `infra/observability/`, `services/remediation/app/adapters/json_publisher.py` |
+| Sauvegarde | Sauvegarde et restauration de la BDD | Absente | Aucune (S4 à développer) |
+| Dépendances et images | Versions épinglées | Partielle : versions fixes, pas de scan de vulnérabilités | `services/*/requirements.txt` |
 
 ## Atelier 2 — Sources de risque
 
 | Source de risque | Objectif visé | Motivation | Ressources | Retenue ? |
 |---|---|---|---|---|
-| Attaquant externe (PC Attaquant, simulé) | Indisponibilité / vol de données | À DÉFINIR | Outils d'attaque (`attack/`) | Oui |
-| Initié malveillant ou négligent | À DÉFINIR | | | À DÉFINIR |
+| Attaquant externe (PC Attaquant, simulé) | Indisponibilité / vol de données | Perturber ou voler un service de paiement | Outils d'attaque (`attack/`) | Oui |
+| Initié négligent | Exposer un secret ou mal configurer | Aucune intention | Accès au dépôt et au Compose | Oui (secret commité, `.env` copié) ; l'initié malveillant est hors périmètre du démonstrateur |
 
 ## Atelier 3 — Scénarios stratégiques
 
@@ -64,11 +64,11 @@ Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l
 
 | ID | Source | Objectif | Chemin d'attaque (partie prenante) | Gravité | Mesures écosystème |
 |---|---|---|---|---|---|
-| SS1 | Attaquant externe | Saturer le paiement | Flood HTTP via le WAF | À DÉFINIR | |
-| SS2 | Attaquant externe | Exfiltrer la BDD | SQLi via API métier | À DÉFINIR | |
-| SS3 | Attaquant externe | Compromettre la chaîne logicielle | Image/dépendance piégée | À DÉFINIR | |
-| SS4 | Attaquant externe | Prendre le contrôle de l'hôte | Détournement du moteur de remédiation ou du `docker-socket-proxy` | À DÉFINIR | |
-| SS5 | Attaquant externe | Rendre la détection aveugle ou déclencher des coupures | Données forgées pour tromper le modèle ML (faux négatifs / faux positifs) | À DÉFINIR | |
+| SS1 | Attaquant externe | Saturer le paiement | Flood HTTP via le WAF | 3 Grave | WAF CRS, détecteur ML, blocage de la source |
+| SS2 | Attaquant externe | Exfiltrer la BDD | SQLi via API métier | 4 Critique | WAF CRS, requêtes paramétrées, compte BDD `app_rw` limité |
+| SS3 | Attaquant externe | Compromettre la chaîne logicielle | Image/dépendance piégée | 4 Critique | Versions épinglées, WAF par digest ; scan de vulnérabilités à ajouter |
+| SS4 | Attaquant externe | Prendre le contrôle de l'hôte | Détournement du moteur de remédiation ou du `docker-socket-proxy` | 4 Critique | Proxy limité au redémarrage/arrêt d'un conteneur existant, réseau `control` interne, jeton sur `POST /incidents` |
+| SS5 | Attaquant externe | Rendre la détection aveugle ou déclencher des coupures | Données forgées pour tromper le modèle ML (faux négatifs / faux positifs) | 2 Significative | Seuil appris, confirmation sur 3 mesures, vérification avant clôture |
 
 ## Atelier 4 — Scénarios opérationnels
 
@@ -76,16 +76,16 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 
 | ID | Scénario | Script d'attaque | Vraisemblance | Détection prévue (ML, WAF, log) |
 |---|---|---|---|---|
-| SO1 | Flood | À DÉFINIR (François) | À DÉFINIR | Détecteur ML sur métriques Prometheus |
-| SO2 | SQLi / exfiltration | À DÉFINIR (François) | À DÉFINIR | WAF + Loki |
+| SO1 | Flood : compte créé, connexion, rafale sur `/me/account` jusqu'à épuiser le pool de connexions BDD | `attack/flood_http.py` | Forte (outil simple, aucun prérequis) | Détecteur ML sur métriques Prometheus ; journal d'accès du WAF dans Loki pour désigner le compte |
+| SO2 | SQLi / exfiltration : reconnaissance des routes, injection dans un paramètre, extraction | À écrire (François, bonus) | Moyenne (CRS bloque les motifs courants au niveau 1) | Règles CRS dans le journal d'audit du WAF, vues dans Loki et Grafana |
 
 ## Atelier 5 — Traitement du risque
 
 | Risque | Niveau initial | Mesure | Où dans le dépôt | Preuve (test/démo) | Risque résiduel |
 |---|---|---|---|---|---|
-| Flood | À DÉFINIR | Blocage IP + restart + vérif transaction | `services/remediation/` | Démo n°… | À DÉFINIR |
-| SQLi | À DÉFINIR | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | | |
-| Détournement du moteur | À DÉFINIR | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config | |
-| Faux positif / contournement ML | À DÉFINIR | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | Résultats d'essais | |
+| Flood | 3 Grave | Blocage de la source (IP et compte) + restart + vérif transaction | `services/remediation/` | `scripts/demo_loop.py` : 5/5 reprises, RTO 33-48 s | Faible : un attaquant peut créer d'autres comptes ; IP non distinguée sous Docker Desktop |
+| SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | Aucune démo : script SQLi à écrire | Moyen : pas de `VaultSecretRotator`, investigation manuelle | |
+| Détournement du moteur | 4 Critique | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config (à faire avec Hugo) | Moyen : un jeton volé permet de déclencher des redémarrages |
+| Faux positif / contournement ML | 2 Significative | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | `evaluate` : 0 faux positif sur 120 mesures | Moyen : le score d'IsolationForest sature, seuil à recalibrer sur trafic réel |
 
 Les lignes alimentent [04-matrice-tracabilite.md](04-matrice-tracabilite.md).
