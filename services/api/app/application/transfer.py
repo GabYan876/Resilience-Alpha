@@ -49,8 +49,14 @@ class ExecuteTransfer:
                 )
                 return existing
 
-            source = await uow.accounts.get_by_iban(command.from_iban)
-            destination = await uow.accounts.get_by_iban(command.to_iban)
+            # Verrous pris dans l'ordre des IBAN, jamais dans l'ordre source puis destinataire :
+            # deux virements croisés (A -> B et B -> A) les prendraient en sens inverse et se
+            # bloqueraient mutuellement (deadlock PostgreSQL, 500 côté client).
+            locked = {}
+            for iban in sorted((command.from_iban, command.to_iban)):
+                locked[iban] = await uow.accounts.get_by_iban(iban)
+            source = locked[command.from_iban]
+            destination = locked[command.to_iban]
             if source is None or destination is None:
                 missing = command.from_iban if source is None else command.to_iban
                 self._publisher.publish("transaction.unknown_account", trace_id, account=missing)
