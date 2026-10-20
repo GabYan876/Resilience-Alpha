@@ -82,9 +82,9 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`) et le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`).
->
-> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), assistant RAG (`services/rag-assistant/`, aucun code), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
+
+> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
@@ -140,6 +140,7 @@ Critère de réussite : **aucune intervention humaine** entre l'attaque et la no
 # Un service à la fois : les paquets `app` de chaque service entrent en collision
 cd services/api         && python -m pytest -q   # unitaires (domaine sans I/O, adaptateurs avec doubles)
 cd services/remediation && python -m pytest -q
+cd services/rag-assistant && python -m pytest -q
 ./scripts/chaos.sh          # injection de défaillances (jeudi, à écrire)
 ```
 

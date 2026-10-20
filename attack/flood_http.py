@@ -31,6 +31,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 
 DEFAULT_TARGET = "http://127.0.0.1:8080"
 ALLOWED_HOSTS = {"127.0.0.1", "localhost", "192.168.137.1"}  # PC Hôte du consortium
@@ -118,6 +119,8 @@ def run(base_url: str, path: str, token: str, duration_s: float, workers: int) -
         thread.start()
 
     print(f"flood démarré sur {base_url}{path} ({workers} threads, {duration_s:.0f} s)")
+    # Horloge murale (UTC) : référence du RTO, comparable aux horodatages des événements du moteur.
+    print(f"début de l'attaque : {datetime.now(UTC).isoformat()}")
     last_report = start
     while time.monotonic() < stop_at:
         time.sleep(1)

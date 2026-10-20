@@ -10,7 +10,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 - [ ] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; reste à trancher Loki/Grafana seuls ou Wazuh.
 - [ ] Antoine : jeton pour la sonde (`PROBE_TOKEN`) et faisabilité de la sauvegarde/restauration BDD (S4).
-- [ ] François : RAG isolé, horodatage de début d'attaque dans le flood, Ollama sur un 3e PC.
+- [ ] François : RAG isolé (codé, ER6 EN COURS), horodatage de début d'attaque dans le flood (fait), Ollama sur un PC Linux dédié (décidé).
 - [x] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).
 - [ ] Antoine : EBIOS ateliers 1 à 3 (échelle de gravité, valeurs métier, ER1 à ER6, sources de risque, SS1 à SS5, socle ANSSI).
 - [ ] Tous : `ruff format` fonctionne sur chaque PC.
@@ -45,7 +45,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 - [x] Boucle de 5 démos : 5/5 reprises, RTO moyen 45 s, 0 % de faux positifs sur 120 mesures.
 - [ ] Rejouer le flood **depuis le PC Attaquant** vers `192.168.137.1` (jusqu'ici en local).
 - [ ] Script d'injection SQL (bonus, ER2) ; il ferait passer la ligne SQLi de la matrice de `À FAIRE` à `EN COURS`.
-- [ ] RAG : aucun code (`services/rag-assistant/` est vide). Décider ce soir de l'hôte Ollama et du modèle (≤ 8B) pour tenir « RAG opérationnel » mercredi.
+- [x] RAG : `services/rag-assistant/` codé (PR #30), Ollama sur un PC Linux dédié, modèle `llama3.1:8b` (≤ 8B). Reste à prouver ER6 (injection de prompt) et à brancher le dashboard si besoin.
 
 ## 5. EBIOS RM, ateliers 4 et 5 — Antoine
 
@@ -66,4 +66,4 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 - [ ] Le fil rouge tourne de bout en bout **avec le PC Attaquant** : flood → détection ML → blocage → reprise → transaction de test.
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
-- [ ] Les écarts restants (Ansible, Vault/SOPS, RAG, restauration BDD, SQLi) ont un responsable et une échéance mercredi.
+- [ ] Les écarts restants (Ansible, Vault/SOPS, restauration BDD, SQLi) ont un responsable et une échéance mercredi.
