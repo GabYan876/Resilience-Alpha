@@ -27,9 +27,9 @@ export default function Navcomp() {
 }
 
 function NavItem(props: any) {
-    if (props.id === 0 || props.id == 6) return <div className={props.css}></div>
-
     const nav = useNavigate();
+
+    if (props.id === 0 || props.id == 6) return <div className={props.css}></div>
 
     return <div className={props.css + " flex sm:pl-3 pt-1 pr-2 flex-col justify-center items-center sm:items-start sm:justify-normal sm:flex-row " + ((props.id === props.index)? "text-blue-700":" ") } onClick={() => { if (props.id != props.index) { props.setIndex(props.id); nav("/" + props.url) } }}>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-max size-10 hover:scale-125 ease-in duration-300 ">

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { useRecoilValue } from "recoil";
 import { baseurl } from "../../recoil/atom";
 import axios from "axios";
-import moment from "moment-timezone";
 
 // Montant en centimes -> euros.
 function euros(cents: number) {
@@ -37,7 +36,7 @@ export default function Transaction() {
 function TransactionHistory(props: any) {
 
     function when(date: string) {
-        return moment(date).tz(moment.tz.guess()).format('YYYY-MM-DD hh:mm:ss A (z)');
+        return new Date(date).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" });
     }
 
     return <div className="bg-white w-full m-2 sm:m-10 rounded-md shadow-md sm:p-5">

@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import axios from "axios";
 import uid from "../../assets/uid.svg";
@@ -9,7 +9,7 @@ import { baseurl, navatom, userinfo } from "../../recoil/atom";
 export default function Transfer() {
 
     const set = useSetRecoilState(navatom);
-    set(4);
+    useEffect(() => { set(4); }, [set]);
 
     const url = useRecoilValue(baseurl);
     const user: any = useRecoilValue(userinfo);

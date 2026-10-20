@@ -2,7 +2,6 @@ import React, { Suspense ,ReactNode} from 'react';
 import { RecoilRoot } from 'recoil';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import {NextUIProvider} from "@nextui-org/react";
 import Navbar from './component/Naviagtion/navbar';
 
 
@@ -19,11 +18,9 @@ function App() {
   return (
     <div className="h-screen w-screen">
       <RecoilRoot>
-        <NextUIProvider>
         <BrowserRouter>
             <AnimatedRoutes />
         </BrowserRouter>
-        </NextUIProvider>
       </RecoilRoot>
     </div>
   );

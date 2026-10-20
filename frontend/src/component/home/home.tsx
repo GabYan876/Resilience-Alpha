@@ -5,7 +5,7 @@ import Middlecomp from "./middlecomp";
 import Rightcomp from "./rightcomp";
 import { userinfo } from "../../recoil/atom";
 
-export default function home() {
+export default function Home() {
 
     const user: any = useRecoilValue(userinfo);
     const firstName = user.name.split(" ")[0];
