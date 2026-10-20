@@ -11,7 +11,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 - [ ] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; reste à trancher Loki/Grafana seuls ou Wazuh.
 - [ ] Antoine : jeton pour la sonde (`PROBE_TOKEN`) et faisabilité de la sauvegarde/restauration BDD (S4).
 - [ ] François : RAG isolé, horodatage de début d'attaque dans le flood, Ollama sur un 3e PC.
-- [ ] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).
+- [x] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).
 - [ ] Antoine : EBIOS ateliers 1 à 3 (échelle de gravité, valeurs métier, ER1 à ER6, sources de risque, SS1 à SS5, socle ANSSI).
 - [ ] Tous : `ruff format` fonctionne sur chaque PC.
 - [ ] Tous : hotspot `RESILIENCE-G<n>`, PC Hôte en `192.168.137.1`, PC Attaquant joint l'hôte et ne vise que lui.
@@ -30,14 +30,14 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 - [x] BDD (migrations 0001 et 0002), API métier (`/health`, `/transactions`, `/me/*`), auth (JWT), tests présents.
 - [x] Correctif des deadlocks de virement (#19).
 - [ ] Réponse sur `PROBE_TOKEN` et la sauvegarde/restauration BDD (S4, `RestoreDatabaseAction` n'existe pas encore).
-- [ ] Doc d'API à jour (`services/api/README.md`) avec les routes d'auth.
+- [x] Doc d'API à jour (`services/api/README.md`) avec les routes d'auth.
 
 ## 3. Front et dashboard — Gabriel
 
 - [x] Front Pay-Now sur notre API (inscription, connexion, solde, virement, historique).
 - [ ] **Arbitrage Grafana vs dashboard React à valider.** Le debrief et le sujet parlent d'un dashboard React ; le registre du 20/10 retient Grafana (« à valider avec Gabriel et le sujet »). Vérifier que le sujet accepte Grafana comme dashboard de supervision, sinon il reste un service à écrire.
 - [ ] Parcourir `resilience-alpha.json` pendant un flood : avant / pendant / après lisibles, événements `incident.*` visibles.
-- [ ] NIS2/DORA : colonnes « Statut » de `03-nis2-dora.md` à remplir (7 lignes à `À DÉFINIR`), périmètre non démontrable à écrire.
+- [x] NIS2/DORA : colonnes « Couverture » de `03-nis2-dora.md` remplies et périmètre non démontrable écrit (PR #27, propositions du 20/10 : relecture de Gabriel attendue).
 
 ## 4. Attaque et ML — François, Kevin
 
@@ -49,10 +49,10 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 ## 5. EBIOS RM, ateliers 4 et 5 — Antoine
 
-- [ ] Ateliers 1 à 3 validés (voir § 0), puis colonnes `À DÉFINIR` de `01-ebios-rm.md`.
-- [ ] Atelier 4 (scénarios opérationnels) : SO1 flood, SO2 SQLi ; renvoyer vers les démos mesurées.
-- [ ] Atelier 5 (traitement du risque) : tableau Flood / SQLi / détournement du moteur / faux positif ML, preuves liées.
-- [ ] `02-pca-pra.md` : RTO/RPO provisoires (mercredi) ; le RTO flood mesuré (33-48 s) sert de base.
+- [ ] Ateliers 1 à 3 validés (voir § 0). Les colonnes `À DÉFINIR` de `01-ebios-rm.md` sont remplies en propositions (PR #27) : validation d'Antoine attendue.
+- [x] Atelier 4 (scénarios opérationnels) : SO1 flood, SO2 SQLi ; renvoyer vers les démos mesurées.
+- [x] Atelier 5 (traitement du risque) : tableau Flood / SQLi / détournement du moteur / faux positif ML, preuves liées.
+- [x] `02-pca-pra.md` : RTO provisoires posés (60 s paiement, base : RTO flood mesuré 33-48 s). RPO à définir avec la sauvegarde (S4).
 
 ## 6. Cohérence d'intégration — Kevin
 
