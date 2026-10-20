@@ -289,3 +289,48 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+  # Détecteur ML : lit les métriques dans Prometheus (pile d'observabilité, même réseau),
+  # juge chaque mesure avec le modèle IsolationForest et signale au moteur (POST /incidents).
+  # Le modèle (ml/models/) est monté en lecture seule : c'est du code désérialisé.
+  anomaly-detector:
+    image: resilience-alpha/anomaly-detector:dev
+    build:
+      context: ../..
+      dockerfile: services/anomaly-detector/Dockerfile
+    container_name: resilience-anomaly-detector
+    restart: unless-stopped
+    mem_limit: 256m
+    networks:
+      - resilience-net # Prometheus (autre pile) et moteur de remédiation
+    expose:
+      - "8000"
+    depends_on:
+      remediation:
+        condition: service_healthy
+    environment:
+      REMEDIATION_INGEST_TOKEN: ${REMEDIATION_INGEST_TOKEN:?REMEDIATION_INGEST_TOKEN doit etre defini (voir .env.example)}
+      PROMETHEUS_URL: http://prometheus:9090
+      REMEDIATION_URL: http://remediation:8000
+      MODEL_PATH: /models/isolation_forest.joblib
+      TARGET_SERVICE: ${DETECTOR_TARGET_SERVICE:-api}
+      POLL_INTERVAL_S: ${DETECTOR_POLL_INTERVAL_S:-5}
+      CONFIRMATIONS: ${DETECTOR_CONFIRMATIONS:-3}
+      COOLDOWN_S: ${DETECTOR_COOLDOWN_S:-90}
+    volumes:
+      - ../../ml/models:/models:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import httpx,sys; sys.exit(0 if httpx.get('http://localhost:8000/health').is_success else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
