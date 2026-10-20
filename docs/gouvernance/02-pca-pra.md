@@ -25,8 +25,8 @@ Distinguer **restauration de disponibilité** (S1, S3) et **correction de compro
 | Service | Criticité | RTO cible | RTO mesuré | RPO cible | RPO mesuré | Source de la mesure |
 |---|---|---|---|---|---|---|
 | Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5) ; crash : 34 s | ≤ 5 min (intervalle de sauvegarde configuré) | 20 s sur l'essai du 20/10 (écart archive/corruption imposé) ; pire cas 300 s + marge 15 s | Événements JSON de remédiation (Loki) |
-| Dashboard (Grafana) | Importante | 5 min (proposition) | À MESURER | Sans objet (provisionné par fichiers) | Sans objet | |
-| Observabilité | Importante : sans elle la détection est aveugle | 5 min (proposition) | À MESURER | Logs perdus pendant l'arrêt | À MESURER | |
+| Dashboard (Grafana) | Importante | 5 min (proposition) | 6-10 s (3 essais, arrêt brutal puis démarrage jusqu'à `healthy`) | Sans objet (provisionné par fichiers) | Sans objet | Mesure du 20/10 (Kevin), `docker kill` puis `docker start` |
+| Observabilité | Importante : sans elle la détection est aveugle | 5 min (proposition) | Prometheus 6-8 s, Loki 22-24 s (3 essais chacun) | Logs perdus pendant l'arrêt | Non mesuré : la perte de logs pendant l'arrêt de Loki reste à quantifier | Mesure du 20/10 (Kevin), même méthode ; aucune règle de remédiation ne redémarre ces services, seul `restart: unless-stopped` s'en charge |
 
 Définition de la reprise : **API saine ET transaction de test réussie** (pas seulement un conteneur relancé).
 
