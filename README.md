@@ -86,20 +86,33 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 >
 > **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), assistant RAG (`services/rag-assistant/`, aucun code), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
 
+Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
+
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
-cp .env.example .env            # puis renseigner les secrets (Vault/SOPS)
+cp .env.example .env
+#    Remplacer chaque « remplacer-par-un-... » : mots de passe, PROBE_TOKEN, REMEDIATION_INGEST_TOKEN,
+#    GRAFANA_ADMIN_PASSWORD, et JWT_SECRET (≥ 32 caractères) :
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 
-# 2. Socle : base, migrations, API, moteur de remédiation
-#    --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
+# 2. Modèle ML : absent d'un clone neuf (ml/models/* est ignoré par Git, un .joblib est du code
+#    désérialisé) et le détecteur refuse de démarrer sans lui. On le construit et on l'entraîne
+#    sur le jeu versionné ml/data/normal.csv. MSYS_NO_PATHCONV=1 évite que Git Bash réécrive les chemins.
+docker compose --env-file .env -f infra/compose/docker-compose.yml build anomaly-detector
+MSYS_NO_PATHCONV=1 docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm --no-deps   -v ./ml/data:/data:ro -v ./ml/models:/models -e DATASET_PATH=/data/normal.csv   anomaly-detector python -m app.cli train
+
+# 3. Socle : base, migrations (avec le jeu de données fictif), API, auth, passerelle, WAF,
+#    moteur de remédiation, détecteur. --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
 docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build --wait
 
-# 3. Observabilité (pile autonome, lancée après le socle qui crée `resilience-net`)
+# 4. Observabilité (pile autonome, lancée après le socle qui crée `resilience-net`)
 docker compose --env-file .env -f infra/compose/docker-compose.observability.yml up -d --wait
 
-# 4. Vérifier le socle
+# 5. Vérifier le socle
 ./scripts/check_transaction.sh  # API saine + transaction de test réglée
 ```
+
+Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
