@@ -31,6 +31,7 @@ def test_poste_le_contrat_attendu_par_le_moteur():
         "source": "prometheus:api",
         "kind": "availability",
         "attacker_ip": None,
+        "attacker_subject": None,
         "target_service": "api",
     }
 
@@ -53,7 +54,5 @@ def test_le_timeout_du_signalement_depasse_largement_celui_des_requetes_promethe
         return httpx.Response(200, json={})
 
     client = httpx.Client(transport=httpx.MockTransport(handler), timeout=3.0)
-    HttpAnomalyReporter(client, "http://remediation:8000", "tok", timeout_s=75.0).report(
-        DETECTION
-    )
+    HttpAnomalyReporter(client, "http://remediation:8000", "tok", timeout_s=75.0).report(DETECTION)
     assert captured["timeout"] == {"connect": 75.0, "read": 75.0, "write": 75.0, "pool": 75.0}

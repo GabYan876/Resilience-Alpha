@@ -3,7 +3,7 @@ from app.domain.models import IncidentKind
 from tests.fakes import FLOOD, NORMAL, FakeClock, RecordingReporter, ScriptedSource, ThresholdModel
 
 
-def build(items, reporter=None, clock=None, confirmations=3, cooldown_s=90.0):
+def build(items, reporter=None, clock=None, confirmations=3, cooldown_s=90.0, locator=None):
     reporter = reporter or RecordingReporter()
     clock = clock or FakeClock()
     service = DetectionService(
@@ -14,6 +14,7 @@ def build(items, reporter=None, clock=None, confirmations=3, cooldown_s=90.0):
         confirmations=confirmations,
         cooldown_s=cooldown_s,
         clock=clock,
+        locator=locator,
     )
     return service, reporter, clock
 
@@ -71,4 +72,37 @@ def test_echec_du_signalement_est_retente_a_l_iteration_suivante():
         assert service.tick() is None
     reporter.fail = False
     assert service.tick() is not None
+    assert len(reporter.detections) == 1
+
+
+class _Locator:
+    def __init__(self, result=None, error=None):
+        self._result, self._error = result, error
+
+    def locate(self):
+        if self._error:
+            raise self._error
+        return self._result
+
+
+def test_la_detection_nomme_l_attaquant_trouve():
+    service, reporter, _ = build([FLOOD] * 3, locator=_Locator("compte-attaquant"))
+    for _ in range(3):
+        detection = service.tick()
+    assert detection.attacker_subject == "compte-attaquant"
+    assert reporter.detections[0].attacker_subject == "compte-attaquant"
+
+
+def test_sans_attaquant_identifie_on_signale_quand_meme():
+    service, reporter, _ = build([FLOOD] * 3, locator=_Locator(None))
+    for _ in range(3):
+        detection = service.tick()
+    assert detection is not None and detection.attacker_subject is None
+
+
+def test_loki_en_panne_ne_bloque_pas_le_signalement():
+    service, reporter, _ = build([FLOOD] * 3, locator=_Locator(error=ConnectionError("loki")))
+    for _ in range(3):
+        detection = service.tick()
+    assert detection is not None and detection.attacker_subject is None
     assert len(reporter.detections) == 1

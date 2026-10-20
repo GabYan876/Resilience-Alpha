@@ -34,6 +34,7 @@ class HttpAnomalyReporter:
                 "source": detection.source,
                 "kind": detection.kind.value,
                 "attacker_ip": detection.attacker_ip,
+                "attacker_subject": detection.attacker_subject,
                 "target_service": detection.target_service,
             },
             timeout=self._timeout_s,

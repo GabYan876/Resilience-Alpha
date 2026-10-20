@@ -82,7 +82,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 ## Démarrage rapide
 
-> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). Le WAF, l'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
+> Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, et le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`). le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`). L'assistant RAG et les playbooks Ansible (`infra/ansible/`) restent à venir.
 
 ```bash
 # 1. Configuration (aucun secret n'est versionné)
@@ -101,7 +101,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.observability.yml
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
-Accès actuel (poste hôte uniquement) : front Pay-Now sur `http://127.0.0.1:8080` (la passerelle ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000`. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
+Accès actuel (poste hôte uniquement) : front Pay-Now sur `http://127.0.0.1:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000`. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
 
 ## Lancer la démonstration
 

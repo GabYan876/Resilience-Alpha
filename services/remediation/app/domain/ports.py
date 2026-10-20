@@ -64,6 +64,14 @@ class IpBlocker(Protocol):
     def unblock(self, ip: str) -> None: ...  # nécessaire au reset de démo
 
 
+class SubjectBlocker(Protocol):
+    """Bloque un compte (sujet du jeton) : utile quand l'IP vue par le WAF est celle d'un relais."""
+
+    def block(self, subject: str) -> None: ...
+
+    def unblock(self, subject: str) -> None: ...
+
+
 class SecretRotator(Protocol):
     def rotate(self, secret_name: str) -> None: ...
 

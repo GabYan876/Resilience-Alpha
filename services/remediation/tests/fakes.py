@@ -83,3 +83,14 @@ class InMemoryPublisher:
     @property
     def names(self) -> list[str]:
         return [e.event for e in self.events]
+
+
+class FakeSubjectBlocker:
+    def __init__(self) -> None:
+        self.blocked: set[str] = set()
+
+    def block(self, subject: str) -> None:
+        self.blocked.add(subject)
+
+    def unblock(self, subject: str) -> None:
+        self.blocked.discard(subject)

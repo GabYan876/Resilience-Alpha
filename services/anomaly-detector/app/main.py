@@ -15,6 +15,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.adapters.http_reporter import HttpAnomalyReporter
 from app.adapters.isolation_forest import JoblibModelStore
+from app.adapters.loki_locator import LokiAttackerLocator
 from app.adapters.prometheus_observer import PrometheusVerdictObserver
 from app.adapters.prometheus_source import PrometheusMetricsSource
 from app.api.routes import build_router
@@ -42,6 +43,13 @@ def build_service(
         cooldown_s=settings.cooldown_s,
         clock=time.monotonic,
         observers=[PrometheusVerdictObserver(registry)],
+        locator=LokiAttackerLocator(
+            client,
+            settings.loki_url,
+            window=settings.attacker_window,
+            min_requests=settings.attacker_min_requests,
+            min_share=settings.attacker_min_share,
+        ),
     )
 
 
