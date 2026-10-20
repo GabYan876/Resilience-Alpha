@@ -46,6 +46,18 @@ Sous Git Bash (Windows), préfixer ces deux commandes par `MSYS_NO_PATHCONV=1` :
 réécrit `./ml/data:/data` en chemin Windows et le montage CLI ne remplace plus le `/models:ro`
 défini dans le compose, ce qui fait échouer l'entraînement (`OSError: Read-only file system`).
 
+## Mesurer la qualité du modèle
+
+`evaluate` rejoue le modèle sur des mesures **jamais vues à l'entraînement** : il compte les
+fausses alertes sur du trafic normal inédit (même règle qu'en ligne : `CONFIRMATIONS` jugements
+anormaux de suite) et vérifie que l'attaque est détectée. Le jeu d'attaque s'enregistre comme
+le trafic normal (`collect`), flood en cours et détecteur arrêté pour qu'il ne déclenche pas la
+remédiation à ce moment-là.
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm   -v ./ml/data:/data:ro -e DATASET_PATH=/data/normal.csv anomaly-detector   python -m app.cli evaluate --normal /data/holdout.csv --attack /data/attack.csv
+```
+
 Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mieux qu'un détecteur muet.
 
 ## Limites connues
