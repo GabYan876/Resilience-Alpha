@@ -8,10 +8,10 @@ Chacun relit son périmètre, répond aux questions et coche. Les réponses sont
 Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 
 ### Hugo (infra, WAF, réseaux)
-- [ ] Les 5 réseaux Docker (public, app, obs, control, rag) et l'exposition (seul le WAF est publié) sont réalisables dans le Compose.
+- [x] Les 5 réseaux Docker (`resilience-net`, `db-internal`, `logs-query`, `control-internal`, `rag`) et l'exposition (seul le WAF publie un port, `127.0.0.1:8080` par défaut) sont réalisés dans `infra/compose/docker-compose.yml` : chaque service n'a que les réseaux dont il a besoin (`postgres`/`db-recovery` → `db-internal` seul ou + `control-internal` ; `docker-proxy-ctl` → `control-internal` seul ; `rag-assistant` → `rag` seul). Vérifié le 21/10 (Kevin) directement dans le fichier Compose.
 - [x] Le `docker-socket-proxy` n'expose que `restart` pour le moteur de remédiation.
-- **Question 1 — WAF** : ModSecurity ou Coraza ? Quel mécanisme de blocage d'IP (liste dynamique, API restreinte) ? Le moteur appellera un port `IpBlocker`.
-- **Question 3 — SOC** : Loki/Grafana seuls, ou Wazuh si la RAM le permet ? (PC Hôte : 16 Go, `mem_limit` partout.)
+- ~~**Question 1 — WAF** : ModSecurity ou Coraza ?~~ **Réponse (20/10, `06-pilotage-arbitrages.md`)** : ModSecurity + OWASP CRS (nginx), blocage par **compte** (`sub` du JWT) en plus de l'IP — la passerelle Docker Desktop masque l'IP réelle. Revalidé le 21/10 sur 5 passages réels depuis le PC Attaquant.
+- **Question 3 — SOC** : Loki/Grafana seuls, ou Wazuh si la RAM le permet ? **Toujours ouverte** — aucune trace de Wazuh dans le Compose ni d'arbitrage dans `06-pilotage-arbitrages.md` ; reportée dans `validation-jalon-21-10.md` §8 (Hugo, échéance jeudi matin).
 
 ### Antoine (API, auth, BDD)
 - [x] Contrat de la sonde de transaction : `POST /transactions` avec `{from_account, to_account, amount}` (comptes de test fictifs), réponse 2xx si succès.

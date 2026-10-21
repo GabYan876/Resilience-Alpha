@@ -18,7 +18,12 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [ ] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood.
 - [ ] Tous : `ruff format` fonctionne sur chaque PC ; hotspot `RESILIENCE-G<n>` et PC Hôte en `192.168.137.1`.
 - [x] Reliquat du 19/10 : cases EBIOS (ateliers 1 à 3) cochées et réponses d'Antoine et de Kevin reportées dans `validation-jalon-19-10.md`.
-- [ ] Reliquat du 19/10 restant : les 5 réseaux Docker réalisables dans le Compose (Hugo), RAG isolé avec ER6 prouvé (François), questions WAF et SOC de Hugo.
+- [x] Reliquat du 19/10 restant, vérifié le 21/10 contre le dépôt (voir `validation-jalon-19-10.md` §Hugo) :
+  - 5 réseaux Docker : **réalisés**, chaque service n'a que les réseaux dont il a besoin (`rag-assistant` seul sur `rag`, `docker-proxy-ctl` seul sur `control-internal`, etc.), seul le WAF publie un port.
+  - RAG isolé : **réalisé côté Compose** — `rag-assistant` : réseau `rag` seul membre, `read_only: true`, `cap_drop: ALL`, `no-new-privileges`, corpus monté `:ro`, et `LLM_MODEL` par défaut = `llama3.1:8b` (le modèle qui a résisté le 20/10, pas le 3B qui avait cédé).
+  - ER6 prouvé : **partiel, assumé comme tel** — la config de démo utilise déjà le modèle qui résiste, mais un seul scénario et 3 questions ont été joués (`04-matrice-tracabilite.md` ligne ER6) : pas une garantie, reste `EN COURS`. Gap reporté en §8 (François).
+  - Question WAF de Hugo (ModSecurity/Coraza) : **répondue** le 20/10, revalidée le 21/10 (`06-pilotage-arbitrages.md` ligne 40).
+  - Question SOC de Hugo (Loki/Grafana seuls ou Wazuh) : **toujours ouverte**, aucun arbitrage ni service Wazuh trouvé dans le dépôt. Gap reporté en §8 (Hugo).
 
 ## 1. Intégration WAF / logs / SIEM — Hugo
 
