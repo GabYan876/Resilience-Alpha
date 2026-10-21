@@ -24,8 +24,9 @@ depuis PowerShell, comme le déploiement manuel du README racine.
 ## Prérequis
 
 1. Docker Desktop en conteneurs Linux.
-2. `.env` à la racine (non versionné) : `scripts/render_env.sh` (clé age « ops » partagée hors
-   dépôt, `SOPS_AGE_KEY_FILE`) ou `.env.example` (voir README racine).
+2. `.env` à la racine (non versionné), soit déjà présent, soit produit par `-RenderEnv` (clé age « ops »
+   partagée hors dépôt dans `SOPS_AGE_KEY_FILE` ; `sops` et `bash` dans le PATH ; refuse d'écraser un
+   `.env` existant).
 3. PowerShell ouvert à la racine du dépôt.
 
 ## Commandes
@@ -34,6 +35,7 @@ depuis PowerShell, comme le déploiement manuel du README racine.
 .\infra\ansible\Deploy.ps1 -CheckOnly              # construit l'image, contrôle .env et Compose, ne déploie rien
 .\infra\ansible\Deploy.ps1                         # déploiement complet + vérification + transaction de test
 .\infra\ansible\Deploy.ps1 -SkipBuild              # idem sans reconstruire l'image Ansible
+.\infra\ansible\Deploy.ps1 -RenderEnv               # clone neuf : produit d'abord .env depuis SOPS
 .\infra\ansible\Deploy.ps1 -VerifyOnly -SkipBuild  # revérifie sans redéployer
 ```
 
@@ -62,4 +64,4 @@ logs WAF dans Loki et l'alerte SOC restent à contrôler en essai de bout en bou
 
 - Chemin Linux (`RESILIENCE_DIRECT_DEPLOY=true`) non testé.
 - Image de base `docker:27-cli` non épinglée par digest.
-- Le rendu de `.env` (SOPS) n'est pas automatisé : il demande la clé age.
+- `-RenderEnv` demande la clé age et `sops` ; le `bash` du PATH doit être Git Bash (pas WSL).
