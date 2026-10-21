@@ -32,9 +32,16 @@ USER_ROLE = postgresql.ENUM(
     "customer", "merchant", "probe", "admin", name="user_role", create_type=False
 )
 TRANSACTION_STATUS = postgresql.ENUM(
-    "pending", "settled", "failed", "rejected", name="transaction_status", create_type=False
+    "pending",
+    "settled",
+    "failed",
+    "rejected",
+    name="transaction_status",
+    create_type=False,
 )
-LEDGER_DIRECTION = postgresql.ENUM("debit", "credit", name="ledger_direction", create_type=False)
+LEDGER_DIRECTION = postgresql.ENUM(
+    "debit", "credit", name="ledger_direction", create_type=False
+)
 
 
 def _create_role(role: str, password_env: str) -> None:
@@ -53,8 +60,11 @@ def _create_role(role: str, password_env: str) -> None:
         raise RuntimeError(f"{password_env} doit être défini pour créer le rôle {role}")
     bind = op.get_bind()
     guc = f"resilience.{role}_password"
-    bind.execute(sa.text("SELECT set_config(:guc, :pwd, false)"), {"guc": guc, "pwd": password})
-    bind.execute(sa.text(f"""
+    bind.execute(
+        sa.text("SELECT set_config(:guc, :pwd, false)"), {"guc": guc, "pwd": password}
+    )
+    bind.execute(
+        sa.text(f"""
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
@@ -70,7 +80,8 @@ def _create_role(role: str, password_env: str) -> None:
                 END IF;
             END
             $$;
-            """))
+            """)
+    )
     bind.execute(sa.text("SELECT set_config(:guc, '', false)"), {"guc": guc})
 
 
@@ -106,7 +117,10 @@ def _create_tables() -> None:
             nullable=False,
         ),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
         ),
         sa.PrimaryKeyConstraint("id", name="pk_users"),
         sa.UniqueConstraint("email", name="uq_users_email"),
@@ -131,7 +145,10 @@ def _create_tables() -> None:
         sa.Column("currency", sa.String(length=3), nullable=False),
         sa.CheckConstraint("balance_cents >= 0", name="balance_non_negative"),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"], name="fk_accounts_user_id_users", ondelete="CASCADE"
+            ["user_id"],
+            ["users.id"],
+            name="fk_accounts_user_id_users",
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name="pk_accounts"),
         sa.UniqueConstraint("iban_fake", name="uq_accounts_iban_fake"),
@@ -143,7 +160,9 @@ def _create_tables() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("account_from", sa.Uuid(), nullable=False),
         sa.Column("account_to", sa.Uuid(), nullable=False),
-        sa.Column("amount_cents", sa.BigInteger(), nullable=False),  # centimes, jamais de float
+        sa.Column(
+            "amount_cents", sa.BigInteger(), nullable=False
+        ),  # centimes, jamais de float
         sa.Column("currency", sa.String(length=3), nullable=False),
         sa.Column(
             "status",
@@ -160,12 +179,17 @@ def _create_tables() -> None:
         sa.Column("idempotency_key", sa.String(length=64), nullable=False),
         sa.Column("trace_id", sa.String(length=64), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
         ),
         sa.CheckConstraint("amount_cents > 0", name="amount_positive"),
         sa.CheckConstraint("account_from <> account_to", name="distinct_accounts"),
         sa.ForeignKeyConstraint(
-            ["account_from"], ["accounts.id"], name="fk_transactions_account_from_accounts"
+            ["account_from"],
+            ["accounts.id"],
+            name="fk_transactions_account_from_accounts",
         ),
         sa.ForeignKeyConstraint(
             ["account_to"], ["accounts.id"], name="fk_transactions_account_to_accounts"
@@ -189,11 +213,16 @@ def _create_tables() -> None:
         ),
         sa.Column("amount_cents", sa.BigInteger(), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
         ),
         sa.CheckConstraint("amount_cents > 0", name="amount_positive"),
         sa.ForeignKeyConstraint(
-            ["account_id"], ["accounts.id"], name="fk_ledger_entries_account_id_accounts"
+            ["account_id"],
+            ["accounts.id"],
+            name="fk_ledger_entries_account_id_accounts",
         ),
         sa.ForeignKeyConstraint(
             ["transaction_id"],
@@ -203,7 +232,9 @@ def _create_tables() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name="pk_ledger_entries"),
     )
-    op.create_index("ix_ledger_entries_transaction_id", "ledger_entries", ["transaction_id"])
+    op.create_index(
+        "ix_ledger_entries_transaction_id", "ledger_entries", ["transaction_id"]
+    )
     op.create_index("ix_ledger_entries_account_id", "ledger_entries", ["account_id"])
 
 
@@ -212,7 +243,9 @@ def _grant_privileges() -> None:
     op.execute("REVOKE CREATE ON SCHEMA public FROM PUBLIC")
 
     op.execute(f"GRANT USAGE ON SCHEMA public TO {APP_RW}")
-    op.execute(f"GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {APP_RW}")
+    op.execute(
+        f"GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {APP_RW}"
+    )
     # Le grand livre est en ajout seul : une écriture passée ne se réécrit pas.
     op.execute(f"REVOKE UPDATE ON TABLE ledger_entries FROM {APP_RW}")
     op.execute(
@@ -222,7 +255,9 @@ def _grant_privileges() -> None:
 
     op.execute(f"GRANT USAGE ON SCHEMA public TO {APP_RO}")
     op.execute(f"GRANT SELECT ON ALL TABLES IN SCHEMA public TO {APP_RO}")
-    op.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {APP_RO}")
+    op.execute(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO {APP_RO}"
+    )
 
 
 def upgrade() -> None:
@@ -233,7 +268,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {APP_RO}")
+    op.execute(
+        f"ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT ON TABLES FROM {APP_RO}"
+    )
     op.execute(
         f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
         f"REVOKE SELECT, INSERT, UPDATE ON TABLES FROM {APP_RW}"

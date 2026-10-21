@@ -33,12 +33,12 @@ def _add_api_package_to_path() -> None:
 
 _add_api_package_to_path()
 
-from app.adapters.persistence.engine import build_engine, build_session_factory  # noqa: E402
-from app.adapters.persistence.models import AccountRow, MerchantRow, UserRow  # noqa: E402
-from app.domain.models import UserRole  # noqa: E402
-from argon2 import PasswordHasher  # noqa: E402
-from sqlalchemy import text  # noqa: E402
-from sqlalchemy.dialects.postgresql import insert  # noqa: E402
+from app.adapters.persistence.engine import build_engine, build_session_factory
+from app.adapters.persistence.models import AccountRow, MerchantRow, UserRow
+from app.domain.models import UserRole
+from argon2 import PasswordHasher
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert
 
 # Namespace fixe : les mêmes identifiants à chaque passage, donc des URL stables
 # pour le dashboard et les captures de la vidéo.
@@ -174,7 +174,9 @@ async def seed() -> None:
                 )
             )
             merchants = insert(MerchantRow).values(_merchants(api_key_hash))
-            await session.execute(merchants.on_conflict_do_nothing(index_elements=[MerchantRow.id]))
+            await session.execute(
+                merchants.on_conflict_do_nothing(index_elements=[MerchantRow.id])
+            )
             accounts = insert(AccountRow).values(_accounts())
             await session.execute(
                 # La recharge des soldes est le cœur de la rejouabilité.
@@ -192,7 +194,9 @@ async def seed() -> None:
                 text("SELECT balance_cents FROM accounts WHERE iban_fake = :iban"),
                 {"iban": PROBE_IBAN},
             )
-            print(f"seed terminé : sonde {PROBE_IBAN} rechargée à {balance.scalar_one()} centimes")
+            print(
+                f"seed terminé : sonde {PROBE_IBAN} rechargée à {balance.scalar_one()} centimes"
+            )
     finally:
         await engine.dispose()
 

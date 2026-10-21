@@ -23,14 +23,10 @@ class Settings:
     def from_env(cls) -> Settings:
         token = os.environ.get("PROBE_TOKEN", "")
         if not token:
-            raise ValueError(
-                "PROBE_TOKEN est obligatoire pour le service de récupération"
-            )
+            raise ValueError("PROBE_TOKEN est obligatoire pour le service de récupération")
         password = os.environ.get("POSTGRES_PASSWORD", "")
         if not password:
-            raise ValueError(
-                "POSTGRES_PASSWORD est obligatoire pour le service de récupération"
-            )
+            raise ValueError("POSTGRES_PASSWORD est obligatoire pour le service de récupération")
         return cls(
             database=os.environ.get("POSTGRES_DB", "resilience"),
             backup_dir=Path(os.environ.get("DB_BACKUP_PATH", "/backups")),

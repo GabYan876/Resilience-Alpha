@@ -23,7 +23,8 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # server_default '' : les comptes déjà présents (seed) restent valides.
     op.add_column(
-        "users", sa.Column("full_name", sa.String(120), nullable=False, server_default="")
+        "users",
+        sa.Column("full_name", sa.String(120), nullable=False, server_default=""),
     )
     op.add_column("users", sa.Column("phone", sa.String(20), nullable=True))
     op.create_unique_constraint("uq_users_phone", "users", ["phone"])

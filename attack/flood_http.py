@@ -99,11 +99,15 @@ def login(base_url: str, password: str) -> str:
         ) from exc
 
 
-def hit(base_url: str, path: str, token: str, counters: Counters, stop_at: float) -> None:
+def hit(
+    base_url: str, path: str, token: str, counters: Counters, stop_at: float
+) -> None:
     while time.monotonic() < stop_at:
         try:
             request = urllib.request.Request(
-                base_url + path, method="GET", headers={"Authorization": f"Bearer {token}"}
+                base_url + path,
+                method="GET",
+                headers={"Authorization": f"Bearer {token}"},
             )
             with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
                 counters.add(200 <= response.status < 500)
@@ -117,7 +121,9 @@ def run(base_url: str, path: str, token: str, duration_s: float, workers: int) -
     counters = Counters()
     stop_at = time.monotonic() + duration_s
     threads = [
-        threading.Thread(target=hit, args=(base_url, path, token, counters, stop_at), daemon=True)
+        threading.Thread(
+            target=hit, args=(base_url, path, token, counters, stop_at), daemon=True
+        )
         for _ in range(workers)
     ]
     start = time.monotonic()

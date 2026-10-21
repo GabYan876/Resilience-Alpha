@@ -68,9 +68,7 @@ def create_app(
                 name = await asyncio.to_thread(recovery.create_backup)
                 _log_event("database.backup.created", archive=name, scheduled=True)
             except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
-                _log_event(
-                    "database.backup.failed", error=type(exc).__name__, scheduled=True
-                )
+                _log_event("database.backup.failed", error=type(exc).__name__, scheduled=True)
             await asyncio.sleep(settings.backup_interval_s)
 
     @asynccontextmanager

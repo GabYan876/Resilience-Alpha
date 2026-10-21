@@ -32,12 +32,14 @@ def _add_api_package_to_path() -> None:
         if (candidate / "app" / "adapters" / "persistence" / "models.py").is_file():
             sys.path.insert(0, str(candidate))
             return
-    raise RuntimeError(f"paquet `app` introuvable (essayé : {[str(c) for c in candidates]})")
+    raise RuntimeError(
+        f"paquet `app` introuvable (essayé : {[str(c) for c in candidates]})"
+    )
 
 
 _add_api_package_to_path()
 
-from app.adapters.persistence.models import METADATA  # noqa: E402  (après sys.path)
+from app.adapters.persistence.models import METADATA
 
 config = context.config
 if config.config_file_name is not None:
@@ -66,7 +68,9 @@ def run_migrations_offline() -> None:
 
 
 def _do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, compare_type=True
+    )
     with context.begin_transaction():
         context.run_migrations()
 
