@@ -34,7 +34,12 @@ import urllib.request
 from datetime import UTC, datetime
 
 DEFAULT_TARGET = "http://127.0.0.1:8080"
-ALLOWED_HOSTS = {"127.0.0.1", "localhost", "192.168.137.1"}  # PC Hôte du consortium
+ALLOWED_HOSTS = {
+    "127.0.0.1",
+    "localhost",
+    "192.168.137.1",  # PC Hôte du consortium (hotspot RESILIENCE-G<n>)
+    "192.168.1.140",  # PC Hôte du consortium (secours : box du binôme Kevin)
+}
 LOGIN_EMAIL = "alice@resilience.local"  # compte du seed de démo
 TIMEOUT_S = 3.0
 
@@ -155,7 +160,7 @@ def main() -> None:
     parser.add_argument(
         "--yes-i-know-the-target",
         action="store_true",
-        help="confirme une cible hors de 127.0.0.1 / localhost / 192.168.137.1",
+        help="confirme une cible hors de la liste ALLOWED_HOSTS",
     )
     args = parser.parse_args()
 
