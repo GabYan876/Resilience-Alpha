@@ -33,6 +33,22 @@ def test_serie_absente_et_nan_valent_zero():
     assert sample.as_vector() == [0.0, 0.0, 0.0, 0.0]
 
 
+def test_une_erreur_dns_transitoire_est_absorbee_par_une_retentative():
+    """Cf. prometheus_source.py : DNS Docker Desktop/WSL2 intermittent sur un conteneur
+    multi-réseaux. Un ConnectError isolé ne doit pas faire échouer la mesure."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ConnectError("Temporary failure in name resolution")
+        return httpx.Response(200, json={"data": {"result": []}})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    sample = PrometheusMetricsSource(client, "http://prom", "api").sample()
+    assert sample.as_vector() == [0.0, 0.0, 0.0, 0.0]
+
+
 def test_filtre_sur_le_service_demande():
     seen: list[str] = []
 
