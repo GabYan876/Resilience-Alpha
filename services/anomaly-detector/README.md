@@ -52,6 +52,20 @@ Sous Git Bash (Windows), `MSYS_NO_PATHCONV=1` est indispensable : sinon Bash ré
 des montages. `$(pwd -W)` donne le chemin Windows de la racine du dépôt (à lancer depuis celle-ci).
 Le jeu `ml/data/*.csv` est versionné (données fictives) : un clone neuf peut s'entraîner sans `collect`.
 
+Sous **cmd.exe** ou **PowerShell**, la syntaxe Bash (`MSYS_NO_PATHCONV=1`, `$(pwd -W)`) n'existe pas : Docker
+reçoit `$(pwd -W)` tel quel et refuse le montage (« includes invalid characters for a local volume name »).
+Lancer plutôt, depuis la racine du dépôt :
+
+```powershell
+# PowerShell
+docker run --rm --env-file .env -v "${PWD}/ml/data:/data:ro" -v "${PWD}/ml/models:/models" -e DATASET_PATH=/data/normal.csv -e MODEL_PATH=/models/isolation_forest.joblib resilience-alpha/anomaly-detector:dev python -m app.cli train
+```
+
+```bat
+:: cmd.exe
+docker run --rm --env-file .env -v "%cd%/ml/data:/data:ro" -v "%cd%/ml/models:/models" -e DATASET_PATH=/data/normal.csv -e MODEL_PATH=/models/isolation_forest.joblib resilience-alpha/anomaly-detector:dev python -m app.cli train
+```
+
 ## Mesurer la qualité du modèle
 
 `evaluate` rejoue le modèle sur des mesures **jamais vues à l'entraînement** : il compte les
