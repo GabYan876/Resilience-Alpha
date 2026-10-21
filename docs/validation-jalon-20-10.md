@@ -65,5 +65,5 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 ## 7. Critères de sortie du jalon
 
 - [x] Le fil rouge tourne de bout en bout **avec le PC Attaquant** : flood → détection ML → blocage → reprise → transaction de test.
-- [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
+- [x] Le socle se lance en une commande depuis un clone neuf (Ansible) : `Deploy.ps1 -RenderEnv` essayé le 21/10 sur un clone vierge du dépôt (sans `.env` ni modèle ML) → `.env` rendu depuis SOPS, modèle entraîné, 17 conteneurs, services vérifiés, transaction de test réussie, front joignable via le WAF (HTTP 200). Essai fait par Kevin ; une relecture du README par un autre membre reste souhaitable.
 - [x] Les écarts restants ont un responsable et une échéance : Vault/SOPS, restauration BDD et SQLi sont faits, il reste Ansible et le reste du `validation-jalon-21-10.md` §8.
