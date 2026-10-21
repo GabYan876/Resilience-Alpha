@@ -27,11 +27,11 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 1. Intégration WAF / logs / SIEM — Hugo
 
-- [ ] WAF ModSecurity + OWASP CRS devant la passerelle ; seul le WAF est publié sur le réseau.
-- [ ] Les logs du WAF arrivent dans Loki (Promtail/Alloy) avec `service`, `trace_id`, `event`.
+- [x] WAF ModSecurity + OWASP CRS devant la passerelle ; seul le WAF est publié sur le réseau. *(`waf` = seul `ports:` du Compose ; 12/12 SQLi bloquées en 403, règle CRS 942100)*
+- [x] Les logs du WAF arrivent dans Loki (Promtail/Alloy) avec `service`, `trace_id`, `event`. *(21/10 : journal d’accès `waf.request`, audit ModSecurity `waf.blocked` / `waf.audit` étiqueté par Alloy ; `trace_id` = `$request_id` pour l’accès, `transaction.unique_id` pour l’audit ; les requêtes du dashboard SIEM et du détecteur filtrent `event="waf.request"`)*
 - [x] Fonction SOC : une règle WAF déclenchée (SQLi) est visible et alertable dans Grafana. *(règle `WAF - Détection SQLi`, PR #55 ; essai du 21/10 : `inactive` puis `firing` après une SQLi)*
-- [ ] Durcissement : conteneurs non-root, réseaux internes (BDD, Vault, gestion), `mem_limit` partout.
-- [ ] Reset d'état : script qui remet la démo à zéro entre deux passages.
+- [x] Durcissement : conteneurs non-root, réseaux internes (BDD, Vault, gestion), `mem_limit` partout. *(21/10 : `gateway` Caddy passé en `nobody` (65534) ; seules exceptions root, les 3 `docker-socket-proxy`, qui lisent le socket Docker root et restent bornés par `cap_drop: ALL`, `no-new-privileges`, sections d'API limitées et réseau interne ; Vault non déployé, secrets SOPS)*
+- [x] Reset d'état : script qui remet la démo à zéro entre deux passages. *(`scripts/reset_demo.sh`, rejoué 5 fois le 21/10)*
 
 ## 2. Intégration ML / remédiation — Kevin
 
