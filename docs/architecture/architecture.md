@@ -116,6 +116,7 @@ flowchart LR
 | Type d'incident | Exemple | Actions (dans l'ordre) |
 |---|---|---|
 | `AVAILABILITY` | flood HTTP | `BlockIpAction` → `BlockSubjectAction` → `RestartServiceAction` → (`ScaleServiceAction`) |
+| ↳ détail `BlockIpAction` | — | **Échec attendu, pas un bug.** `DetectionService` (`services/anomaly-detector/app/application/detection.py`) ne renseigne jamais `attacker_ip` : avec Docker Desktop, l'IP de l'attaquant est NATée derrière la gateway avant le WAF, donc toutes les requêtes arrivent sous la même IP (bloquer par IP bloquerait tout le monde). Seul `attacker_subject` (claim `sub` du JWT, via une requête Loki) est renseigné ; `BlockIpAction` échoue donc systématiquement (`aucune IP source identifiée`), loggé en `action.executed` avec `success: false`, et c'est `BlockSubjectAction` qui bloque réellement l'attaquant. Voir l'arbitrage du 20/10 dans `docs/gouvernance/06-pilotage-arbitrages.md`. |
 | `CRASH` | conteneur arrêté (S3) | `RestartServiceAction` seule |
 | `DATABASE_CORRUPTION` | altération/corruption BDD (S4) | `RestoreDatabaseAction` → `RestartServiceAction` → vérification transactionnelle |
 | `COMPROMISE` | SQLi, exfiltration | `RotateSecretAction` (JWT) → `RestartServiceAction(auth)` → `RestartServiceAction(api)` ; câblé dans `main.py`. Pas de `BlockIpAction` : bloquer une IP ne corrige rien ici. Investigation manuelle non automatisée (assumé). Une restauration S4 ne suffit pas |
