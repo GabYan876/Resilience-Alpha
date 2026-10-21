@@ -24,6 +24,8 @@ FLOOD = {"score": 0.9, "source": "test", "kind": "availability", "attacker_ip": 
 
 
 def ok_handler(request: httpx.Request) -> httpx.Response:
+    if request.url.path == "/transactions":
+        return httpx.Response(201, json={"status": "settled"})
     return httpx.Response(200)
 
 
