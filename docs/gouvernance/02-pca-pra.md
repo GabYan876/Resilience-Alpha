@@ -58,6 +58,7 @@ Chaque essai : date, scénario, résultat, RTO observé, intervention humaine (o
 | 20/10 | S1 flood, 5 passages (`scripts/demo_loop.py`) | 5/5 reprises, vérifiées par transaction de test | 33-48 s (moyenne 45 s) | Non | Événements `incident.*` dans Loki |
 | 20/10 | S3 crash de l'API | Reprise automatique | 34 s (détection ~30 s) | Non | Événements `incident.*` (kind `crash`) dans Loki |
 | 21/10 | S1 flood, 5 passages depuis le **PC Attaquant**, à travers le WAF, `scripts/reset_demo.sh` rejoué entre chaque passage | 5/5 reprises (`block_subject` + `restart_service`), vérifiées par transaction de test | `incident.detected` → `incident.resolved` : 5,4 / 7,1 / 6,6 / 7,0 / 7,9 s (temps de remédiation seul ; délai de détection non mesuré ici, faute du journal horodaté du script d'attaque sur le PC Attaquant) | Non | Événements `incident.*` dans Loki/`resilience-remediation` ; `block_subject` vérifié par le blocage effectif (403) des requêtes suivantes dans les logs WAF |
+| 21/10 | Faux positifs ML, trafic de fond (`scripts/background_traffic.py`, 2907 requêtes, 0 erreur) **à travers le WAF actif** (`192.168.1.140:8080`), 11 min, 120 mesures collectées (`ml/data/holdout_waf.csv`) | 0/120 mesures jugées anormales (0,0 %), aucun `incident.*` parasite dans les logs `resilience-anomaly-detector`/`resilience-remediation` pendant la fenêtre ; attaque toujours détectée sur `attack.csv` (75 %, alerte dès la mesure 5) | Sans objet (pas d'incident) | Non | `app.cli evaluate --normal /data/holdout_waf.csv --attack /data/attack.csv` ; `docker logs resilience-anomaly-detector/-remediation --since 15m` vides de tout `incident` |
 
 Objectif : ≥ 5 passages sans intervention — **atteint le 21/10** depuis le PC Attaquant, à travers le WAF.
 
@@ -68,4 +69,4 @@ Objectif : ≥ 5 passages sans intervention — **atteint le 21/10** depuis le P
 - **Secret compromis non détecté** : rotation codée mais sans Vault/SOPS ; secrets dans `.env`.
 - **Données** : sauvegardes locales non chiffrées et non répliquées ; S4 vise la corruption logique, pas la perte du PC Hôte. RPO ≤ 5 min configuré mais pas encore mesuré.
 - **SPOF** : un seul PC Hôte (S5 hors périmètre).
-- **Faux positif ML** : 0 sur 120 mesures de trafic inédit, mais le score sature et le seuil reste à recalibrer sur trafic réel.
+- **Faux positif ML** : 0 sur 120 mesures de trafic inédit (20/10, sans WAF) et de nouveau 0 sur 120 le 21/10 avec le WAF actif (§7), mais le score sature et le seuil reste à recalibrer sur trafic réel prolongé.
