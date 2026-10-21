@@ -10,7 +10,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [ ] **Ansible (Hugo)** : `infra/ansible/site.yml` et les rôles écrits (`.env`, socle, observabilité, vérification). Sans lui, « une commande » n'est pas tenu.
 - [ ] **Vault ou SOPS (Hugo, Kevin)** : choix tranché, `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/`, `RotateSecretAction` branchée (`VaultSecretRotator` ou équivalent SOPS).
-- [ ] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant vers `192.168.137.1` (jusqu'ici en local), à travers le WAF.
+- [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [ ] Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1`.
 - [ ] Mesure de la RAM de la pile complète (`docker stats`).
 - [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM ; arbitrages « à valider » du 20/10 (passerelles Docker, WAF par compte).
@@ -29,12 +29,12 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 2. Intégration ML / remédiation — Kevin
 
-- [ ] Fil rouge complet à travers le WAF : flood → détection ML → blocage IP + restart → `incident.resolved` après transaction de test.
-- [ ] Le blocage d'IP agit sur l'IP réelle de l'attaquant (derrière WAF / hotspot), pas sur celle de la passerelle.
+- [x] Fil rouge complet à travers le WAF : flood → détection ML → blocage **compte** (`block_subject`) + restart → `incident.resolved` après transaction de test. `block_ip` ne fait pas partie de la preuve (voir case suivante, toujours ouverte).
+- [ ] Le blocage d'IP agit sur l'IP réelle de l'attaquant (derrière WAF / hotspot), pas sur celle de la passerelle. **Écart constaté le 21/10** : `block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages — seul `block_subject` (via `LokiAttackerLocator`) a identifié l'attaquant. À investiguer : remonter l'IP réelle au moteur (actuellement masquée par le WAF/la passerelle Docker).
 - [ ] Distinction disponibilité / compromission dans `DecisionPolicy` : SQLi/exfiltration → rotation de secrets + investigation, pas un simple restart.
-- [ ] Boucle de démos rejouée **depuis le PC Attaquant** : au moins 5 passages sans intervention, RTO mesurés.
+- [x] Boucle de démos rejouée **depuis le PC Attaquant** : 5 passages sans intervention le 21/10, RTO (détection→résolution) mesurés à 5,4 / 7,1 / 6,6 / 7,0 / 7,9 s, reset d'état (`scripts/reset_demo.sh`) entre chaque passage. Détail dans `docs/gouvernance/02-pca-pra.md` §7.
 - [ ] Faux positifs ML re-mesurés avec le trafic de fond et le WAF actifs.
-- [ ] Docker-socket-proxy : revue des endpoints autorisés, aucun accès direct au `docker.sock`.
+- [x] Docker-socket-proxy : revue des endpoints autorisés, aucun accès direct au `docker.sock`. Nouvelle passerelle `docker-proxy-autoheal` ajoutée le 21/10 (auto-guérison d'Alloy) avec le même principe de moindre privilège que `docker-proxy`/`docker-proxy-ctl` : scope limité à `EVENTS`/`CONTAINERS`/`ALLOW_RESTARTS`, tout le reste explicitement à `0`, réseau `internal: true` dédié. Détail dans `docs/architecture/observabilite.md` §7bis.
 
 ## 3. Restauration et backend — Antoine
 
@@ -69,7 +69,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 7. Critères de sortie du jalon
 
-- [ ] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction.
+- [x] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction (5/5 le 21/10, voir §2).
 - [ ] Au moins une attaque de compromission (SQLi) est bloquée, visible dans le SIEM/Grafana et traitée (rotation de secrets, procédure d'investigation).
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
 - [ ] 1ers tests de restauration consignés (RTO / RPO mesurés).
