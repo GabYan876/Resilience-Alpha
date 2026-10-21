@@ -6,7 +6,10 @@
 # interne `db-internal` et ne publie aucun port sur l'hôte ; l'API n'est pas
 # publiée non plus, elle est joignable sous le nom d'hôte `api` sur le port 8000
 # depuis `resilience-net`. Seule la passerelle (`gateway`, front + routage) est publiée,
-# et seulement sur 127.0.0.1:8080 : le WAF s'y substituera ou s'y ajoutera.
+# et seulement sur WAF_BIND_HOST:8080 (127.0.0.1 par défaut) : le WAF s'y substituera
+# ou s'y ajoutera. WAF_BIND_HOST n'est à changer que pour joindre l'hôte depuis le PC
+# Attaquant (hotspot 192.168.137.1 ou, à défaut, l'IP de l'hôte sur la box) ; jamais
+# 0.0.0.0, qui exposerait aussi la passerelle à tout le réseau.
 #
 # `resilience-net` est déclaré ici avec un nom fixe (`name: resilience-net`), sans
 # préfixe de projet : les autres piles Compose (observabilité, WAF) le référencent
@@ -161,7 +164,7 @@ services:
     networks:
       - resilience-net
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${WAF_BIND_HOST:-127.0.0.1}:8080:8080"
     depends_on:
       gateway:
         condition: service_healthy
