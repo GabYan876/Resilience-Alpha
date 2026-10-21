@@ -28,7 +28,7 @@ flowchart LR
             DET[Détecteur ML]
             REM[Moteur de remédiation]
             DSP[docker-socket-proxy]
-            VAULT[Vault / SOPS]
+            VAULT[SOPS<br/>fichiers chiffrés montés, pas un service]
         end
         subgraph RAGNET[réseau rag — isolé]
             RAG[Assistant RAG<br/>lecture seule]
@@ -75,7 +75,7 @@ flowchart LR
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
 | `docker-proxy`, `docker-proxy-autoheal` | Passerelles Docker d'Alloy (lecture seule) et de l'auto-guérison d'Alloy (restart-only, ajoutée le 21/10) ; voir `observabilite.md` §7bis | pile obs | non | Hugo |
-| `vault` | **Non déployé.** Secrets en `.env` (SOPS/Vault encore à trancher, voir §6) ; `RotateSecretAction`/`SecretRotator` sans implémentation prod (TODO dans `remediation/app/main.py`) | — | — | Hugo |
+| *(pas de service dédié)* | Secrets : **SOPS + age**, tranché le 21/10 (voir `06-pilotage-arbitrages.md`). `infra/secrets/*.enc.yaml` montés en fichiers dans `remediation` ; `RotateSecretAction`/`SopsSecretRotator` implémentée et essayée en réel | — | — | Kevin |
 | `rag-assistant` | Assistant RAG (LangChain ; modèle Ollama ≤ 8B hébergé hors Compose) | rag | non (interrogé par `docker compose exec`) | François |
 
 **Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif. Grafana reste lié à `127.0.0.1:3000`, pas encore servi via le WAF. Aucun composant, hors les passerelles `docker-proxy-ctl`, `docker-proxy` et `docker-proxy-autoheal`, ne touche `docker.sock`.
@@ -118,7 +118,7 @@ flowchart LR
 | `AVAILABILITY` | flood HTTP | `BlockIpAction` → `BlockSubjectAction` → `RestartServiceAction` → (`ScaleServiceAction`) |
 | `CRASH` | conteneur arrêté (S3) | `RestartServiceAction` seule |
 | `DATABASE_CORRUPTION` | altération/corruption BDD (S4) | `RestoreDatabaseAction` → `RestartServiceAction` → vérification transactionnelle |
-| `COMPROMISE` | SQLi, exfiltration | cible : `BlockIpAction` → `RotateSecretAction` → investigation ; **non câblé** dans `main.py` tant que `VaultSecretRotator` n'existe pas. Une restauration S4 ne suffit pas |
+| `COMPROMISE` | SQLi, exfiltration | `RotateSecretAction` (JWT) → `RestartServiceAction(auth)` → `RestartServiceAction(api)` ; câblé dans `main.py`. Pas de `BlockIpAction` : bloquer une IP ne corrige rien ici. Investigation manuelle non automatisée (assumé). Une restauration S4 ne suffit pas |
 
 ### Ports (`services/remediation/app/domain/ports.py`)
 
@@ -133,7 +133,7 @@ flowchart LR
 | `ServiceScaler` | change les replicas | `DockerProxyClient` | `FakeDockerClient` |
 | `IpBlocker` | bloque/débloque une IP | `IpBlocklist` (fichier lu par le WAF) | `FakeIpBlocker` |
 | `SubjectBlocker` | bloque/débloque un compte (`sub`) | `SubjectBlocklist` (même fichier) | fake |
-| `SecretRotator` | rotation de secret | `VaultSecretRotator` | `FakeSecretRotator` |
+| `SecretRotator` | rotation de secret | `SopsSecretRotator` | fake (`SopsRunner` injectable) |
 | `HealthChecker` | santé d'un service | `HttpHealthChecker` | `FakeHealthChecker` |
 | `TransactionProbe` | transaction de test | `ApiTransactionProbe` | `FakeProbe` |
 | `EventPublisher` | événement JSON | `JsonStdoutPublisher` | `InMemoryPublisher` |
@@ -174,7 +174,7 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 
 ## 5. Sécurité & RAM
 
-- Secrets : Vault ou SOPS, `.env` ignoré, `.env.example` fourni.
+- Secrets : SOPS + age (choix tranché le 21/10, voir `06-pilotage-arbitrages.md`), `.env` ignoré, `.env.example` fourni, `scripts/render_env.sh` pour produire `.env` localement.
 - `mem_limit` sur chaque conteneur (PC Hôte 16 Go ; `db-recovery` : 128 Mo) ; Ollama sur un 3e PC si < 32 Go.
 - Le RAG n'a aucun accès au moteur de remédiation ni à Docker.
 - Reset d'état : `scripts/reset_demo.sh` (débloque les IP, rejoue le schéma et le seed, purge les archives S4 puis sauvegarde l'état propre) pour ≥ 5 passages.

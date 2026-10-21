@@ -17,28 +17,38 @@ c'est l'image qui compte.
 
 ## 2. Secrets (SOPS + age)
 
-Aucun secret en clair dans le dépôt. Les valeurs chiffrées vivent dans `infra/secrets/*.enc.yaml`,
-la clé privée reste sur le poste.
+Aucun secret en clair dans le dépôt (voir `06-pilotage-arbitrages.md` pour le choix SOPS plutôt que
+Vault). Les valeurs chiffrées vivent dans `infra/secrets/*.enc.yaml` (`.sops.yaml` à la racine décrit
+qui déchiffre quoi), la clé privée reste sur le poste et hors dépôt.
 
-> **À venir (Hugo).** `.sops.yaml` et `infra/secrets/dev.enc.yaml` n'existent pas encore. En attendant,
-> chacun renseigne son `.env` à partir de `.env.example` et les valeurs se transmettent hors dépôt.
-> La procédure ci-dessous est la cible, à appliquer dès que les deux fichiers sont en place.
+Deux clés age, deux périmètres (moindre privilège) :
+
+- **"ops"** : déchiffre `infra/secrets/app.enc.yaml` (mots de passe BDD, jeton Grafana, `PROBE_TOKEN`...)
+  et `infra/secrets/jwt.enc.yaml`. Clé privée partagée hors dépôt entre les 5 membres de l'équipe
+  (demander à Kevin), jamais commitée.
+- **"rotation"** : déchiffre seulement `infra/secrets/jwt.enc.yaml`. Sa clé privée est la seule montée
+  dans le conteneur `remediation` — une compromission du moteur n'expose que le JWT, jamais les mots
+  de passe BDD/Grafana.
+
+Pour un poste de dev (déchiffrement avec la clé "ops") :
 
 ```bash
-# une seule fois par poste
-age-keygen -o ~/.config/sops/age/keys.txt    # clé privée : JAMAIS dans le dépôt
-grep 'public key' ~/.config/sops/age/keys.txt
+# une seule fois par poste, pour obtenir la clé "ops" auprès de Kevin
+export SOPS_AGE_KEY_FILE=/chemin/vers/ops-age-key.txt
+
+# produit .env (ignoré par Git) à partir de .env.example + les deux fichiers chiffrés
+bash scripts/render_env.sh
 ```
 
-Envoyer la ligne `public key` à Hugo, qui ajoute la clé dans `.sops.yaml` et re-chiffre les secrets.
-Ensuite, pour déployer :
+`render_env.sh` copie `.env.example` vers `.env` puis y substitue chaque secret déchiffré. `.env` reste
+réservé au runtime des conteneurs ; le relancer après toute rotation de secret ne resynchronise pas la
+valeur réellement utilisée par `auth`/`api`, qui préfèrent le fichier `JWT_SECRET_FILE` dès qu'une
+rotation a eu lieu (voir `services/remediation/app/adapters/secret_rotation.py`).
 
-```bash
-sops exec-env infra/secrets/dev.enc.yaml \
-  'docker compose -f infra/compose/docker-compose.yml up -d'
-```
+Pour ajouter ou modifier un secret : `sops infra/secrets/app.enc.yaml` (ou `jwt.enc.yaml`) ouvre un
+éditeur sur le texte déchiffré et re-chiffre à la sauvegarde.
 
-`age-keys.txt`, `*.keys.txt`, `.env` et `infra/secrets/*` non chiffrés sont déjà dans `.gitignore`.
+`*-age-key.txt`, `.env` et `infra/secrets/*` non chiffrés sont déjà dans `.gitignore`.
 
 ## 3. Outillage Claude Code
 

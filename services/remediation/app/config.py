@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
-DEFAULT_CONTAINER_NAMES = {"api": "resilience-api"}
+DEFAULT_CONTAINER_NAMES = {"api": "resilience-api", "auth": "resilience-auth"}
 
 
 def parse_container_names(raw: str) -> dict[str, str]:
@@ -36,6 +36,11 @@ class Settings:
     verify_wait_s: float = 30.0  # temps laissé à l'API pour redevenir saine avant de conclure
     watch_interval_s: float = 0.0  # sondage de santé (détection de crash) ; 0 = désactivé
     watch_failures: int = 3  # sondages consécutifs en échec avant de déclarer une panne
+    # Rotation du JWT (S2, compromission) : fichier SOPS déchiffrable par la seule clé age
+    # montée dans ce conteneur (SOPS_AGE_KEY_FILE), jamais celle de infra/secrets/app.enc.yaml.
+    jwt_secret_encrypted_path: str = "/secrets/jwt.enc.yaml"
+    # Volume partagé avec `auth`/`api` : ils relisent ce fichier à chaque démarrage.
+    jwt_secret_live_path: str = "/run/secrets/jwt_secret"
     # Service Compose -> nom réel du conteneur (`container_name`) que Docker accepte dans l'URL.
     container_names: Mapping[str, str] = field(
         default_factory=lambda: MappingProxyType(dict(DEFAULT_CONTAINER_NAMES))
@@ -64,4 +69,8 @@ class Settings:
             watch_interval_s=float(os.environ.get("WATCH_INTERVAL_S", "5")),
             watch_failures=int(os.environ.get("WATCH_FAILURES", "3")),
             container_names=parse_container_names(os.environ.get("CONTAINER_NAMES", "")),
+            jwt_secret_encrypted_path=os.environ.get(
+                "JWT_SECRET_ENCRYPTED_PATH", "/secrets/jwt.enc.yaml"
+            ),
+            jwt_secret_live_path=os.environ.get("JWT_SECRET_LIVE_PATH", "/run/secrets/jwt_secret"),
         )

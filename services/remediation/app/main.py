@@ -18,12 +18,14 @@ from app.adapters.file_blocklist import BlocklistFile, IpBlocklist, SubjectBlock
 from app.adapters.http_health import HttpHealthChecker
 from app.adapters.json_publisher import JsonStdoutPublisher
 from app.adapters.memory_store import InMemoryIncidentStore
+from app.adapters.secret_rotation import SopsSecretRotator
 from app.api.routes import build_router
 from app.application.actions import (
     BlockIpAction,
     BlockSubjectAction,
     RestartServiceAction,
     RestoreDatabaseAction,
+    RotateSecretAction,
 )
 from app.application.health_watch import HealthWatchDetector
 from app.application.pipeline import RemediationPipeline
@@ -51,7 +53,9 @@ def build_pipeline(
         settings.container_names,
         restart_timeout_s=settings.restart_timeout_s,
     )
-    # TODO(rotation de secrets) : ajouter RotateSecretAction dès que VaultSecretRotator existe.
+    secret_rotator = SopsSecretRotator(
+        settings.jwt_secret_encrypted_path, settings.jwt_secret_live_path
+    )
     blocklist = BlocklistFile(settings.blocklist_path)
     # Bloquer la source d'abord, puis redémarrer : sinon le flood reprend aussitôt. Une action
     # sans cible identifiée échoue sans empêcher les suivantes.
@@ -74,6 +78,14 @@ def build_pipeline(
                     settings.restore_safety_margin_s,
                 ),
                 RestartServiceAction(docker),
+            ],
+            # Compromission (SQLi/exfiltration) : bloquer une IP ne corrige rien, le secret
+            # potentiellement exposé doit être tourné. `auth` et `api` le partagent : les deux
+            # sont redémarrés pour relire la nouvelle valeur, indépendamment de la cible détectée.
+            IncidentKind.COMPROMISE: [
+                RotateSecretAction(secret_rotator, "JWT_SECRET"),
+                RestartServiceAction(docker, service="auth"),
+                RestartServiceAction(docker, service="api"),
             ],
         }
     )

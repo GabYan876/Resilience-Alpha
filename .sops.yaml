@@ -1,0 +1,16 @@
+# Voir docs/gouvernance/06-pilotage-arbitrages.md (choix SOPS + age) et docs/dev.md.
+#
+# Deux clés, deux périmètres (moindre privilège) :
+# - "ops"      : déchiffre tout infra/secrets/app.enc.yaml (BDD, Grafana, jetons de sonde...).
+#                Clé privée partagée hors dépôt entre les 5 membres de l'équipe, jamais commitée.
+# - "rotation" : déchiffre seulement infra/secrets/jwt.enc.yaml. Sa clé privée est la seule
+#                montée dans le conteneur `remediation` (SOPS_AGE_KEY_FILE) : une compromission
+#                du moteur n'expose que le JWT, jamais les mots de passe BDD / Grafana.
+creation_rules:
+  - path_regex: app\.enc\.yaml$
+    age: age1hsdnmlm3386uzfzgkltsewcw4cgu0j9y89ynwz7a07xrgja5w9lshmfdaz # ops
+
+  - path_regex: jwt\.enc\.yaml$
+    age: >-
+      age1hsdnmlm3386uzfzgkltsewcw4cgu0j9y89ynwz7a07xrgja5w9lshmfdaz,
+      age19ddvh3z2gkcyfg36lh5459nhgfh2yp5tf2cr3zdjj48z34cpq9ws0q6xwv

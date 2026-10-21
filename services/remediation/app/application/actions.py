@@ -52,11 +52,14 @@ class RestartServiceAction:
     name = "restart_service"
     required = False
 
-    def __init__(self, restarter: ContainerRestarter) -> None:
+    def __init__(self, restarter: ContainerRestarter, service: str | None = None) -> None:
+        # `service` fixe : utile quand plusieurs services partagent un secret tourné (JWT) et
+        # doivent tous relire la nouvelle valeur, indépendamment de la cible de l'anomalie.
         self._restarter = restarter
+        self._service = service
 
     def execute(self, incident: Incident) -> ActionResult:
-        service = incident.anomaly.target_service
+        service = self._service or incident.anomaly.target_service
         self._restarter.restart(service)
         return ActionResult(self.name, True, f"service={service}")
 
@@ -75,7 +78,9 @@ class RestoreDatabaseAction:
         before = incident.anomaly.detected_at - self._margin
         self._restorer.restore_latest(before)
         return ActionResult(
-            self.name, True, f"restauration=derniere_sauvegarde_avant:{before.isoformat()}",
+            self.name,
+            True,
+            f"restauration=derniere_sauvegarde_avant:{before.isoformat()}",
             required=self.required,
         )
 
@@ -96,7 +101,9 @@ class ScaleServiceAction:
 
 class RotateSecretAction:
     name = "rotate_secret"
-    required = False
+    # Une rotation ratée laisse le secret potentiellement exposé valide : contrairement aux
+    # actions de disponibilité, l'incident de compromission ne peut pas se « résoudre » sans elle.
+    required = True
 
     def __init__(self, rotator: SecretRotator, secret_name: str) -> None:
         self._rotator = rotator
@@ -105,4 +112,4 @@ class RotateSecretAction:
     def execute(self, incident: Incident) -> ActionResult:
         self._rotator.rotate(self._secret_name)
         # Le nom du secret est loggé, jamais sa valeur.
-        return ActionResult(self.name, True, f"secret={self._secret_name}")
+        return ActionResult(self.name, True, f"secret={self._secret_name}", required=self.required)
