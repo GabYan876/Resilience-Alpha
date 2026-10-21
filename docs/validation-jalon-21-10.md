@@ -55,7 +55,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 5. Attaque et RAG — François
 
-- [ ] Script d'injection SQL (ER2) exécuté depuis le PC Attaquant vers `192.168.137.1` uniquement ; WAF qui bloque, trace dans Loki.
+- [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Exécuté localement ce jalon ; reste à rejouer depuis le PC Attaquant vers `192.168.137.1` pour la preuve finale (comme le flood ER1).
 - [ ] Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise).
 - [ ] Périmètre offensif respecté : jamais le campus, un autre groupe ni Internet.
 - [ ] RAG : ER6 prouvé (injection de prompt sans effet), lecture seule vérifiée, Ollama sur le PC Linux dédié, modèle ≤ 8B.
@@ -71,7 +71,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 ## 7. Critères de sortie du jalon
 
 - [x] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction (5/5 le 21/10, voir §2).
-- [ ] Au moins une attaque de compromission (SQLi) est bloquée, visible dans le SIEM/Grafana et traitée (rotation de secrets, procédure d'investigation).
+- [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7). **Non « traitée »** : `RotateSecretAction`/`VaultSecretRotator` et la procédure d'investigation restent à développer (reliquat §0, écart connu pour jeudi).
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
 - [ ] 1ers tests de restauration consignés (RTO / RPO mesurés).
 - [ ] Les écarts restants ont un responsable et une échéance jeudi (chaos engineering, ≥ 5 démos, clip, gel du code à 17h).
