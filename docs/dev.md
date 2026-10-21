@@ -187,6 +187,12 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait 
 ./scripts/check_transaction.sh
 ```
 
+Le script vérifie la santé de l'API puis lance le CLI `app.cli.check_transaction` dans le
+conteneur `remediation`. Celui-ci réutilise l'adaptateur `ApiTransactionProbe` aussi appelé par
+le vérificateur de reprise ; les deux chemins exigent une transaction au statut `settled`.
+Les comptes et le montant fictifs sont configurables avec `FROM_ACCOUNT`, `TO_ACCOUNT` et
+`AMOUNT_CENTS`.
+
 ### Dépannage du démarrage de la pile
 
 | Symptôme | Cause | Solution |
