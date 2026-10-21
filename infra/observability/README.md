@@ -1,7 +1,7 @@
 # Pile d'observabilité — Prometheus, Loki, Alloy, Grafana
 
 Rend l'incident visible **avant / pendant / après**, et montre le pipeline de
-remédiation. Provisionnée sans aucun clic : datasources et dashboard sont du code.
+remédiation. Provisionnée sans aucun clic : datasources, dashboards et règle d'alerte SOC sont du code.
 
 Détail des choix, du dashboard et du risque lié au socket Docker :
 [`docs/architecture/observabilite.md`](../../docs/architecture/observabilite.md).
@@ -17,7 +17,8 @@ Détail des choix, du dashboard et du risque lié au socket Docker :
 | `docker-proxy` | `ghcr.io/tecnativa/docker-socket-proxy:v0.5.0` | 32 Mo | passerelle Docker en lecture seule : seul conteneur à voir le socket |
 
 Total **1 312 Mo**. Aucun service superflu : pas d'Alertmanager (les seuils codés
-en dur sont exclus par le sujet, la détection appartient au ML), pas de
+en dur sont exclus par le sujet, la détection appartient au ML ; l'alerting intégré
+de Grafana ne sert qu'à la visibilité SOC), pas de
 node-exporter, pas de cAdvisor.
 
 Alloy ne touche **jamais** le `docker.sock` : il interroge `docker-proxy`, limité à
@@ -59,6 +60,25 @@ docker exec resilience-loki wget -qO- 'http://127.0.0.1:3100/loki/api/v1/labels'
 # Le dashboard doit être provisionné sans intervention
 curl -u "admin:$GRAFANA_ADMIN_PASSWORD" 'http://127.0.0.1:8080/grafana/api/search?type=dash-db'
 ```
+
+### Règle d'alerte SOC (SQLi)
+
+La règle `WAF - Détection SQLi` (dossier `SOC`) est provisionnée depuis
+`grafana/provisioning/alerting/`. Elle passe en `Firing` quand le WAF journalise une
+injection SQL. Détail et limites : section « Règle d'alerte SOC » de
+`docs/architecture/observabilite.md`.
+
+```bash
+# État de la règle (inactive -> firing après une SQLi)
+docker exec resilience-grafana wget -qO- --header="Authorization: Basic $(printf 'admin:%s' "$GRAFANA_ADMIN_PASSWORD" | base64)"   'http://127.0.0.1:3000/grafana/api/prometheus/grafana/api/v1/rules'
+
+# Déclencher la règle (PC Hôte, WAF sur le port 8080)
+curl -s -o /dev/null -w '%{http_code}
+' "http://<IP du PC Hôte>:8080/?id=1%27%20OR%20%271%27=%271%27%20UNION%20SELECT%20username,password%20FROM%20users--"
+```
+
+Dans l'interface : Alerting → Alert rules. Recharger après modification :
+`docker restart resilience-grafana`.
 
 ## Variables obligatoires
 

@@ -29,7 +29,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [ ] WAF ModSecurity + OWASP CRS devant la passerelle ; seul le WAF est publié sur le réseau.
 - [ ] Les logs du WAF arrivent dans Loki (Promtail/Alloy) avec `service`, `trace_id`, `event`.
-- [ ] Fonction SOC : une règle WAF déclenchée (SQLi) est visible et alertable dans Grafana.
+- [x] Fonction SOC : une règle WAF déclenchée (SQLi) est visible et alertable dans Grafana. *(règle `WAF - Détection SQLi`, PR #55 ; essai du 21/10 : `inactive` puis `firing` après une SQLi)*
 - [ ] Durcissement : conteneurs non-root, réseaux internes (BDD, Vault, gestion), `mem_limit` partout.
 - [ ] Reset d'état : script qui remet la démo à zéro entre deux passages.
 
