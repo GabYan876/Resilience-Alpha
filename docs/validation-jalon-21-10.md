@@ -98,8 +98,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | Trame `Pres.pptx` et pitch | Gabriel | Jeudi | Jury vendredi |
 | Dossier PDF (plan 8–12 p., répartition des sections) | François | Jeudi, avant gel du code | Rendu obligatoire |
 | `ruff format` fonctionnel sur chaque poste ; réseau privé du binôme (hotspot ou box) confirmé opérationnel entre PC Attaquant et PC Hôte | Tous | Jeudi matin | Condition du chaos en réseau réel |
-| Les 5 réseaux Docker réalisables dans le Compose (reliquat du 19/10) | Hugo | Jeudi matin | Isolation réseau du dossier Infra |
-| Durcissement WAF détaillé : conteneurs non-root, réseaux internes, `mem_limit` partout (section Hugo §1, non auto-vérifiable sans sa confirmation) | Hugo | Jeudi matin | Pilier Cyber, durcissement obligatoire |
 
 Non listés ici parce que déjà prouvés avec preuve référencée (voir §2, §3, §6) : fil rouge flood
 depuis le PC Attaquant, SQLi bloqué/visible en local, S4 (2 passages), restauration à froid, revue
