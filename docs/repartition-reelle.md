@@ -42,6 +42,7 @@ Elle montre ce qui a été **réellement livré**, pas ce que prévoyait le debr
 | Alerting Grafana (règle d'alerte SQLi) | Hugo | #55 (`bcf2d08`) | 64 lignes |
 | Documentation de la règle d'alerte, arbitrage SOC (Loki/Grafana seuls) | Kevin, arbitrage confirmé par Hugo | #56, `a038d6c` | docs |
 | Secrets : `.sops.yaml`, `infra/secrets`, rotation | Kevin | #50 | ~130 lignes |
+| Essais d'installation de la pile : lundi 19/10 sur WSL (échec, erreur réseau), mardi 20/10 sur Windows (échec), mercredi 21/10 réussi | Hugo | Déclaré par l'équipe, **aucune trace Git** (travail d'environnement) | n/a |
 | Runner Ansible, commande de déploiement unique (`Deploy.ps1`), rôles preflight/application/observability/verify | Hugo | #62 (`f285f48`) | ~440 lignes, 14 fichiers |
 | Option `-RenderEnv` de `Deploy.ps1` (rendu du `.env` depuis SOPS) | Kevin | #63 (`55b5cdb`) | ~35 lignes |
 | Formatage `ruff` du dépôt, validation du jalon du 22/10 | Kevin | #65, #66 | 10 fichiers + 77 lignes de doc |
@@ -60,7 +61,7 @@ Le compte de lignes surestime le front de Gabriel : l'application Pay-Now d'orig
 
 ## 3 bis. Diagramme de Gantt (travail réellement commité)
 
-Les dates sont celles des commits et des merges de PR, à la journée près. Chaque barre va du premier au dernier commit du lot, sans refléter le temps passé dessus. Le diagramme s'affiche sur GitHub et dans les éditeurs compatibles Mermaid.
+Les dates sont celles des commits et des merges de PR, à la journée près. Les deux barres rouges de Hugo (essais d'installation ratés) sont déclarées par l'équipe et absentes de Git. Chaque barre va du premier au dernier commit du lot, sans refléter le temps passé dessus. Le diagramme s'affiche sur GitHub et dans les éditeurs compatibles Mermaid.
 
 ```mermaid
 gantt
@@ -97,6 +98,8 @@ gantt
     Sonde de transaction unifiée, mesures S4             :a2, 2026-10-21, 1d
 
     section Hugo
+    Installation sur WSL (échec, erreur réseau)          :crit, h0, 2026-10-19, 1d
+    Essai sur Windows (échec)                            :crit, h0b, 2026-10-20, 1d
     Alerting Grafana (règle SQLi)                        :h1, 2026-10-21, 1d
     Runner Ansible et Deploy.ps1                         :h2, 2026-10-21, 1d
 
@@ -105,13 +108,13 @@ gantt
     Remise avant 23h59                                   :milestone, m2, 2026-10-22, 0d
 ```
 
-Lecture : Kevin occupe les trois jours sans interruption, François travaille surtout le 19/10, Gabriel, Antoine et Hugo n'apparaissent qu'à partir du 20/10 ou du 21/10, et la dernière ligne droite (jeudi 22/10) repose encore presque entièrement sur Kevin.
+Lecture : Kevin occupe les trois jours sans interruption, François travaille surtout le 19/10, Gabriel et Antoine n'apparaissent qu'à partir du 20/10 ou du 21/10, et la dernière ligne droite (jeudi 22/10) repose encore presque entièrement sur Kevin.
 
 ## 4. Écarts avec la répartition prévue (`CLAUDE.md`)
 
 | Rôle prévu | Prévu | Constaté dans Git |
 |---|---|---|
-| Hugo : Infra + Cyber (Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau) | Tout le périmètre infra et cyber | 2 commits : alerting Grafana et runner Ansible avec `Deploy.ps1`. Le WAF, le SIEM, le durcissement, SOPS et le Compose ont été faits par Kevin ; l'observabilité par François. |
+| Hugo : Infra + Cyber (Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau) | Tout le périmètre infra et cyber | 2 commits : alerting Grafana et runner Ansible avec `Deploy.ps1`. Les 19 et 20/10 ont été consacrés à des essais d'installation qui ont échoué (WSL puis Windows), d'où l'absence de commits avant le 21/10 ; l'installation a réussi le 21/10 et Hugo a pu avancer. Le WAF, le SIEM, le durcissement, SOPS et le Compose ont été faits par Kevin ; l'observabilité par François. |
 | Kevin : tech lead + remédiation | Architecture, remédiation, ML, intégration | Conforme, mais Kevin a aussi porté l'infra, la cyber, l'auth, la gouvernance et la doc. |
 | Antoine : backend, BDD, API, auth, vérification de transaction, EBIOS, PCA/PRA | Backend + gouvernance | Commits sous `eosiswastaken` : sonde de transaction, sauvegarde et restauration BDD, mesures S4. BDD et API livrées par François ; auth, EBIOS et PCA/PRA par Kevin. |
 | Gabriel : front, Clip Chrono, Grafana, NIS2/DORA, pitch, Pres.pptx | Front + gouvernance + rendus | Front livré. NIS2/DORA rédigé par Kevin. Aucun commit sur le pitch ou la présentation (ces fichiers ne sont pas dans Git). |
