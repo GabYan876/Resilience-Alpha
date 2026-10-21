@@ -1,0 +1,77 @@
+# Validation du jalon du jeudi 22/10
+
+Jalon : **chaos engineering, ≥ 5 démos sans intervention, clip chrono 60 s sans coupe, gel du code à 17h, remise avant 23h59.**
+Chacun relit son périmètre, répond aux questions et coche. Les réponses sont reportées dans [`06-pilotage-arbitrages.md`](gouvernance/06-pilotage-arbitrages.md).
+Les cases cochées ont une preuve dans le dépôt ; les autres attendent la confirmation de la personne.
+Rappel : le vendredi est le jury (5 min de démo + 5 min de questions), **on ne code plus**.
+
+## 0. Reliquat du jalon du 21/10
+
+Cases restées ouvertes dans [`validation-jalon-21-10.md`](validation-jalon-21-10.md) §8 : à solder **avant** d'ouvrir le chaos.
+
+- [ ] **`ruff format --check .` et `ruff check .` passent sur chaque poste** (Hugo, Antoine, Gabriel, François) après `git pull` ; confirmé sur le poste de Kevin le 21/10.
+- [ ] **Réseau privé du binôme opérationnel entre PC Attaquant et PC Hôte**, avec `WAF_BIND_HOST` réglé sur l'IP réelle du PC Hôte. Constat du 21/10 soir : `.env` du PC de Kevin fixait `192.168.137.1` (hotspot) alors que seul `192.168.1.140` (box) existait ; le WAF refuse de démarrer si l'IP n'est pas présente. Vérifier l'IP avant chaque essai.
+- [ ] Doc d'API à jour (Antoine) : `services/api/README.md` couvre l'API métier ; le service `auth` (`/auth/register`, `/auth/login`) n'a pas de README.
+- [ ] Relecture du README `infra/ansible/README.md` par un autre membre que Kevin (clone neuf essayé le 21/10 par Kevin seul).
+- [ ] Trame `Pres.pptx`, NIS2/DORA relu et relié aux essais du 21/10 (Gabriel), plan du Dossier PDF (François) : échéances « jeudi matin » du §8 de la veille.
+
+## 1. Infra et durcissement — Hugo
+
+- [ ] Déploiement en une commande rejoué à froid sur le PC Hôte final (`Deploy.ps1 -RenderEnv` sur clone neuf, ou `Deploy.ps1` si `.env` existe), pile complète saine, transaction de test réussie.
+- [ ] Ansible, Compose et `.env.example` figés : plus aucun changement d'infra après le gel du code.
+- [ ] `mem_limit` sur tous les conteneurs et RAM de la pile mesurée pendant le chaos (référence du 21/10 : 885 Mo au repos, 990 Mo en pic sous flood).
+- [ ] Seul le WAF publie un port ; aucune interface de gestion (Grafana, Prometheus, Loki, proxys Docker) exposée au-delà du WAF.
+- [ ] Aucun secret dans l'arbre qui part au zip : `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `ml/models/*.joblib` exclus du `-Code.zip` (les fichiers `*.enc.yaml` chiffrés sont les seuls autorisés).
+
+## 2. Chaos et remédiation — Kevin
+
+- [ ] **≥ 5 démos consécutives sans intervention humaine** depuis le PC Attaquant, à travers le WAF, avec `python scripts/demo_loop.py --runs 5` (ou plus), `incident.resolved` à chaque passage et transaction de test réussie (référence du 21/10 : 5/5, RTO 5,4 à 7,9 s).
+- [ ] Scénarios du chaos de François rejoués contre la pile : pour chacun, détection, action choisie par `DecisionPolicy`, vérification (API saine **et** transaction de test) et RTO consignés dans `docs/gouvernance/02-pca-pra.md` §7.
+- [ ] Disponibilité ≠ compromission : un flood est traité par blocage de compte + restart, une compromission (SQLi) par rotation de secret + restart de `auth`/`api`. Les deux rejouées dans le chaos.
+- [ ] Faux positifs ML re-mesurés après le chaos (trafic de fond actif, aucun `incident.*` parasite).
+- [ ] Écarts honnêtes consignés dans « Limites connues » du README : investigation manuelle de compromission non développée, `block_ip` inopérant sous Docker Desktop (arbitrage du 20/10), détecteur de compromission non automatique.
+- [ ] **Gel du code à 17h** : plus aucun commit fonctionnel sur `main` après l'heure ; seuls les ajustements de rendu (docs, zip) restent permis.
+
+## 3. Restauration et backend — Antoine
+
+- [ ] S4 (corruption BDD) rejoué dans le chaos, RTO et RPO consignés (référence du 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
+- [ ] Restauration à froid rejouée en fin de chaos : arrêt complet puis redémarrage en une commande, transaction de test réussie.
+- [ ] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée.
+- [ ] Doc d'API à jour (voir §0), tests `pytest` verts avant le gel.
+
+## 4. Front, dashboard, rendus — Gabriel
+
+- [ ] **Clip chrono 60 s sans coupe** : scénario écrit, prise finale tournée, fichier `Workshop2026-M2-G<n>-VidChrono.mp4` ≤ 60 s. Le clip montre le service **avant / pendant / après** l'incident dans Grafana (disponibilité, latence, requêtes bloquées, événements `incident.*`).
+- [ ] Dashboard Grafana vérifié pendant le chaos : lisible sur les trois temps.
+- [ ] NIS2/DORA relu et relié aux essais réels (chaos du 22/10 inclus).
+- [ ] `Pres.pptx` et pitch prêts pour le jury (5 min de démo + 5 min de questions).
+
+## 5. Attaque et RAG — François
+
+- [ ] **Scénario de chaos écrit** (liste des pannes, ordre, critères de reprise) et rejoué ; chaque attaque lancée uniquement depuis le PC Attaquant vers le PC Hôte (garde-fous `ALLOWED_HOSTS`, jamais le campus, un autre groupe ni Internet).
+- [ ] RAG : ER6 prouvé sur plusieurs scénarios d'injection de prompt (pas seulement 1 scénario / 3 questions), modèle de démo = `llama3.1:8b` (≤ 8B), Ollama sur le PC Linux dédié si RAM < 32 Go, lecture seule vérifiée.
+- [ ] Dossier PDF (8–12 p.) assemblé : architecture, 5 piliers, essais réels avec chiffres, limites.
+- [ ] `Workshop2026-M2-G<n>-Code.zip` : sources, infra, scripts d'attaque/ML, tests, doc d'API, README, **sans secret** (voir §1).
+
+## 6. Cohérence d'intégration — Kevin
+
+- [ ] `README.md`, `architecture.md` et matrice de traçabilité alignés avec la pile réellement déployée au gel.
+- [ ] `gh pr list --state open` vide au gel ; toutes les branches de travail supprimées.
+- [ ] Section « Limites connues » du README complétée (ML, périmètre NIS2/DORA démontrable, écarts avec un contexte industriel).
+- [ ] Une revue finale de « chaque ligne du code est explicable par son auteur devant le jury » : chacun sait expliquer son périmètre, y compris le code généré par IA.
+
+## 7. Critères de sortie du jalon
+
+- [ ] ≥ 5 démos consécutives sans intervention humaine, preuve de reprise par transaction à chaque passage (§2).
+- [ ] Au moins une attaque de disponibilité **et** une de compromission traitées automatiquement, avec RTO mesuré (§2).
+- [ ] Clip 60 s sans coupe livré (§4).
+- [ ] Code gelé à 17h, `main` stable, PR ouvertes = 0 (§2, §6).
+- [ ] Remise complète avant **23h59** : `-Dossier.pdf`, `-Pres.pptx`, `-VidChrono.mp4`, `-Code.zip` sans secret.
+
+## 8. Écarts restants pour le vendredi
+
+À remplir en fin de journée du 22/10, après le chaos : tout ce qui reste ouvert doit figurer ici avec un responsable. Le vendredi est réservé au jury, donc **rien de neuf ne sera développé** ; ces écarts sont à présenter comme limites assumées, pas à corriger.
+
+| Écart | Responsable | Pourquoi c'est assumé |
+|---|---|---|
+| *(à compléter après le chaos)* | | |
