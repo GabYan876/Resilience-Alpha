@@ -55,7 +55,7 @@ Tous : lire `CONTRIBUTING.md` (5 min).
 
 ## 4. Hotspot
 
-- [ ] Point d'accès mobile actif, nom `RESILIENCE-G<n>`.
-- [ ] PC Hôte en `192.168.137.1`.
-- [ ] PC Attaquant connecté au hotspot et joint le PC Hôte.
+- [ ] ~~Point d'accès mobile actif, nom `RESILIENCE-G<n>`.~~ Hotspot ou box indifféremment : arbitrage du 21/10 (`06-pilotage-arbitrages.md`), seul compte le réseau privé du binôme.
+- [ ] ~~PC Hôte en `192.168.137.1`.~~ Adresse de l'hôte réglée par `WAF_BIND_HOST` dans `.env` (hotspot `192.168.137.1` ou IP de la box), même arbitrage.
+- [x] PC Attaquant connecté au réseau privé du binôme et joint le PC Hôte. *(flood rejoué 5/5 depuis le PC Attaquant à travers le WAF le 21/10, SQLi rejouée depuis le PC Attaquant ; `validation-jalon-21-10.md` §0 et §2)*
 - [ ] Le PC Attaquant ne vise que `192.168.137.1` (jamais le campus, un autre groupe ni Internet).
