@@ -8,7 +8,7 @@ Les cases cochées ont une preuve dans le dépôt ; les autres attendent la conf
 
 Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-10.md) : à solder avant d'ouvrir le jalon du 21/10.
 
-- [ ] **Ansible (Hugo)** : `infra/ansible/site.yml` et les rôles écrits (`.env`, socle, observabilité, vérification). Sans lui, « une commande » n'est pas tenu.
+- [x] **Ansible (Hugo)** : `infra/ansible/Deploy.ps1`, `site.yml` et rôles (preflight, vérification) ; `-CheckOnly` et `-VerifyOnly` essayés en réel le 21/10 (11 services en marche + transaction de test). Le déploiement complet depuis un clone neuf reste à rejouer avec un tiers (§7).
 - [x] **Vault ou SOPS (Hugo, Kevin)** : tranché **SOPS + age** le 21/10 (`06-pilotage-arbitrages.md`). `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/app.enc.yaml`/`jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator`. Essai réel : `POST /incidents kind=compromise` → JWT tourné, `auth`/`api` redémarrés, transaction de test encore réglée.
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié depuis un second PC sur la box (`192.168.1.140:8080`, login, dashboard, `POST /api/ds/query` sans 403). `WAF_BIND_HOST` et `GRAFANA_ROOT_URL` réglés sur cette IP dans `.env`. Arbitrage du 21/10 (`06-pilotage-arbitrages.md`) : le réseau n'importe pas (hotspot ou box), seul compte le réseau privé du binôme — box et hotspot sont équivalents pour la démo.
@@ -88,7 +88,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 
 | Écart | Responsable | Échéance | Pourquoi ça bloque |
 |---|---|---|---|
-| Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
 | Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise) | François | Jeudi, avant les essais | Sans ce plan écrit, les ≥ 5 démos sans intervention ne sont pas pilotables |
 | RAG ER6 : résiste sur `llama3.1:8b`, cède sur `llama3.2:3b` (1 seul scénario, 3 questions) ; modèle de démo et isolement du PC Linux à confirmer | François | Jeudi avant le chaos | Le modèle utilisé en démo doit être celui qui résiste, sinon ER6 n'est plus couvert |
 | Clip chrono 60 s (scénario écrit, 1re prise sans coupe) | Gabriel | Jeudi, avant gel du code 17h | Rendu obligatoire |

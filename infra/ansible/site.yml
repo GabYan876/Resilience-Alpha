@@ -1,0 +1,3 @@
+---
+# Point d'entrée stable : Deploy.ps1 l'appelle avec --tags preflight ou verify.
+- import_playbook: playbooks/platform.yml

@@ -1,0 +1,41 @@
+---
+- name: RESILIENCE-ALPHA - déploiement et vérification de la plateforme
+  hosts: local
+  gather_facts: false
+
+  vars:
+    repo_root: "{{ lookup('ansible.builtin.env', 'RESILIENCE_REPO_ROOT') | default('/workspace', true) }}"
+    env_file: "{{ repo_root }}/.env"
+    app_compose_file: "{{ repo_root }}/infra/compose/docker-compose.yml"
+    obs_compose_file: "{{ repo_root }}/infra/compose/docker-compose.observability.yml"
+
+    # false sous Docker Desktop (Windows) : Deploy.ps1 lance Compose depuis l'hôte, ce qui évite
+    # des chemins de bind mount invalides côté Linux. Sur un vrai hôte Linux, passer à true
+    # (RESILIENCE_DIRECT_DEPLOY=true) si le dépôt est monté au même chemin absolu des deux côtés
+    # du socket Docker. Chemin Linux non testé.
+    direct_compose_deploy: "{{ lookup('ansible.builtin.env', 'RESILIENCE_DIRECT_DEPLOY') | default('false', true) | bool }}"
+
+    expected_app_services:
+      - api
+      - auth
+      - gateway
+      - waf
+      - postgres
+      - remediation
+      - anomaly-detector
+    expected_obs_services:
+      - loki
+      - alloy
+      - prometheus
+      - grafana
+      - docker-proxy
+
+  roles:
+    - role: preflight
+      tags: [preflight, deploy]
+    - role: application
+      tags: [deploy, application]
+    - role: observability
+      tags: [deploy, observability]
+    - role: verify
+      tags: [verify]

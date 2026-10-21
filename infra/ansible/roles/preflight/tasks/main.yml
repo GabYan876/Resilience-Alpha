@@ -1,0 +1,50 @@
+---
+- name: Vérifier les fichiers requis
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ env_file }}"
+    - "{{ app_compose_file }}"
+    - "{{ obs_compose_file }}"
+  register: preflight_files
+
+- name: Exiger la présence des fichiers
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg | default(false)
+    fail_msg: "Fichier requis absent : {{ item.item }} (pour .env : scripts/render_env.sh, voir README)"
+    quiet: true
+  loop: "{{ preflight_files.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Valider le Compose applicatif avec .env
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ app_compose_file }}"
+      - config
+      - --quiet
+  changed_when: false
+
+- name: Valider le Compose d'observabilité avec .env
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ obs_compose_file }}"
+      - config
+      - --quiet
+  changed_when: false
+
+- name: Bilan du preflight
+  ansible.builtin.debug:
+    msg: "Les deux Compose sont valides. Ce rôle ne modifie aucun conteneur."

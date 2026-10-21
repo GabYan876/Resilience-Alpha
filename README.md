@@ -60,7 +60,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 ├── frontend/             # front de paiement (React/Tailwind) ; le dashboard est dans infra/observability (Grafana)
 ├── infra/
 │   ├── compose/          # docker-compose*.yml
-│   ├── ansible/          # playbooks
+│   ├── ansible/          # Deploy.ps1 + playbooks/rôles Ansible (voir infra/ansible/README.md)
 │   ├── observability/    # Prometheus, Grafana, Loki
 │   ├── waf/              # ModSecurity + OWASP CRS, liste de blocage (njs)
 │   └── secrets/          # SOPS (chiffré uniquement)
@@ -84,7 +84,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 > Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
 
-> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : playbooks Ansible (`infra/ansible/`, vides). Exposition de la pile testée en réel le 21/10 sur la box (`WAF_BIND_HOST`) ; pile accessible sur n'importe quel réseau privé du binôme. Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
+> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : Exposition de la pile testée en réel le 21/10 sur la box (`WAF_BIND_HOST`) ; pile accessible sur n'importe quel réseau privé du binôme. Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
@@ -116,7 +116,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.observability.yml
 
 Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
-La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
+Déploiement en une commande (Windows + Docker Desktop, `.env` déjà présent) : `.\infra\ansible\Deploy.ps1` enchaîne contrôle du `.env`, modèle ML si absent, socle, observabilité, vérification Ansible et transaction de test. Détails et limites : `infra/ansible/README.md`.
 
 Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant — hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
 

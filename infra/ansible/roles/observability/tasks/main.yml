@@ -1,0 +1,21 @@
+---
+- name: Indiquer qui déploie sous Windows
+  ansible.builtin.debug:
+    msg: >-
+      Docker Desktop (Windows) : Deploy.ps1 lance le Compose d'observabilité depuis PowerShell
+      pour que les bind mounts Grafana/Loki/Alloy se résolvent.
+  when: not (direct_compose_deploy | bool)
+
+- name: Déployer le Compose d'observabilité (hôte Linux compatible uniquement)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ obs_compose_file }}"
+      - up
+      - -d
+      - --wait
+  when: direct_compose_deploy | bool

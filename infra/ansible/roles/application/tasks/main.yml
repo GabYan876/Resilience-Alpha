@@ -1,0 +1,22 @@
+---
+- name: Indiquer qui déploie sous Windows
+  ansible.builtin.debug:
+    msg: >-
+      Docker Desktop (Windows) : Deploy.ps1 lance le Compose applicatif depuis PowerShell
+      pour que les bind mounts Windows se résolvent.
+  when: not (direct_compose_deploy | bool)
+
+- name: Déployer le Compose applicatif (hôte Linux compatible uniquement)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ app_compose_file }}"
+      - up
+      - -d
+      - --build
+      - --wait
+  when: direct_compose_deploy | bool

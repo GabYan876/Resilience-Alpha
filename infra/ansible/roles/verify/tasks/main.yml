@@ -1,0 +1,58 @@
+---
+# Seuls les services de longue durée sont contrôlés ; `migrate` (one-shot) se termine
+# normalement en Exited (0) et n'est volontairement pas listé. « running » ne prouve pas la
+# reprise : la transaction de test est jouée ensuite par Deploy.ps1.
+- name: Lister les services applicatifs en marche
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ app_compose_file }}"
+      - ps
+      - --status
+      - running
+      - --services
+  register: running_app
+  changed_when: false
+
+- name: Exiger les services applicatifs
+  ansible.builtin.assert:
+    that:
+      - item in running_app.stdout_lines
+    fail_msg: "Service applicatif à l'arrêt : {{ item }}"
+    quiet: true
+  loop: "{{ expected_app_services }}"
+
+- name: Lister les services d'observabilité en marche
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --env-file
+      - "{{ env_file }}"
+      - -f
+      - "{{ obs_compose_file }}"
+      - ps
+      - --status
+      - running
+      - --services
+  register: running_obs
+  changed_when: false
+
+- name: Exiger les services d'observabilité
+  ansible.builtin.assert:
+    that:
+      - item in running_obs.stdout_lines
+    fail_msg: "Service d'observabilité à l'arrêt : {{ item }}"
+    quiet: true
+  loop: "{{ expected_obs_services }}"
+
+- name: Résultat de la vérification
+  ansible.builtin.debug:
+    msg: >-
+      Les services attendus sont en marche. La transaction de test (API saine + paiement
+      réussi) est jouée à part par Deploy.ps1 ; les logs SQLi dans Loki restent à contrôler
+      en essai de bout en bout.
