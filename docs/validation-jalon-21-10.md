@@ -15,7 +15,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] Mesure de la RAM de la pile complète (`docker stats`, 21/10, 17 conteneurs) : **885 Mo réels au repos, 990 Mo en pic pendant `attack/flood_http.py` (30 s, 60 req/s)**, pour 3 128 Mo de limites cumulées (hors Ollama) — loin des 16 Go. Aucun conteneur n'a approché sa limite sous flood (le plus chargé : détecteur 132/256 Mo). Les trois `docker-socket-proxy` restent stables à 25–30/32 Mo. Fil rouge confirmé dans le même passage : `block_subject` (le flood est authentifié, identifié par compte — `block_ip` échoue faute d'IP source, cohérent avec l'arbitrage WAF-par-compte du 20/10) + `restart_service` → `api_healthy: true` + `probe_transaction_ok: true` → incident résolu en ~5 s, sans intervention humaine.
 - [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM.
 - [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
-- [ ] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood.
+- [x] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood (`06-pilotage-arbitrages.md` ligne 41).
 - [ ] Tous : `ruff format` fonctionne sur chaque PC ; réseau privé du binôme (hotspot `RESILIENCE-G<n>` ou box) opérationnel entre PC Attaquant et PC Hôte.
 - [x] Reliquat du 19/10 : cases EBIOS (ateliers 1 à 3) cochées et réponses d'Antoine et de Kevin reportées dans `validation-jalon-19-10.md`.
 - [x] Reliquat du 19/10 restant, vérifié le 21/10 contre le dépôt (voir `validation-jalon-19-10.md` §Hugo) :

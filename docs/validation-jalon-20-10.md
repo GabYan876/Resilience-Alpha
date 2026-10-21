@@ -35,7 +35,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 ## 3. Front et dashboard — Gabriel
 
 - [x] Front Pay-Now sur notre API (inscription, connexion, solde, virement, historique).
-- [ ] **Arbitrage Grafana vs dashboard React à valider.** Le debrief et le sujet parlent d'un dashboard React ; le registre du 20/10 retient Grafana (« à valider avec Gabriel et le sujet »). Vérifier que le sujet accepte Grafana comme dashboard de supervision, sinon il reste un service à écrire.
+- [x] **Arbitrage Grafana vs dashboard React** : validé par Gabriel le 21/10 (`06-pilotage-arbitrages.md` ligne 41). Le debrief et le sujet parlent d'un dashboard React ; le registre du 20/10 retient Grafana (« à valider avec Gabriel et le sujet »). Vérifier que le sujet accepte Grafana comme dashboard de supervision, sinon il reste un service à écrire.
 - [ ] Parcourir `resilience-alpha.json` pendant un flood : avant / pendant / après lisibles, événements `incident.*` visibles.
 - [x] NIS2/DORA : colonnes « Couverture » de `03-nis2-dora.md` remplies et périmètre non démontrable écrit (PR #27, propositions du 20/10 : relecture de Gabriel attendue).
 
