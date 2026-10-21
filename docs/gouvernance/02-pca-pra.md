@@ -24,7 +24,7 @@ Distinguer **restauration de disponibilité** (S1, S3) et **correction de compro
 
 | Service | Criticité | RTO cible | RTO mesuré | RPO cible | RPO mesuré | Source de la mesure |
 |---|---|---|---|---|---|---|
-| Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5) ; crash : 34 s | ≤ 5 min (intervalle de sauvegarde configuré) | 20 s sur l'essai du 20/10 (écart archive/corruption imposé) ; pire cas 300 s + marge 15 s | Événements JSON de remédiation (Loki) |
+| Paiement (API + auth + BDD) | Critique | 60 s (proposition) | Flood : 33-48 s (moyenne 45 s, 5/5, 20/10, local) ; crash : 34 s ; flood via WAF depuis PC Attaquant : 5,4-7,9 s de temps de remédiation seul (5/5, 21/10, détection non chronométrée) | ≤ 5 min (intervalle de sauvegarde configuré) | 20 s sur l'essai du 20/10 (écart archive/corruption imposé) ; pire cas 300 s + marge 15 s | Événements JSON de remédiation (Loki) |
 | Dashboard (Grafana) | Importante | 5 min (proposition) | 6-10 s (3 essais, arrêt brutal puis démarrage jusqu'à `healthy`) | Sans objet (provisionné par fichiers) | Sans objet | Mesure du 20/10 (Kevin), `docker kill` puis `docker start` |
 | Observabilité | Importante : sans elle la détection est aveugle | 5 min (proposition) | Prometheus 6-8 s, Loki 22-24 s (3 essais chacun) | Logs perdus pendant l'arrêt | Non mesuré : la perte de logs pendant l'arrêt de Loki reste à quantifier | Mesure du 20/10 (Kevin), même méthode ; aucune règle de remédiation ne redémarre ces services, seul `restart: unless-stopped` s'en charge |
 
@@ -57,8 +57,11 @@ Chaque essai : date, scénario, résultat, RTO observé, intervention humaine (o
 |---|---|---|---|---|---|
 | 20/10 | S1 flood, 5 passages (`scripts/demo_loop.py`) | 5/5 reprises, vérifiées par transaction de test | 33-48 s (moyenne 45 s) | Non | Événements `incident.*` dans Loki |
 | 20/10 | S3 crash de l'API | Reprise automatique | 34 s (détection ~30 s) | Non | Événements `incident.*` (kind `crash`) dans Loki |
+| 21/10 | S1 flood, 5 passages depuis le **PC Attaquant**, à travers le WAF, `scripts/reset_demo.sh` rejoué entre chaque passage | 5/5 reprises (`block_subject` + `restart_service`), vérifiées par transaction de test | `incident.detected` → `incident.resolved` : 5,4 / 7,1 / 6,6 / 7,0 / 7,9 s (temps de remédiation seul ; délai de détection non mesuré ici, faute du journal horodaté du script d'attaque sur le PC Attaquant) | Non | Événements `incident.*` dans Loki/`resilience-remediation` ; `block_subject` vérifié par le blocage effectif (403) des requêtes suivantes dans les logs WAF |
 
-Objectif : ≥ 5 passages sans intervention.
+Objectif : ≥ 5 passages sans intervention — **atteint le 21/10** depuis le PC Attaquant, à travers le WAF.
+
+Écart constaté le 21/10 : `block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages — seul `block_subject` agit, l'IP réelle de l'attaquant n'est jamais remontée au moteur de remédiation (item encore ouvert dans `validation-jalon-21-10.md` §2). `restart_service` et la vérification transactionnelle compensent, mais la ligne « le blocage d'IP agit sur l'IP réelle de l'attaquant » reste à prouver.
 
 ## 8. Risques qui subsistent après la reprise
 - **Attaquant qui revient** : bloqué par compte, il peut en créer un autre ; sous Docker Desktop l'IP n'est pas distinguée.
