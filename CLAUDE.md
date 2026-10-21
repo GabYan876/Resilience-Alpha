@@ -24,7 +24,9 @@ Un conteneur qui redémarre ne prouve rien : la remédiation n'est « réussie �
 - Orchestration : Docker Compose ; automatisation : playbooks Ansible.
 - Observabilité : Prometheus, Grafana, Loki (+ Promtail/Alloy).
 - ML : scikit-learn (ex. IsolationForest) sur métriques/logs. RAG : Ollama + LangChain.
-- Réseau : hotspot Windows `192.168.137.x`, PC Hôte = `192.168.137.1`.
+- Réseau : réseau privé du binôme (hotspot Windows `192.168.137.x` ou box personnelle, peu importe lequel —
+  voir arbitrage du 21/10 dans `docs/gouvernance/06-pilotage-arbitrages.md`), jamais le campus, un autre
+  groupe ni Internet.
 
 ## Architecture : principes SOLID (obligatoire)
 

@@ -78,13 +78,13 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 **PC Attaquant** : poste distinct, 8 Go RAM min., outils des scénarios retenus.
 **PC IA (optionnel)** : héberge uniquement Ollama si le PC Hôte manque de RAM.
 
-**Réseau** : point d'accès mobile Windows `RESILIENCE-G<n>`, PC Hôte en `192.168.137.1`. Seul le point d'entrée (WAF/front) est publié ; BDD, secrets et interfaces de gestion restent sur des réseaux internes.
+**Réseau** : réseau privé du binôme — point d'accès mobile Windows `RESILIENCE-G<n>` (PC Hôte en `192.168.137.1`) ou box personnelle, peu importe lequel (voir arbitrage du 21/10, `docs/gouvernance/06-pilotage-arbitrages.md`) ; jamais le campus, un autre groupe ni Internet. Seul le point d'entrée (WAF/front) est publié ; BDD, secrets et interfaces de gestion restent sur des réseaux internes.
 
 ## Démarrage rapide
 
 > Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
 
-> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : playbooks Ansible (`infra/ansible/`, vides), exposition de la pile sur `192.168.137.1` (aujourd'hui testée sur `127.0.0.1` ou l'IP LAN du PC Hôte via `WAF_BIND_HOST`). Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
+> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : playbooks Ansible (`infra/ansible/`, vides). Exposition de la pile testée en réel le 21/10 sur la box (`WAF_BIND_HOST`) ; pile accessible sur n'importe quel réseau privé du binôme. Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
@@ -118,12 +118,13 @@ Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans 
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
-Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000` (pas encore via le WAF). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN/hotspot du PC Hôte (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
+Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant — hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
 
 ## Lancer la démonstration
 
 ```bash
 # Sur le PC Attaquant : flood authentifié (voir attack/flood_http.py pour les garde-fous)
+# Remplacer l'IP par celle du PC Hôte sur le réseau privé du binôme (hotspot ou box).
 python attack/flood_http.py --base-url http://192.168.137.1:8080 --duration 30
 
 # Sur le PC Hôte : observer le dashboard / Grafana, puis vérifier la reprise

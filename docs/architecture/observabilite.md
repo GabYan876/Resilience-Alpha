@@ -19,7 +19,7 @@ Un conteneur qui redémarre ne prouve rien : le dashboard affiche donc aussi le 
 | Prometheus | `prom/prometheus:v3.1.0` | 512 Mo | 9090 | non |
 | Loki | `grafana/loki:3.4.2` | 384 Mo | 3100 | non |
 | Grafana Alloy | `grafana/alloy:v1.7.1` | 128 Mo | 12345 | non |
-| Grafana | `grafana/grafana:11.5.2` | 256 Mo | 3000 | oui, sur `127.0.0.1` uniquement |
+| Grafana | `grafana/grafana:11.5.2` | 256 Mo | 3000 | non ; servi sous `/grafana` via le WAF |
 
 Total : **1 280 Mo (1,25 Go)** sur les 16 Go du PC Hôte, + 56 Mo pour `autoheal` et sa passerelle Docker dédiée (§7). Aucune image en `latest` : une démonstration rejouée cinq fois doit tourner sur les mêmes binaires que la veille (`autoheal` fait exception, épinglé par digest — voir §7).
 
@@ -56,7 +56,7 @@ flowchart LR
         LOKI[Loki]
         GRAF[Grafana]
     end
-    OP[Navigateur<br/>via WAF / 127.0.0.1:3000]
+    OP[Navigateur<br/>via WAF /grafana]
 
     API -->|/metrics| PROM
     AUTH -->|/metrics| PROM
@@ -80,7 +80,7 @@ La règle non négociable du projet est respectée : **seul le point d'entrée e
 
 - `obs-internal` (nom Docker : `resilience-obs-internal`) est déclaré `internal: true` : les conteneurs qui y sont attachés n'ont aucune route vers l'extérieur du PC Hôte.
 - **Prometheus, Loki et Alloy ne publient aucun port.** Prometheus est en plus attaché à `resilience-net` parce qu'il doit joindre `api`, `auth`, `remediation` et `anomaly-detector` par leur nom DNS Docker.
-- **Grafana** est la seule interface consultable. Elle est publiée sur `127.0.0.1:3000` (jamais `0.0.0.0`), donc injoignable depuis le PC Attaquant ; elle est atteinte depuis le réseau via le WAF, qui la joint par `resilience-net`.
+- **Grafana** est la seule interface consultable. Elle ne publie aucun port : elle est atteinte sous `/grafana` via le WAF, puis la passerelle Caddy, qui la joint par `resilience-net` (`GF_SERVER_SERVE_FROM_SUB_PATH=true`). Le trafic du dashboard traverse donc ModSecurity.
 - Le réseau `resilience-net` appartient à `infra/compose/docker-compose.yml` et est déclaré ici en `external: true`. La pile principale doit donc être démarrée d'abord. Si la pile principale préfixe le nom du réseau par son nom de projet, la variable `RESILIENCE_NET_NAME` permet de pointer le nom réel sans modifier le fichier.
 
 ## 5. Métriques
@@ -253,7 +253,7 @@ docker compose -f infra/compose/docker-compose.observability.yml up -d
 
 La pile d'observabilité porte son propre nom de projet (`resilience-alpha-obs`). Elle est donc **autonome** et survit aux redémarrages de conteneurs déclenchés par le moteur de remédiation — c'est indispensable pour montrer l'incident pendant qu'il a lieu. Corollaire : **ne pas la fusionner** avec la pile principale via plusieurs `-f`, son `name:` écraserait le nom de projet de l'autre.
 
-Grafana est ensuite sur <http://127.0.0.1:3000/> et ouvre directement le dashboard.
+Grafana est ensuite sur <http://127.0.0.1:8080/grafana/> (ou l'IP du PC Hôte sur le réseau privé du binôme, ex. `http://192.168.137.1:8080/grafana/` sur le hotspot, `http://192.168.1.140:8080/grafana/` sur une box) et ouvre directement le dashboard.
 
 ### Rejouabilité
 
@@ -267,9 +267,8 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 |---|---|---|
 | `GRAFANA_ADMIN_PASSWORD` | mot de passe admin Grafana — **obligatoire**, la pile refuse de démarrer sans | aucun |
 | `GRAFANA_ADMIN_USER` | identifiant admin Grafana | `admin` |
-| `GRAFANA_HTTP_PORT` | port publié sur `127.0.0.1` | `3000` |
-| `GRAFANA_ROOT_URL` | URL publique vue par les navigateurs, derrière le WAF | `http://127.0.0.1:3000/` |
-| `GRAFANA_SERVE_FROM_SUB_PATH` | à passer à `true` si le WAF expose Grafana sous un sous-chemin | `false` |
+| `GRAFANA_ROOT_URL` | URL publique vue par les navigateurs, derrière le WAF | `http://127.0.0.1:8080/grafana/` |
+| `GRAFANA_SERVE_FROM_SUB_PATH` | Grafana est servie sous `/grafana` | `true` |
 | `GRAFANA_ANONYMOUS_ENABLED` | accès anonyme en lecture ; `true` pour la démonstration, `false` sinon | `true` |
 | `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy — la passerelle restreinte de la pile. À ne pas repointer vers le socket. | `tcp://docker-proxy:2375` |
 | `LOKI_PUSH_URL` | URL de push Loki utilisée par Alloy | `http://loki:3100/loki/api/v1/push` |
@@ -282,7 +281,7 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 - **Accès anonyme à Grafana** activé pour la démonstration, cf. section 8. À inscrire dans les risques résiduels du dossier.
 - **Pas d'Alertmanager, pas de Wazuh** : la fonction SOC repose sur Loki + Grafana, choix assumé pour tenir le budget RAM de 16 Go.
 - **Le proxy Docker reste le point sensible de la pile.** Alloy n'y a qu'un accès en lecture (`CONTAINERS`, `NETWORKS`, `POST=0`), mais `docker-proxy` monte bien le socket : c'est lui qu'il faut surveiller, pas Alloy. Il n'est joignable que depuis `docker-proxy-net`, en `internal: true`.
-- **Conflit de port possible** : Grafana est liée à `127.0.0.1:3000`, comme le backend Pay-Now. Changer `GRAFANA_HTTP_PORT` le cas échéant.
+- **`GRAFANA_ROOT_URL`** doit porter l'hôte tapé par le navigateur (l'IP du PC Hôte sur le réseau privé du binôme, hotspot ou box), sinon les redirections de Grafana pointent vers `127.0.0.1`.
 
 ### Validation effectuée
 
