@@ -184,5 +184,5 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 
 - WAF : ModSecurity + CRS et liste de blocage par fichier retenus le 20/10 ; à valider avec Hugo.
 - Transport détecteur → remédiation : HTTP direct sur `POST /incidents` (en place).
-- Wazuh ou fonction SOC Loki/Grafana seule, selon la RAM (Hugo).
+- ~~Wazuh ou fonction SOC Loki/Grafana seule~~ : Loki/Grafana seuls, tranché le 21/10 (`06-pilotage-arbitrages.md`).
 - ~~Exposer Grafana et le front via le WAF sur le réseau privé du binôme~~ fait le 21/10 (`WAF_BIND_HOST`/`GRAFANA_ROOT_URL`, voir `validation-jalon-21-10.md`).
