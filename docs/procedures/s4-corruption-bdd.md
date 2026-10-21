@@ -87,12 +87,16 @@ mais cette fois sur la pile complète (Compose socle + observabilité), pas la p
 
 | Passage | Résultat | RTO (`incident.detected` → `incident.resolved`) | RPO |
 |---|---|---|---|
-| 1 | résolu, API saine, transaction de sonde réussie | 3,79 s (détection 2,26 s + remédiation 1,53 s) | 59,32 s |
+| 1 (08:20, Antoine) | résolu, API saine, transaction de sonde réussie | 3,79 s (détection 2,26 s + remédiation 1,53 s) | 59,32 s |
+| 2 (13:36, Kevin, logs rejoués pour rafraîchir le dashboard Grafana) | résolu, API saine, transaction de sonde réussie | 3,24 s | 13,56 s |
 
-Incident `d275a01df1484285a179c81723b06818` ; archive restaurée `backup-20261021T081951.634330Z.dump` ;
-corruption notée `Tc` ≈ `08:20:50.949753Z`. Un seul passage (pas de garantie statistique) : ne remplace
-pas les 6 passages du 20/10, les complète sur une pile représentative de la démo réelle. Le RPO de
-59,32 s vient de l'écart naturel avec la dernière sauvegarde planifiée (300 s d'intervalle), pas d'un
-écart imposé comme le 20/10 : le pire cas théorique reste l'intervalle de sauvegarde (300 s) + la marge
-(15 s) ≈ 5 min 15 s, toujours légèrement au-dessus de la cible de 5 min. Reporté dans
-`docs/gouvernance/02-pca-pra.md` §2/§3/§7/§8.
+Passage 1 : incident `d275a01df1484285a179c81723b06818` ; archive restaurée
+`backup-20261021T081951.634330Z.dump` ; corruption notée `Tc` ≈ `08:20:50.949753Z`.
+Passage 2 : incident `d0317683ecbe4d8b84d928269073ac62` ; archive restaurée datée
+`2026-10-21T13:36:23.342566+00:00` ; corruption notée `Tc` ≈ `13:36:36.900325Z`.
+
+Deux passages (toujours pas une garantie statistique) : ne remplacent pas les 6 passages du 20/10, les
+complètent sur une pile représentative de la démo réelle. Le RPO varie avec l'écart naturel jusqu'à la
+dernière sauvegarde planifiée (300 s d'intervalle), pas un écart imposé comme le 20/10 : le pire cas
+théorique reste l'intervalle de sauvegarde (300 s) + la marge (15 s) ≈ 5 min 15 s, toujours légèrement
+au-dessus de la cible de 5 min. Reporté dans `docs/gouvernance/02-pca-pra.md` §2/§3/§7/§8.

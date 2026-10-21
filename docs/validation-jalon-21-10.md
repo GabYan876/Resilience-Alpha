@@ -39,7 +39,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 3. Restauration et backend — Antoine
 
-- [ ] S4 (corruption BDD) rejoué avec la pile complète ; RTO et RPO mesurés et reportés dans `02-pca-pra.md`.
+- [x] S4 (corruption BDD) rejoué avec la pile complète ; RTO et RPO mesurés et reportés dans `02-pca-pra.md` (2 passages le 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
 - [x] 1ers tests de restauration à froid : arrêt complet puis redémarrage en une commande, transaction de test réussie (pile isolée, volumes conservés ; `scripts/check_transaction.sh` réussi le 21/10).
 - [x] Script de vérification de transaction utilisé par le vérificateur et par la démo : même chemin.
 - [ ] EBIOS ateliers 4 et 5 mis à jour avec les mesures du 21/10 ; matrice de traçabilité cohérente.
@@ -73,5 +73,5 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction (5/5 le 21/10, voir §2).
 - [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7). **Non « traitée »** : `RotateSecretAction`/`VaultSecretRotator` et la procédure d'investigation restent à développer (reliquat §0, écart connu pour jeudi).
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
-- [ ] 1ers tests de restauration consignés (RTO / RPO mesurés).
+- [x] 1ers tests de restauration consignés (RTO / RPO mesurés) : restauration à froid (§3) et S4 corruption BDD (§3, `02-pca-pra.md` §7).
 - [ ] Les écarts restants ont un responsable et une échéance jeudi (chaos engineering, ≥ 5 démos, clip, gel du code à 17h).
