@@ -34,6 +34,7 @@ infra/observability/
   alloy/config.alloy
   grafana/provisioning/datasources/datasources.yml
   grafana/provisioning/dashboards/dashboards.yml
+  grafana/provisioning/alerting/alert-rules-*.yaml
   grafana/dashboards/resilience-alpha.json
 infra/compose/docker-compose.observability.yml
 ```
@@ -210,7 +211,33 @@ Rien ne se configure à la main, condition pour rejouer la démonstration au moi
 
 - `provisioning/datasources/datasources.yml` crée **Prometheus** (UID `prometheus`, source par défaut) et **Loki** (UID `loki`). Les UID sont figés car le dashboard les référence. `deleteDatasources` rend le provisionnement idempotent même si une source a été créée à la main.
 - `provisioning/dashboards/dashboards.yml` charge tous les JSON de `/var/lib/grafana/dashboards` dans le dossier `Resilience-Alpha`, avec `allowUiUpdates: false` : le dashboard est du code versionné, une modification faite à la main pendant la démonstration est écrasée au prochain démarrage.
+- `provisioning/alerting/alert-rules-*.yaml` charge les règles d'alerte Grafana (fonction SOC). Voir « Règle d'alerte SOC » ci-dessous.
 - `GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH` fait de `resilience-alpha.json` la page d'accueil : **zéro clic** pour arriver sur la vue de l'incident.
+
+### Règle d'alerte SOC
+
+Fichier : `provisioning/alerting/alert-rules-1792599165861.yaml` (export Grafana, dossier `SOC`).
+
+| Élément | Valeur |
+|---|---|
+| Règle | `WAF - Détection SQLi` |
+| Source | Loki (UID `loki`, figé dans `datasources.yml`) |
+| Requête | nombre de logs de `resilience-waf` contenant « SQL Injection » ou une règle CRS `942xxx`, sur 2 minutes |
+| Condition | compte `> 0` |
+| Évaluation | toutes les 10 s, état `Firing` dès la première détection |
+| Labels | `attack_type=sqli`, `service=waf`, `severity=warning` |
+
+`or on() vector(0)` renvoie 0 quand aucun log ne correspond, ce qui évite l'état `NoData` hors attaque.
+
+Limites assumées :
+
+- **Visibilité, pas décision.** Cette règle rend l'attaque visible et alertable dans Grafana (SIEM/SOC). Elle ne déclenche aucune remédiation : la détection qui pilote la remédiation reste le modèle ML (`anomaly-detector`), conformément au sujet. Ce n'est pas un seuil codé en dur qui remplace le ML.
+- **Aucune notification sortante.** Pas de contact point ni de politique de notification : la règle apparaît en `Firing` dans Alerting → Alert rules, sans rien envoyer. Un webhook pourra être ajouté si besoin.
+- **Lecture seule.** Une règle provisionnée n'est pas modifiable dans l'interface ; elle survit au reset de la démo (`down -v`).
+
+Pour ajouter une règle : la mettre au point dans l'interface, l'exporter (Alerting → Alert rules → Export, YAML), la déposer dans `provisioning/alerting/`, puis `docker restart resilience-grafana`.
+
+Essai réalisé le 21/10 (pile complète, PC Hôte) : règle `inactive` avant attaque ; requête SQLi (`UNION SELECT`) envoyée au WAF, réponse 403 ; règle `firing` environ 25 s plus tard. Non mesuré : retour à `Normal` et notification.
 
 ### Secrets
 
