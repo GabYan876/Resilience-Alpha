@@ -53,7 +53,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 ## 4. Front et dashboard — Gabriel
 
 - [x] Front de paiement joignable via le WAF depuis le PC Attaquant. *(confirmé par Kevin le 21/10)*
-- [ ] Dashboard Grafana lisible avant / pendant / après : disponibilité, latence, requêtes bloquées, événements `incident.*`.
+- [x] Dashboard Grafana lisible avant / pendant / après : disponibilité, latence, requêtes bloquées, événements `incident.*`. *(passage réel le 21/10 : flood de 30 s via le WAF, `incident.resolved` en ~10 s ; vu par Kevin sur `siem-waf` : comptes bloqués = 1, incidents clos = 1 ; données de `resilience-alpha` relevées dans Prometheus/Loki : débit 0 → 42–48 req/s, événements du moteur)*
 - [ ] Clip chrono 60 s : scénario écrit et 1re prise d'essai (sans coupe).
 - [ ] NIS2/DORA relu et relié aux essais réels du 21/10.
 - [ ] Trame de `Pres.pptx` et du pitch.
