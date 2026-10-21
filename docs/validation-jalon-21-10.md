@@ -13,7 +13,8 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [ ] Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1`.
 - [ ] Mesure de la RAM de la pile complète (`docker stats`).
-- [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM ; arbitrages « à valider » du 20/10 (passerelles Docker, WAF par compte).
+- [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM.
+- [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
 - [ ] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood.
 - [ ] Tous : `ruff format` fonctionne sur chaque PC ; hotspot `RESILIENCE-G<n>` et PC Hôte en `192.168.137.1`.
 - [x] Reliquat du 19/10 : cases EBIOS (ateliers 1 à 3) cochées et réponses d'Antoine et de Kevin reportées dans `validation-jalon-19-10.md`.
