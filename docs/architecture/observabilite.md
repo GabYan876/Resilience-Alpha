@@ -21,7 +21,7 @@ Un conteneur qui redémarre ne prouve rien : le dashboard affiche donc aussi le 
 | Grafana Alloy | `grafana/alloy:v1.7.1` | 128 Mo | 12345 | non |
 | Grafana | `grafana/grafana:11.5.2` | 256 Mo | 3000 | oui, sur `127.0.0.1` uniquement |
 
-Total : **1 280 Mo (1,25 Go)** sur les 16 Go du PC Hôte. Aucune image en `latest` : une démonstration rejouée cinq fois doit tourner sur les mêmes binaires que la veille.
+Total : **1 280 Mo (1,25 Go)** sur les 16 Go du PC Hôte, + 56 Mo pour `autoheal` et sa passerelle Docker dédiée (§7). Aucune image en `latest` : une démonstration rejouée cinq fois doit tourner sur les mêmes binaires que la veille (`autoheal` fait exception, épinglé par digest — voir §7).
 
 Chaque service a un `healthcheck`, un `restart: unless-stopped`, `cap_drop: ALL`, `no-new-privileges` et une rotation de logs (`max-size: 10m`, `max-file: 3`) pour ne pas remplir le disque pendant un flood.
 
@@ -190,6 +190,17 @@ GET  /info              -> HTTP 403
 Atténuations complémentaires : Alloy ne tourne pas en `root` (`user: "473:473"`, le propriétaire de son répertoire de données), `cap_drop: ALL`, `no-new-privileges:true`, configuration montée en lecture seule et versionnée, aucun port publié.
 
 > Le moteur de remédiation passe lui aussi par un docker-socket-proxy (`DockerProxyClient`), mais celui de la pile principale. La pile d'observabilité a le sien parce qu'elle doit rester **autonome** : elle survit aux redémarrages déclenchés par le moteur, ce qui serait impossible en dépendant d'un service de la pile qu'elle observe.
+
+### Auto-guérison d'Alloy
+
+Constaté en test (2026-10-21) : le résolveur DNS intégré de Docker Desktop/WSL2 peut cesser de résoudre `docker-proxy` depuis Alloy sans que son process ne plante. Alloy reste `Up`, son port HTTP répond, mais il n'inspecte plus aucun conteneur et n'ingère plus une seule ligne de log — panne silencieuse : Loki se vide progressivement sans qu'aucun conteneur ne soit signalé `unhealthy`, et `LokiAttackerLocator` ne trouve alors jamais de compte à bloquer, faute de données à interroger.
+
+Deux ajouts pour détecter et corriger ça sans intervention humaine :
+
+- Le `healthcheck` d'Alloy teste désormais, en plus de son propre port, une connexion TCP vers `docker-proxy` — c'est précisément la liaison qui casse en silence.
+- `autoheal` (`willfarrell/autoheal`, épinglé par digest car aucun tag versionné ne gère `DOCKER_SOCK` en `tcp://`) redémarre tout conteneur marqué `unhealthy` portant le label `autoheal: "true"` — aujourd'hui seul Alloy le porte. Docker Compose seul (hors Swarm) ne redémarre jamais un conteneur unhealthy de lui-même ; c'est le rôle de ce sidecar.
+
+`autoheal` n'a, comme Alloy, aucun accès direct au socket : il passe par `docker-proxy-autoheal`, une passerelle dédiée et distincte de celle d'Alloy (réseau `autoheal-internal`, `internal: true`, propre à ces deux conteneurs), n'autorisant que `EVENTS` (détecter les changements d'état), `CONTAINERS` (lecture) et `ALLOW_RESTARTS` (redémarrage) — jamais `IMAGES`, `EXEC` ni aucune écriture au-delà du restart. Testé en coupant volontairement le réseau d'Alloy vers `docker-proxy` : passage à `unhealthy` détecté en ~70 s, redémarrage automatique déclenché par `autoheal`, service à nouveau sain après reconnexion.
 
 ## 8. Grafana
 
