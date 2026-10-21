@@ -45,6 +45,12 @@ def test_restart_targets_incident_service():
     assert restarter.restarted == ["api"]
 
 
+def test_restart_targets_fixed_service_when_given():
+    restarter = FakeContainerRestarter()
+    assert RestartServiceAction(restarter, service="auth").execute(make_incident()).success
+    assert restarter.restarted == ["auth"]
+
+
 def test_restore_database_uses_latest_backup_and_is_required():
     restorer = FakeDatabaseRestorer()
     incident = make_incident()

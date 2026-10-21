@@ -43,6 +43,10 @@ volumes:
   postgres-data:
   postgres-backups:
   waf-blocklist: # liste de sources bloquées : écrite par le moteur, lue par le WAF
+  jwt-secret-live: # JWT tourné par RotateSecretAction (S2) ; en mémoire, jamais sur disque
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
 
 x-api-image: &api-image
   image: resilience-alpha/api:dev
@@ -97,9 +101,13 @@ services:
         condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
+      # Amorce (premier démarrage) ; après une rotation S2, JWT_SECRET_FILE prime (app/config.py).
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET doit etre defini (voir .env.example)}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-7200}
       WELCOME_BALANCE_CENTS: ${WELCOME_BALANCE_CENTS:-100000}
+    volumes:
+      - jwt-secret-live:/run/secrets:ro
     healthcheck:
       test:
         - CMD
@@ -247,9 +255,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://app_rw:${APP_RW_PASSWORD:-}@postgres:5432/${POSTGRES_DB:-resilience}
       PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
       PROBE_ACCOUNT_IBAN: ${PROBE_ACCOUNT_IBAN:-TEST-0001}
+      # Amorce (premier démarrage) ; après une rotation S2, JWT_SECRET_FILE prime (app/config.py).
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET doit etre defini (voir .env.example)}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
       DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
       SQL_ECHO: ${SQL_ECHO:-0}
+    volumes:
+      - jwt-secret-live:/run/secrets:ro
     healthcheck:
       test:
         - CMD
@@ -389,12 +401,20 @@ services:
       DATABASE_RECOVERY_URL: http://db-recovery:8001
       DB_RESTORE_SAFETY_MARGIN_S: ${DB_RESTORE_SAFETY_MARGIN_S:-15}
       PROBE_TOKEN: ${PROBE_TOKEN:?PROBE_TOKEN doit etre defini (voir .env.example)}
-      CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api}
+      CONTAINER_NAMES: ${CONTAINER_NAMES:-api=resilience-api,auth=resilience-auth}
       WAF_BLOCKLIST_PATH: /blocklist/blocked.txt
       WATCH_INTERVAL_S: ${WATCH_INTERVAL_S:-5}
       WATCH_FAILURES: ${WATCH_FAILURES:-3}
+      # Rotation du JWT (S2, compromission) : clé age "rotation", restreinte à ce seul fichier
+      # (voir .sops.yaml et docs/gouvernance/06-pilotage-arbitrages.md).
+      SOPS_AGE_KEY_FILE: /run/age/rotation-age-key.txt
+      JWT_SECRET_ENCRYPTED_PATH: /secrets/jwt.enc.yaml
+      JWT_SECRET_LIVE_PATH: /run/secrets/jwt_secret
     volumes:
       - waf-blocklist:/blocklist # écriture de la liste de blocage ; le WAF la lit en lecture seule
+      - jwt-secret-live:/run/secrets:rw # écrit la valeur tournée ; auth/api la relisent en ro
+      - ../secrets/jwt.enc.yaml:/secrets/jwt.enc.yaml # sops --set le réécrit à chaque rotation
+      - ../secrets/rotation-age-key.txt:/run/age/rotation-age-key.txt:ro
     healthcheck:
       test:
         - CMD

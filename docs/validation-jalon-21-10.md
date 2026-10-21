@@ -9,7 +9,7 @@ Les cases cochées ont une preuve dans le dépôt ; les autres attendent la conf
 Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-10.md) : à solder avant d'ouvrir le jalon du 21/10.
 
 - [ ] **Ansible (Hugo)** : `infra/ansible/site.yml` et les rôles écrits (`.env`, socle, observabilité, vérification). Sans lui, « une commande » n'est pas tenu.
-- [ ] **Vault ou SOPS (Hugo, Kevin)** : choix tranché, `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/`, `RotateSecretAction` branchée (`VaultSecretRotator` ou équivalent SOPS).
+- [x] **Vault ou SOPS (Hugo, Kevin)** : tranché **SOPS + age** le 21/10 (`06-pilotage-arbitrages.md`). `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/app.enc.yaml`/`jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator`. Essai réel : `POST /incidents kind=compromise` → JWT tourné, `auth`/`api` redémarrés, transaction de test encore réglée.
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [ ] Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1`.
 - [ ] Mesure de la RAM de la pile complète (`docker stats`).
@@ -37,7 +37,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [x] Fil rouge complet à travers le WAF : flood → détection ML → blocage **compte** (`block_subject`) + restart → `incident.resolved` après transaction de test. `block_ip` échoue toujours sans attaquant identifiable par IP (voir case suivante) — c'est le comportement attendu, pas un défaut de ce fil rouge.
 - [x] ~~Le blocage d'IP agit sur l'IP réelle de l'attaquant~~ — **non applicable sous Docker Desktop, par conception, déjà arbitré le 20/10** (`06-pilotage-arbitrages.md` ligne 40, `architecture.md:152`). Reconfirmé le 21/10 : les 5 passages montrent `block_ip` échouant (« aucune IP source identifiée ») car `attacker_ip` n'est jamais renseigné (`detection.py` ne fait que résoudre `attacker_subject` via Loki) — et le `remote` vu par le WAF pour tout le trafic LAN, y compris le flood réel du PC Attaquant, est `172.25.0.1` (passerelle Docker). Implémenter un locator d'IP bloquerait cette passerelle, donc tout le trafic externe, pas l'attaquant : `block_subject` reste la seule action de blocage de source valide sous Docker Desktop. **Arbitrage validé le 21/10** (`06-pilotage-arbitrages.md` ligne 40) sur la base de ces 5 passages réels.
-- [ ] Distinction disponibilité / compromission dans `DecisionPolicy` : SQLi/exfiltration → rotation de secrets + investigation, pas un simple restart.
+- [x] Distinction disponibilité / compromission dans `DecisionPolicy` : branche `IncidentKind.COMPROMISE` → `RotateSecretAction` + redémarrage de `auth`/`api`, distincte du blocage de source + restart de `AVAILABILITY`. Déclenché manuellement via `POST /incidents kind=compromise` (pas encore par un détecteur de compromission automatique — hors périmètre de ce jalon, voir `06-pilotage-arbitrages.md`) ; investigation manuelle toujours `À FAIRE` (`04-matrice-tracabilite.md`).
 - [x] Boucle de démos rejouée **depuis le PC Attaquant** : 5 passages sans intervention le 21/10, RTO (détection→résolution) mesurés à 5,4 / 7,1 / 6,6 / 7,0 / 7,9 s, reset d'état (`scripts/reset_demo.sh`) entre chaque passage. Détail dans `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Faux positifs ML re-mesurés avec le trafic de fond et le WAF actifs : 0/120 mesures (2907 requêtes, 0 erreur, `holdout_waf.csv`), aucun `incident.*` parasite, attaque toujours détectée. Détail dans `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Docker-socket-proxy : revue des endpoints autorisés, aucun accès direct au `docker.sock`. Nouvelle passerelle `docker-proxy-autoheal` ajoutée le 21/10 (auto-guérison d'Alloy) avec le même principe de moindre privilège que `docker-proxy`/`docker-proxy-ctl` : scope limité à `EVENTS`/`CONTAINERS`/`ALLOW_RESTARTS`, tout le reste explicitement à `0`, réseau `internal: true` dédié. Détail dans `docs/architecture/observabilite.md` §7bis.
@@ -68,7 +68,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 6. Cohérence d'intégration — Kevin
 
-- [x] Matrice de traçabilité : lignes SQLi et détournement du moteur passées à `PROUVÉ` (preuve référencée) ; rotation de secrets reste `EN COURS` (`VaultSecretRotator` à écrire, voir §8 écart Vault/SOPS) — c'est l'état réel, pas un oubli.
+- [x] Matrice de traçabilité : lignes SQLi, détournement du moteur et rotation de secrets passées à `PROUVÉ` (preuve référencée, `SopsSecretRotator` testée et essayée en réel le 21/10) ; investigation manuelle reste `À FAIRE`.
 - [x] `docs/architecture/architecture.md` et `README.md` alignés avec la pile réellement déployée (fait le 21/10 : services renommés, `gateway` documenté comme embarquant le front, `vault` marqué non déployé).
 - [x] Branches fusionnées sur `main` ; PR relues par le tech lead (`gh pr list --state open` vide le 21/10, toutes les branches `kevin/*` et `docs/*` supprimées après fusion).
 - [x] Liste des écarts restants pour le jeudi, avec un responsable chacun — voir §8.
@@ -76,7 +76,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 ## 7. Critères de sortie du jalon
 
 - [x] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction (5/5 le 21/10, voir §2).
-- [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7). **Non « traitée »** : `RotateSecretAction`/`VaultSecretRotator` et la procédure d'investigation restent à développer (reliquat §0, écart connu pour jeudi).
+- [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7), et maintenant aussi **traitée** côté remédiation : `RotateSecretAction`/`SopsSecretRotator` tourne le JWT et redémarre `auth`/`api`, transaction de test vérifiée après coup. La procédure d'investigation manuelle reste à développer (écart §8).
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
 - [x] 1ers tests de restauration consignés (RTO / RPO mesurés) : restauration à froid (§3) et S4 corruption BDD (§3, `02-pca-pra.md` §7).
 - [x] Les écarts restants ont un responsable et une échéance jeudi — voir §8.
@@ -89,7 +89,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | Écart | Responsable | Échéance | Pourquoi ça bloque |
 |---|---|---|---|
 | Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
-| Vault/SOPS tranché, `RotateSecretAction`/`VaultSecretRotator` implémentée (aujourd'hui : `Protocol` + `TODO` dans `remediation/app/main.py`) | Hugo, Kevin | Jeudi avant le chaos | S2 reste bloqué-seulement, jamais traité ; `DecisionPolicy` ne peut pas distinguer dispo/compromission sans ça |
 | Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1` (aucune route WAF vers le front/Grafana trouvée dans la config actuelle) | Gabriel, Hugo | Jeudi avant le chaos | Le jury doit voir le dashboard et le front depuis le PC Hôte, pas `127.0.0.1` |
 | Mesure de la RAM de la pile complète (`docker stats`) | Hugo | Jeudi matin | Contrainte 16 Go non vérifiée ; risque de découvrir un dépassement pendant la démo |
 | Choix Loki/Grafana seuls vs Wazuh pour le SIEM | Hugo | Jeudi matin | Tranche la fonction SOC du pilier Cyber |
