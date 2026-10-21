@@ -79,3 +79,20 @@ le moteur restaure l'archive antérieure à la détection, redémarre l'API et v
 Enseignement : `reset_demo.sh` vide les tables, ce que le détecteur prenait pour une corruption (une
 restauration se déclenchait en plein reset). Le script met désormais le détecteur en pause puis le
 relance à la fin : il réapprend sa référence sur la base propre.
+
+## Essai sur pile complète du 21/10 (Antoine, pile locale jetable)
+
+Même déclenchement automatique que l'essai ci-dessus (`DELETE` sur `ledger_entries` et `transactions`),
+mais cette fois sur la pile complète (Compose socle + observabilité), pas la pile S4 isolée du 20/10.
+
+| Passage | Résultat | RTO (`incident.detected` → `incident.resolved`) | RPO |
+|---|---|---|---|
+| 1 | résolu, API saine, transaction de sonde réussie | 3,79 s (détection 2,26 s + remédiation 1,53 s) | 59,32 s |
+
+Incident `d275a01df1484285a179c81723b06818` ; archive restaurée `backup-20261021T081951.634330Z.dump` ;
+corruption notée `Tc` ≈ `08:20:50.949753Z`. Un seul passage (pas de garantie statistique) : ne remplace
+pas les 6 passages du 20/10, les complète sur une pile représentative de la démo réelle. Le RPO de
+59,32 s vient de l'écart naturel avec la dernière sauvegarde planifiée (300 s d'intervalle), pas d'un
+écart imposé comme le 20/10 : le pire cas théorique reste l'intervalle de sauvegarde (300 s) + la marge
+(15 s) ≈ 5 min 15 s, toujours légèrement au-dessus de la cible de 5 min. Reporté dans
+`docs/gouvernance/02-pca-pra.md` §2/§3/§7/§8.
