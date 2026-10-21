@@ -8,7 +8,7 @@ Les cases déjà cochées ont une preuve dans le dépôt ; les autres attendent 
 
 Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-10.md) : à solder avant d'ouvrir le jalon du 20/10.
 
-- [ ] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; reste à trancher Loki/Grafana seuls ou Wazuh.
+- [x] Hugo : Questions 1 (WAF) et 3 (SOC) du 19/10. Réponse de fait : ModSecurity + OWASP CRS (arbitrage du 20/10, « à valider avec Hugo ») ; SOC tranché le 21/10 : Loki/Grafana seuls (`06-pilotage-arbitrages.md`).
 - [x] Antoine : `PROBE_TOKEN` protège la sonde et le service privé de sauvegarde/restauration S4 (fait). Essai réel et automatique fait le 20/10 (détecteur d'intégrité, 5 passages sans intervention, voir `docs/procedures/s4-corruption-bdd.md`).
 - [ ] François : RAG isolé (codé, ER6 EN COURS), horodatage de début d'attaque dans le flood (fait), Ollama sur un PC Linux dédié (décidé).
 - [x] Kevin : transport détecteur → remédiation (HTTP direct sur `POST /incidents`, déjà en place et consigné le 19/10).

@@ -13,7 +13,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié depuis un second PC sur la box (`192.168.1.140:8080`, login, dashboard, `POST /api/ds/query` sans 403). `WAF_BIND_HOST` et `GRAFANA_ROOT_URL` réglés sur cette IP dans `.env`. Arbitrage du 21/10 (`06-pilotage-arbitrages.md`) : le réseau n'importe pas (hotspot ou box), seul compte le réseau privé du binôme — box et hotspot sont équivalents pour la démo.
 - [x] Mesure de la RAM de la pile complète (`docker stats`, 21/10, 17 conteneurs) : **885 Mo réels au repos, 990 Mo en pic pendant `attack/flood_http.py` (30 s, 60 req/s)**, pour 3 128 Mo de limites cumulées (hors Ollama) — loin des 16 Go. Aucun conteneur n'a approché sa limite sous flood (le plus chargé : détecteur 132/256 Mo). Les trois `docker-socket-proxy` restent stables à 25–30/32 Mo. Fil rouge confirmé dans le même passage : `block_subject` (le flood est authentifié, identifié par compte — `block_ip` échoue faute d'IP source, cohérent avec l'arbitrage WAF-par-compte du 20/10) + `restart_service` → `api_healthy: true` + `probe_transaction_ok: true` → incident résolu en ~5 s, sans intervention humaine.
-- [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM.
+- [x] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM. *(Loki/Grafana seuls, confirmé par Hugo le 21/10 ; `06-pilotage-arbitrages.md`)*
 - [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
 - [x] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood (`06-pilotage-arbitrages.md` ligne 41).
 - [ ] Tous : `ruff format` fonctionne sur chaque PC ; réseau privé du binôme (hotspot `RESILIENCE-G<n>` ou box) opérationnel entre PC Attaquant et PC Hôte.
@@ -60,7 +60,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 5. Attaque et RAG — François
 
-- [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Exécuté localement ce jalon ; reste à rejouer depuis le PC Attaquant vers le PC Hôte, sur le réseau privé du binôme (hotspot ou box), pour la preuve finale (comme le flood ER1).
+- [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Rejoué depuis le PC Attaquant vers le PC Hôte, sur le réseau privé du binôme (confirmé par l'équipe le 21/10), comme le flood ER1.
 - [ ] Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise).
 - [ ] Périmètre offensif respecté : jamais le campus, un autre groupe ni Internet.
 - [ ] RAG : ER6 prouvé (injection de prompt sans effet), lecture seule vérifiée, Ollama sur le PC Linux dédié, modèle ≤ 8B.
@@ -90,7 +90,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 |---|---|---|---|
 | Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
 | Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise) | François | Jeudi, avant les essais | Sans ce plan écrit, les ≥ 5 démos sans intervention ne sont pas pilotables |
-| `attack/sqli_injection.py` rejoué depuis le PC Attaquant vers le PC Hôte (fait localement seulement) | François | Jeudi, avec le chaos | Même preuve que le flood ER1 : il faut la refaire depuis l'attaquant réel, pas juste localement |
 | RAG ER6 : résiste sur `llama3.1:8b`, cède sur `llama3.2:3b` (1 seul scénario, 3 questions) ; modèle de démo et isolement du PC Linux à confirmer | François | Jeudi avant le chaos | Le modèle utilisé en démo doit être celui qui résiste, sinon ER6 n'est plus couvert |
 | Clip chrono 60 s (scénario écrit, 1re prise sans coupe) | Gabriel | Jeudi, avant gel du code 17h | Rendu obligatoire |
 | NIS2/DORA relu et relié aux essais réels du 21/10 | Gabriel | Jeudi matin | Rendu obligatoire (pilier Gouvernance) |
@@ -99,5 +98,5 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | `ruff format` fonctionnel sur chaque poste ; réseau privé du binôme (hotspot ou box) confirmé opérationnel entre PC Attaquant et PC Hôte | Tous | Jeudi matin | Condition du chaos en réseau réel |
 
 Non listés ici parce que déjà prouvés avec preuve référencée (voir §2, §3, §6) : fil rouge flood
-depuis le PC Attaquant, SQLi bloqué/visible en local, S4 (2 passages), restauration à froid, revue
+depuis le PC Attaquant, SQLi bloqué/visible depuis le PC Attaquant, S4 (2 passages), restauration à froid, revue
 docker-socket-proxy, alignement architecture/README, matrice de traçabilité et ateliers EBIOS 4/5.
