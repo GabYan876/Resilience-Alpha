@@ -28,8 +28,8 @@ que personne d'autre ne joint. Conforme à la règle non négociable de `CLAUDE.
 
 `obs-internal` est en `internal: true`, sans route sortante. Prometheus, Loki et
 Alloy ne publient **aucun** port. Prometheus est aussi sur `resilience-net` pour
-scraper les services métier par DNS. Grafana est liée à `127.0.0.1:3000` et
-joignable via le WAF.
+scraper les services métier par DNS. Grafana ne publie aucun port : elle est
+joignable sous `/grafana` via le WAF.
 
 `resilience-net` est déclaré `external: true` : il appartient à la pile
 principale (`infra/compose/docker-compose.yml`), qui le crée.
@@ -57,7 +57,7 @@ docker exec resilience-prometheus wget -qO- 'http://127.0.0.1:9090/api/v1/query?
 docker exec resilience-loki wget -qO- 'http://127.0.0.1:3100/loki/api/v1/labels'
 
 # Le dashboard doit être provisionné sans intervention
-curl -u "admin:$GRAFANA_ADMIN_PASSWORD" 'http://127.0.0.1:3000/api/search?type=dash-db'
+curl -u "admin:$GRAFANA_ADMIN_PASSWORD" 'http://127.0.0.1:8080/grafana/api/search?type=dash-db'
 ```
 
 ## Variables obligatoires
@@ -72,8 +72,8 @@ Sans elles, la pile refuse de démarrer — un échec explicite vaut mieux qu'un
 Les autres variables ont une valeur par défaut utilisable : voir le tableau
 complet dans `docs/architecture/observabilite.md`.
 
-Grafana est publiée sur `127.0.0.1:${GRAFANA_HTTP_PORT:-3000}`. Le port 3000 est
-aussi celui du backend Pay-Now : en cas de conflit, changer `GRAFANA_HTTP_PORT`.
+Grafana est servie sous `/grafana` (WAF, port 8080). Sur le hotspot, définir
+`GRAFANA_ROOT_URL=http://192.168.137.1:8080/grafana/`.
 
 ## Deux pièges réglés, à ne pas réintroduire
 

@@ -11,8 +11,8 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [ ] **Ansible (Hugo)** : `infra/ansible/site.yml` et les rôles écrits (`.env`, socle, observabilité, vérification). Sans lui, « une commande » n'est pas tenu.
 - [x] **Vault ou SOPS (Hugo, Kevin)** : tranché **SOPS + age** le 21/10 (`06-pilotage-arbitrages.md`). `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/app.enc.yaml`/`jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator`. Essai réel : `POST /incidents kind=compromise` → JWT tourné, `auth`/`api` redémarrés, transaction de test encore réglée.
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
-- [ ] Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1`.
-- [ ] Mesure de la RAM de la pile complète (`docker stats`).
+- [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié en local sur `127.0.0.1:8080` (login, dashboard, `POST /api/ds/query` sans 403). **Reste à rejouer sur `192.168.137.1`** hotspot actif, avec `GRAFANA_ROOT_URL` et `WAF_BIND_HOST` réglés.
+- [x] Mesure de la RAM de la pile complète (`docker stats`, 21/10, 17 conteneurs, repos) : ≈ 880 Mo réels pour 3 128 Mo de limites cumulées (hors Ollama). Le plus gros : détecteur 112 Mo, WAF 83/128, Loki 82/384. Les trois `docker-socket-proxy` sont à 78–90 % de leurs 32 Mo. **Reste à mesurer sous flood.**
 - [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM.
 - [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
 - [ ] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood.

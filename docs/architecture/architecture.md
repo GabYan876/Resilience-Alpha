@@ -70,7 +70,7 @@ flowchart LR
 | `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
 | `postgres` | Base de données (fictive) | app | non | Antoine |
 | `db-recovery` | Sauvegarde `pg_dump` toutes les 5 min (12 gardées, volume `postgres-backups`) et restauration `pg_restore` ; rôle propriétaire, 128 Mo | db-internal, control-internal | non | Antoine |
-| `prometheus`, `loki`, `alloy`, `grafana` | Métriques, logs (Alloy ingère, pas Promtail), SOC | obs | non, Grafana exposé en local (`127.0.0.1:3000`) ; pas encore via le WAF (voir §6) | Hugo |
+| `prometheus`, `loki`, `alloy`, `grafana` | Métriques, logs (Alloy ingère, pas Promtail), SOC | obs | non publié ; servi sous `/grafana` via le WAF puis la passerelle | Hugo |
 | `anomaly-detector` | ML (IsolationForest) sur métriques/logs ; invariants du grand livre pour `database_corruption` | obs, control | non | Kevin |
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
@@ -78,7 +78,7 @@ flowchart LR
 | *(pas de service dédié)* | Secrets : **SOPS + age**, tranché le 21/10 (voir `06-pilotage-arbitrages.md`). `infra/secrets/*.enc.yaml` montés en fichiers dans `remediation` ; `RotateSecretAction`/`SopsSecretRotator` implémentée et essayée en réel | — | — | Kevin |
 | `rag-assistant` | Assistant RAG (LangChain ; modèle Ollama ≤ 8B hébergé hors Compose) | rag | non (interrogé par `docker compose exec`) | François |
 
-**Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif. Grafana reste lié à `127.0.0.1:3000`, pas encore servi via le WAF. Aucun composant, hors les passerelles `docker-proxy-ctl`, `docker-proxy` et `docker-proxy-autoheal`, ne touche `docker.sock`.
+**Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif. Grafana ne publie aucun port : elle est servie sous `/grafana` par le WAF (puis la passerelle), donc soumise aux règles ModSecurity. Aucun composant, hors les passerelles `docker-proxy-ctl`, `docker-proxy` et `docker-proxy-autoheal`, ne touche `docker.sock`.
 
 ### Réseaux Docker implémentés
 

@@ -118,7 +118,7 @@ Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans 
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
-Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000` (pas encore via le WAF). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN/hotspot du PC Hôte (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
+Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN/hotspot du PC Hôte (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL=http://192.168.137.1:8080/grafana/` dans `.env`).
 
 ## Lancer la démonstration
 
