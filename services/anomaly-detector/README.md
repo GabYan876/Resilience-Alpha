@@ -43,15 +43,14 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm \
   -v ./ml/data:/data -e DATASET_PATH=/data/normal.csv anomaly-detector \
   python -m app.cli collect --count 120 --interval 5
 
-# 2. entraînement (écrit ml/models/isolation_forest.joblib)
-docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm \
-  -v ./ml/data:/data:ro -v ./ml/models:/models -e DATASET_PATH=/data/normal.csv \
-  anomaly-detector python -m app.cli train
+# 2. entraînement (écrit ml/models/isolation_forest.joblib). `docker run` et non `compose run` :
+#    le service monte /models en lecture seule (:ro), qui l'emporte sur un -v en ligne de commande.
+MSYS_NO_PATHCONV=1 docker run --rm --env-file .env -v "$(pwd -W)/ml/data:/data:ro"   -v "$(pwd -W)/ml/models:/models" -e DATASET_PATH=/data/normal.csv   -e MODEL_PATH=/models/isolation_forest.joblib   resilience-alpha/anomaly-detector:dev python -m app.cli train
 ```
 
-Sous Git Bash (Windows), préfixer ces deux commandes par `MSYS_NO_PATHCONV=1` : sinon Bash
-réécrit `./ml/data:/data` en chemin Windows et le montage CLI ne remplace plus le `/models:ro`
-défini dans le compose, ce qui fait échouer l'entraînement (`OSError: Read-only file system`).
+Sous Git Bash (Windows), `MSYS_NO_PATHCONV=1` est indispensable : sinon Bash réécrit les chemins
+des montages. `$(pwd -W)` donne le chemin Windows de la racine du dépôt (à lancer depuis celle-ci).
+Le jeu `ml/data/*.csv` est versionné (données fictives) : un clone neuf peut s'entraîner sans `collect`.
 
 ## Mesurer la qualité du modèle
 
