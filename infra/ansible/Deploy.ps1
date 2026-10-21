@@ -7,17 +7,21 @@
   depuis WINDOWS pour le déploiement, afin que les bind mounts (WAF, Grafana, Loki, Alloy)
   se résolvent comme dans un déploiement manuel. Ne fait jamais `down -v`, ne supprime aucun
   volume et ne remet pas la base à zéro (voir scripts/reset_demo.sh pour cela).
-  Prérequis : .env à la racine (voir README, scripts/render_env.sh).
+  Prérequis : .env à la racine, ou -RenderEnv pour le produire depuis les secrets SOPS
+  (SOPS_AGE_KEY_FILE = clé age "ops" partagée hors dépôt ; sops et bash requis).
 .EXAMPLE
   .\infra\ansible\Deploy.ps1 -CheckOnly
 .EXAMPLE
   .\infra\ansible\Deploy.ps1
+.EXAMPLE
+  .\infra\ansible\Deploy.ps1 -RenderEnv
 #>
 [CmdletBinding()]
 param(
     [switch]$CheckOnly,
     [switch]$VerifyOnly,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$RenderEnv
 )
 
 Set-StrictMode -Version Latest
@@ -90,6 +94,30 @@ if ($LASTEXITCODE -ne 0) {
 }
 if ($engineOS -ne 'linux') {
     throw 'Passer Docker Desktop en conteneurs Linux avant de construire le runner Ansible.'
+}
+
+if ($RenderEnv) {
+    # render_env.sh recopie .env.example par-dessus .env : on refuse d'écraser un .env existant
+    # (il porterait des secrets déjà tournés ou des réglages locaux comme WAF_BIND_HOST).
+    if (Test-Path $envFile) {
+        throw '.env existe déjà : le supprimer volontairement avant -RenderEnv.'
+    }
+    if (-not $env:SOPS_AGE_KEY_FILE) {
+        throw 'SOPS_AGE_KEY_FILE doit pointer vers la clé age "ops" (partagée hors dépôt).'
+    }
+    foreach ($tool in 'sops', 'bash') {
+        if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            throw "$tool introuvable dans le PATH (requis par -RenderEnv)."
+        }
+    }
+    Write-Host '[env] Rendu de .env depuis les secrets SOPS...'
+    Push-Location $repoRoot
+    try {
+        Invoke-Checked -Executable 'bash' -Arguments @('scripts/render_env.sh')
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 if (-not $SkipBuild) {
