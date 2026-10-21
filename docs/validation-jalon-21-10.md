@@ -23,7 +23,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
   - RAG isolé : **réalisé côté Compose** — `rag-assistant` : réseau `rag` seul membre, `read_only: true`, `cap_drop: ALL`, `no-new-privileges`, corpus monté `:ro`, et `LLM_MODEL` par défaut = `llama3.1:8b` (le modèle qui a résisté le 20/10, pas le 3B qui avait cédé).
   - ER6 prouvé : **partiel, assumé comme tel** — la config de démo utilise déjà le modèle qui résiste, mais un seul scénario et 3 questions ont été joués (`04-matrice-tracabilite.md` ligne ER6) : pas une garantie, reste `EN COURS`. Gap reporté en §8 (François).
   - Question WAF de Hugo (ModSecurity/Coraza) : **répondue** le 20/10, revalidée le 21/10 (`06-pilotage-arbitrages.md` ligne 40).
-  - Question SOC de Hugo (Loki/Grafana seuls ou Wazuh) : **tranchée** le 21/10 en faveur de Loki/Grafana seuls (`06-pilotage-arbitrages.md`, ligne du 21/10 « Fonction SOC »), à valider par Hugo.
+  - Question SOC de Hugo (Loki/Grafana seuls ou Wazuh) : **tranchée** le 21/10 en faveur de Loki/Grafana seuls (`06-pilotage-arbitrages.md`, ligne du 21/10 « Fonction SOC »), confirmé par Hugo.
 
 ## 1. Intégration WAF / logs / SIEM — Hugo
 
