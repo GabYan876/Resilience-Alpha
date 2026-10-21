@@ -14,7 +14,7 @@ Les échelles et seuils ne sont pas inventés : l'équipe doit les fixer.
 | Seuil d'action | RPN ≥ 24 (indicatif) | À recaler une fois le tableau rempli |
 
 ## Arborescence du système
-Front → WAF → API métier → auth / BDD ; moteur de remédiation ; observabilité (Prometheus, Loki, Grafana) ; Vault/SOPS ; assistant RAG.
+Front → WAF → API métier → auth / BDD ; moteur de remédiation ; observabilité (Prometheus, Loki, Grafana) ; SOPS ; assistant RAG.
 
 ## Tableau
 
@@ -31,7 +31,7 @@ avec le scénario S4. RPN = G × F × D ; en gras, les RPN ≥ 24 (seuil d'actio
 | db-recovery | Archives lisibles par un tiers | Volume sur le même hôte, non chiffré | Fuite des données fictives | 3 | 2 | 4 | **24** | Mode 0600, réseau interne, jeton | Chiffrement des archives (non fait) | Aucune alerte de lecture |
 | Moteur de remédiation | Faux positif | Modèle ML mal calibré | Coupure inutile | 3 | 2 | 2 | 12 | Seuil appris, 3 confirmations | Retour arrière | 0 % sur 120 mesures |
 | Prometheus / Loki | Indisponible | Manque de RAM | Détection aveugle | 3 | 2 | 3 | 18 | `mem_limit` | Restart | Aucune alerte sur la supervision elle-même |
-| Vault / SOPS | Secret exposé | Mauvaise config | Compromission | 4 | 2 | 4 | **32** | Variables d'environnement hors dépôt (`.env` ignoré) | Rotation | `infra/secrets/` vide : rien ne détecte une fuite |
+| SOPS | Secret exposé | Mauvaise config | Compromission | 4 | 2 | 4 | **32** | Secrets chiffrés au repos (`infra/secrets/*.enc.yaml`), clé "rotation" limitée au JWT seul (moindre privilège) | `RotateSecretAction`/`SopsSecretRotator`, essayée en réel (21/10) | Rotation prouvée sur déclenchement manuel ; aucune détection automatique d'une fuite elle-même (D inchangé) |
 | WAF | Faux positif | Règle trop stricte / IP partagée sur le hotspot | Utilisateur légitime bloqué | 2 | 3 | 2 | 12 | Règles testées, liste blanche | Déblocage d'IP (reset) | Visible dans les logs du WAF |
 | Modèle ML | Dérive ou contournement | Données d'entraînement non représentatives, trafic forgé | Attaque non vue ou coupure inutile | 3 | 2 | 3 | 18 | Réentraînement, seuil calibré | Retour arrière | Mesure de qualité hors ligne seulement |
 | docker-socket-proxy | Détourné ou trop permissif | Mauvaise liste d'endpoints | Prise de contrôle de l'hôte | 4 | 1 | 3 | 12 | Endpoints restreints, réseau interne | Rotation des secrets, reconstruction | Pas de surveillance des appels |
@@ -42,7 +42,7 @@ avec le scénario S4. RPN = G × F × D ; en gras, les RPN ≥ 24 (seuil d'actio
 
 Classement par RPN décroissant (à recaler une fois la cotation validée) :
 
-1. Vault / SOPS : secret exposé (RPN 32)
+1. SOPS : secret exposé (RPN 32)
 2. BDD : fuite de données (RPN 24)
 3. BDD : corruption ou suppression de données (RPN 24)
 4. db-recovery : archives lisibles par un tiers (RPN 24)

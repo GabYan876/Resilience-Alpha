@@ -46,7 +46,7 @@ Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l
 |---|---|---|---|
 | Cloisonnement réseau | Réseaux Docker internes, seul le WAF publié | Appliquée | `infra/compose/` |
 | Comptes et moindre privilège | `docker-socket-proxy`, pas d'interface d'admin exposée | Appliquée | `infra/compose/`, `services/remediation/app/adapters/docker_proxy.py` |
-| Secrets | Vault ou SOPS, aucun secret en clair | Partielle : `.env` ignoré par Git, Vault/SOPS absent | `infra/secrets/`, `.gitignore` |
+| Secrets | SOPS + age, aucun secret en clair | Appliquée (21/10) : `.env` ignoré par Git, secrets chiffrés dans `infra/secrets/*.enc.yaml`, rotation testée en réel | `infra/secrets/`, `.sops.yaml`, `.gitignore`, `06-pilotage-arbitrages.md` |
 | Journalisation et détection | Logs JSON centralisés (Loki), détection ML | Appliquée | `infra/observability/`, `services/remediation/app/adapters/json_publisher.py` |
 | Sauvegarde | Sauvegarde et restauration de la BDD | Partielle : archives planifiées sur le même hôte ; chiffrement et essai réel restant | `services/db/recovery/`, `services/db/README.md` |
 | Dépendances et images | Versions épinglées | Partielle : versions fixes, pas de scan de vulnérabilités | `services/*/requirements.txt` |
@@ -84,7 +84,7 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 | Risque | Niveau initial | Mesure | Où dans le dépôt | Preuve (test/démo) | Risque résiduel |
 |---|---|---|---|---|---|
 | Flood | 3 Grave | Blocage de la source (IP et compte) + restart + vérif transaction | `services/remediation/` | `scripts/demo_loop.py` : 5/5 reprises, RTO 33-48 s ; rejoué le 21/10 depuis le PC Attaquant à travers le WAF : 5/5, `02-pca-pra.md` §7 | Faible : un attaquant peut créer d'autres comptes ; IP non distinguée sous Docker Desktop |
-| SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | `attack/sqli_injection.py` le 21/10 : 12/12 charges bloquées (403, règle CRS 942100), `02-pca-pra.md` §7 | Moyen : blocage prouvé, mais pas de `VaultSecretRotator`, investigation manuelle |
+| SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction`/`SopsSecretRotator` | `attack/sqli_injection.py` le 21/10 : 12/12 charges bloquées (403, règle CRS 942100) ; rotation essayée en réel (`POST /incidents kind=compromise`), `02-pca-pra.md` §7 | Moyen : blocage et rotation prouvés, mais déclenchement manuel (pas de détecteur de compromission automatique) et investigation toujours manuelle |
 | Détournement du moteur | 4 Critique | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config (à faire avec Hugo) | Moyen : un jeton volé permet de déclencher des redémarrages |
 | Faux positif / contournement ML | 2 Significative | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | `evaluate` : 0 faux positif sur 120 mesures | Moyen : le score d'IsolationForest sature, seuil à recalibrer sur trafic réel |
 

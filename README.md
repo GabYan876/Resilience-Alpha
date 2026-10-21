@@ -63,7 +63,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 │   ├── ansible/          # playbooks
 │   ├── observability/    # Prometheus, Grafana, Loki
 │   ├── waf/              # ModSecurity + OWASP CRS, liste de blocage (njs)
-│   └── secrets/          # Vault / SOPS (chiffré uniquement)
+│   └── secrets/          # SOPS (chiffré uniquement)
 ├── attack/               # scripts Red Team (PC Attaquant)
 ├── ml/                   # jeux de données, notebooks, entraînement
 ├── scripts/              # vérif. de transaction, reset de démo, chaos
@@ -84,7 +84,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 > Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
 
-> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide — `RotateSecretAction`/`VaultSecretRotator` sans implémentation prod), script d'injection SQL, exposition de la pile sur `192.168.137.1` (aujourd'hui testée sur `127.0.0.1` ou l'IP LAN du PC Hôte via `WAF_BIND_HOST`). Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
+> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : playbooks Ansible (`infra/ansible/`, vides), exposition de la pile sur `192.168.137.1` (aujourd'hui testée sur `127.0.0.1` ou l'IP LAN du PC Hôte via `WAF_BIND_HOST`). Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 

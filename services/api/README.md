@@ -266,7 +266,7 @@ Les autres variables du `.env` (`POSTGRES_*`, `APP_RW_PASSWORD`, `APP_RO_PASSWOR
 ### Déploiement (depuis la racine du dépôt)
 
 ```bash
-cp .env.example .env        # puis renseigner les secrets (Vault/SOPS)
+bash scripts/render_env.sh  # déchiffre les secrets SOPS dans .env (voir docs/dev.md §2)
 docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait --build
 ```
 
