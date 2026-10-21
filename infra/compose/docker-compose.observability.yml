@@ -278,7 +278,7 @@ services:
       # Le dashboard s'ouvre directement : zéro clic pendant la démonstration.
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/resilience-alpha.json
       # Servi sous /grafana derrière le WAF (puis la passerelle) ; l'hôte du ROOT_URL est celui
-      # que tape le navigateur (192.168.137.1:8080 sur le hotspot).
+      # que tape le navigateur (IP du PC Hôte sur le réseau privé du binôme, port 8080).
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://127.0.0.1:8080/grafana/}
       GF_SERVER_SERVE_FROM_SUB_PATH: ${GRAFANA_SERVE_FROM_SUB_PATH:-true}
       # Rien ne sort du PC Hôte.

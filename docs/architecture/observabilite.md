@@ -253,7 +253,7 @@ docker compose -f infra/compose/docker-compose.observability.yml up -d
 
 La pile d'observabilité porte son propre nom de projet (`resilience-alpha-obs`). Elle est donc **autonome** et survit aux redémarrages de conteneurs déclenchés par le moteur de remédiation — c'est indispensable pour montrer l'incident pendant qu'il a lieu. Corollaire : **ne pas la fusionner** avec la pile principale via plusieurs `-f`, son `name:` écraserait le nom de projet de l'autre.
 
-Grafana est ensuite sur <http://127.0.0.1:8080/grafana/> (ou `http://192.168.137.1:8080/grafana/` sur le hotspot) et ouvre directement le dashboard.
+Grafana est ensuite sur <http://127.0.0.1:8080/grafana/> (ou l'IP du PC Hôte sur le réseau privé du binôme, ex. `http://192.168.137.1:8080/grafana/` sur le hotspot, `http://192.168.1.140:8080/grafana/` sur une box) et ouvre directement le dashboard.
 
 ### Rejouabilité
 
@@ -281,7 +281,7 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 - **Accès anonyme à Grafana** activé pour la démonstration, cf. section 8. À inscrire dans les risques résiduels du dossier.
 - **Pas d'Alertmanager, pas de Wazuh** : la fonction SOC repose sur Loki + Grafana, choix assumé pour tenir le budget RAM de 16 Go.
 - **Le proxy Docker reste le point sensible de la pile.** Alloy n'y a qu'un accès en lecture (`CONTAINERS`, `NETWORKS`, `POST=0`), mais `docker-proxy` monte bien le socket : c'est lui qu'il faut surveiller, pas Alloy. Il n'est joignable que depuis `docker-proxy-net`, en `internal: true`.
-- **`GRAFANA_ROOT_URL`** doit porter l'hôte tapé par le navigateur (`http://192.168.137.1:8080/grafana/` sur le hotspot), sinon les redirections de Grafana pointent vers `127.0.0.1`.
+- **`GRAFANA_ROOT_URL`** doit porter l'hôte tapé par le navigateur (l'IP du PC Hôte sur le réseau privé du binôme, hotspot ou box), sinon les redirections de Grafana pointent vers `127.0.0.1`.
 
 ### Validation effectuée
 

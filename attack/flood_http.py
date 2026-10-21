@@ -38,7 +38,7 @@ ALLOWED_HOSTS = {
     "127.0.0.1",
     "localhost",
     "192.168.137.1",  # PC Hôte du consortium (hotspot RESILIENCE-G<n>)
-    "192.168.1.140",  # PC Hôte du consortium (secours : box du binôme Kevin)
+    "192.168.1.140",  # PC Hôte du consortium (box du binôme Kevin, réseau privé équivalent)
 }
 LOGIN_EMAIL = "alice@resilience.local"  # compte du seed de démo
 TIMEOUT_S = 3.0
@@ -72,7 +72,8 @@ def _check_target(base_url: str, confirmed: bool) -> None:
         raise SystemExit(
             f"cible '{base_url}' hors de la passerelle locale attendue.\n"
             "Règle du dépôt : attaques uniquement depuis le PC Attaquant vers le PC "
-            "Hôte du consortium (192.168.137.1), jamais le campus ni Internet.\n"
+            "Hôte du consortium, sur le réseau privé du binôme (hotspot ou box), "
+            "jamais le campus ni Internet.\n"
             "Si c'est bien le PC Hôte visé depuis le PC Attaquant, ajouter "
             "--yes-i-know-the-target."
         )

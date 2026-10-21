@@ -38,7 +38,7 @@ python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt 
 - **Aucun secret** dans le dépôt, les images, les logs ni le zip final : Vault ou SOPS. `.env` est ignoré, on fournit un `.env.example` avec des placeholders.
 - **Données 100 % fictives.**
 - Ne jamais envoyer de clé, de secret ni de document confidentiel à une IA.
-- Attaques uniquement depuis le PC Attaquant vers le PC Hôte du consortium (`192.168.137.1`). Jamais le réseau du campus, un autre groupe ni Internet.
+- Attaques uniquement depuis le PC Attaquant vers le PC Hôte du consortium, sur un réseau privé du binôme (hotspot `192.168.137.1` ou box personnelle). Jamais le réseau du campus, un autre groupe ni Internet.
 - Avant d'ajouter un composant : impact RAM (`mem_limit`), exposition réseau, droits requis.
 
 ## Compréhension du code

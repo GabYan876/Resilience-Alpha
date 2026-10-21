@@ -72,8 +72,8 @@ Sans elles, la pile refuse de démarrer — un échec explicite vaut mieux qu'un
 Les autres variables ont une valeur par défaut utilisable : voir le tableau
 complet dans `docs/architecture/observabilite.md`.
 
-Grafana est servie sous `/grafana` (WAF, port 8080). Sur le hotspot, définir
-`GRAFANA_ROOT_URL=http://192.168.137.1:8080/grafana/`.
+Grafana est servie sous `/grafana` (WAF, port 8080). Sur le réseau privé du binôme
+(hotspot ou box), définir `GRAFANA_ROOT_URL=http://<IP du PC Hôte>:8080/grafana/`.
 
 ## Deux pièges réglés, à ne pas réintroduire
 

@@ -11,12 +11,12 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [ ] **Ansible (Hugo)** : `infra/ansible/site.yml` et les rôles écrits (`.env`, socle, observabilité, vérification). Sans lui, « une commande » n'est pas tenu.
 - [x] **Vault ou SOPS (Hugo, Kevin)** : tranché **SOPS + age** le 21/10 (`06-pilotage-arbitrages.md`). `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/app.enc.yaml`/`jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator`. Essai réel : `POST /incidents kind=compromise` → JWT tourné, `auth`/`api` redémarrés, transaction de test encore réglée.
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
-- [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié depuis un second PC sur la box (`192.168.1.140:8080`, login, dashboard, `POST /api/ds/query` sans 403). `WAF_BIND_HOST` et `GRAFANA_ROOT_URL` réglés sur cette IP dans `.env`. **Reste à rejouer sur le hotspot `192.168.137.1`** le jour du chaos (même mécanique, autre IP).
+- [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié depuis un second PC sur la box (`192.168.1.140:8080`, login, dashboard, `POST /api/ds/query` sans 403). `WAF_BIND_HOST` et `GRAFANA_ROOT_URL` réglés sur cette IP dans `.env`. Arbitrage du 21/10 (`06-pilotage-arbitrages.md`) : le réseau n'importe pas (hotspot ou box), seul compte le réseau privé du binôme — box et hotspot sont équivalents pour la démo.
 - [x] Mesure de la RAM de la pile complète (`docker stats`, 21/10, 17 conteneurs) : **885 Mo réels au repos, 990 Mo en pic pendant `attack/flood_http.py` (30 s, 60 req/s)**, pour 3 128 Mo de limites cumulées (hors Ollama) — loin des 16 Go. Aucun conteneur n'a approché sa limite sous flood (le plus chargé : détecteur 132/256 Mo). Les trois `docker-socket-proxy` restent stables à 25–30/32 Mo. Fil rouge confirmé dans le même passage : `block_subject` (le flood est authentifié, identifié par compte — `block_ip` échoue faute d'IP source, cohérent avec l'arbitrage WAF-par-compte du 20/10) + `restart_service` → `api_healthy: true` + `probe_transaction_ok: true` → incident résolu en ~5 s, sans intervention humaine.
 - [ ] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM.
 - [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
 - [ ] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood.
-- [ ] Tous : `ruff format` fonctionne sur chaque PC ; hotspot `RESILIENCE-G<n>` et PC Hôte en `192.168.137.1`.
+- [ ] Tous : `ruff format` fonctionne sur chaque PC ; réseau privé du binôme (hotspot `RESILIENCE-G<n>` ou box) opérationnel entre PC Attaquant et PC Hôte.
 - [x] Reliquat du 19/10 : cases EBIOS (ateliers 1 à 3) cochées et réponses d'Antoine et de Kevin reportées dans `validation-jalon-19-10.md`.
 - [x] Reliquat du 19/10 restant, vérifié le 21/10 contre le dépôt (voir `validation-jalon-19-10.md` §Hugo) :
   - 5 réseaux Docker : **réalisés**, chaque service n'a que les réseaux dont il a besoin (`rag-assistant` seul sur `rag`, `docker-proxy-ctl` seul sur `control-internal`, etc.), seul le WAF publie un port.
@@ -60,7 +60,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 5. Attaque et RAG — François
 
-- [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Exécuté localement ce jalon ; reste à rejouer depuis le PC Attaquant vers `192.168.137.1` pour la preuve finale (comme le flood ER1).
+- [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Exécuté localement ce jalon ; reste à rejouer depuis le PC Attaquant vers le PC Hôte, sur le réseau privé du binôme (hotspot ou box), pour la preuve finale (comme le flood ER1).
 - [ ] Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise).
 - [ ] Périmètre offensif respecté : jamais le campus, un autre groupe ni Internet.
 - [ ] RAG : ER6 prouvé (injection de prompt sans effet), lecture seule vérifiée, Ollama sur le PC Linux dédié, modèle ≤ 8B.
@@ -89,17 +89,15 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | Écart | Responsable | Échéance | Pourquoi ça bloque |
 |---|---|---|---|
 | Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
-| Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1` (fait sur la box `192.168.1.140` le 21/10, voir ligne ci-dessus ; reste à rejouer sur le hotspot) | Gabriel, Hugo | Jeudi avant le chaos | Le jury doit voir le dashboard et le front depuis le PC Hôte, sur le hotspot réel, pas juste la box |
 | Choix Loki/Grafana seuls vs Wazuh pour le SIEM | Hugo | Jeudi matin | Tranche la fonction SOC du pilier Cyber |
 | Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise) | François | Jeudi, avant les essais | Sans ce plan écrit, les ≥ 5 démos sans intervention ne sont pas pilotables |
-| `attack/sqli_injection.py` rejoué depuis le PC Attaquant vers `192.168.137.1` (fait localement seulement) | François | Jeudi, avec le chaos | Même preuve que le flood ER1 : il faut la refaire depuis l'attaquant réel, pas juste localement |
+| `attack/sqli_injection.py` rejoué depuis le PC Attaquant vers le PC Hôte (fait localement seulement) | François | Jeudi, avec le chaos | Même preuve que le flood ER1 : il faut la refaire depuis l'attaquant réel, pas juste localement |
 | RAG ER6 : résiste sur `llama3.1:8b`, cède sur `llama3.2:3b` (1 seul scénario, 3 questions) ; modèle de démo et isolement du PC Linux à confirmer | François | Jeudi avant le chaos | Le modèle utilisé en démo doit être celui qui résiste, sinon ER6 n'est plus couvert |
-| Front de paiement joignable via le WAF depuis le PC Attaquant | Gabriel | Jeudi avant le chaos | Dépend de l'écart WAF ci-dessus |
 | Clip chrono 60 s (scénario écrit, 1re prise sans coupe) | Gabriel | Jeudi, avant gel du code 17h | Rendu obligatoire |
 | NIS2/DORA relu et relié aux essais réels du 21/10 | Gabriel | Jeudi matin | Rendu obligatoire (pilier Gouvernance) |
 | Trame `Pres.pptx` et pitch | Gabriel | Jeudi | Jury vendredi |
 | Dossier PDF (plan 8–12 p., répartition des sections) | François | Jeudi, avant gel du code | Rendu obligatoire |
-| `ruff format` fonctionnel sur chaque poste ; hotspot `RESILIENCE-G<n>` et PC Hôte `192.168.137.1` confirmés partout | Tous | Jeudi matin | Condition du chaos en réseau réel |
+| `ruff format` fonctionnel sur chaque poste ; réseau privé du binôme (hotspot ou box) confirmé opérationnel entre PC Attaquant et PC Hôte | Tous | Jeudi matin | Condition du chaos en réseau réel |
 | Les 5 réseaux Docker réalisables dans le Compose (reliquat du 19/10) | Hugo | Jeudi matin | Isolation réseau du dossier Infra |
 | Durcissement WAF détaillé : conteneurs non-root, réseaux internes, `mem_limit` partout (section Hugo §1, non auto-vérifiable sans sa confirmation) | Hugo | Jeudi matin | Pilier Cyber, durcissement obligatoire |
 
