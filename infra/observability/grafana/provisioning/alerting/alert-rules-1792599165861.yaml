@@ -1,0 +1,64 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: SOC-10s
+      folder: SOC
+      interval: 10s
+      rules:
+        - uid: dg1wea4dvs5xce
+          title: WAF - Détection SQLi
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: loki
+              model:
+                datasource:
+                    type: loki
+                    uid: loki
+                editorMode: code
+                expr: "sum(\r\n  count_over_time(\r\n    {container=\"resilience-waf\"}\r\n    |~ \"(?i)(SQL Injection|942[0-9]{3})\"\r\n    [2m]\r\n  )\r\n) or on() vector(0)"
+                hide: false
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          annotations:
+            description: Le WAF de RESILIENCE-ALPHA a détecté un événement suspect correspondant à une tentative d'injection SQL. L'événement est enregistré dans Loki et signalé par Grafana.
+            summary: Tentative d'injection SQL détectée par le WAF ModSecurity.
+          labels:
+            attack_type: sqli
+            service: waf
+            severity: warning
+          isPaused: false
