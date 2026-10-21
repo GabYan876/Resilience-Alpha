@@ -40,7 +40,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [ ] S4 (corruption BDD) rejoué avec la pile complète ; RTO et RPO mesurés et reportés dans `02-pca-pra.md`.
 - [ ] 1ers tests de restauration à froid : arrêt complet puis redémarrage en une commande, transaction de test réussie.
-- [ ] Script de vérification de transaction utilisé par le vérificateur et par la démo : même chemin.
+- [x] Script de vérification de transaction utilisé par le vérificateur et par la démo : même chemin.
 - [ ] EBIOS ateliers 4 et 5 mis à jour avec les mesures du 21/10 ; matrice de traçabilité cohérente.
 - [ ] Doc d'API à jour si une route a changé.
 

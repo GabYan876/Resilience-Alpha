@@ -28,7 +28,14 @@ def test_from_env_requires_ingest_token(monkeypatch):
 def test_from_env_reads_container_names(monkeypatch):
     monkeypatch.setenv("REMEDIATION_INGEST_TOKEN", "t")
     monkeypatch.setenv("CONTAINER_NAMES", "api=ra-api")
-    assert Settings.from_env().container_names == {"api": "ra-api"}
+    monkeypatch.setenv("FROM_ACCOUNT", "TEST-SOURCE")
+    monkeypatch.setenv("TO_ACCOUNT", "TEST-DEST")
+    monkeypatch.setenv("AMOUNT_CENTS", "250")
+    settings = Settings.from_env()
+    assert settings.container_names == {"api": "ra-api"}
+    assert settings.probe_from_account == "TEST-SOURCE"
+    assert settings.probe_to_account == "TEST-DEST"
+    assert settings.probe_amount_cents == 250
 
 
 def test_pipeline_restarts_the_compose_container_name():
@@ -76,7 +83,7 @@ def test_database_corruption_restores_then_restarts_and_probes_with_probe_token(
         if request.url.path == "/health":
             return httpx.Response(200)
         if request.url.path == "/transactions":
-            return httpx.Response(201)
+            return httpx.Response(201, json={"status": "settled"})
         return httpx.Response(404)
 
     settings = Settings(

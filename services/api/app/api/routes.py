@@ -60,7 +60,7 @@ def build_router(
             lambda: TransferCommand(
                 from_iban=body.from_account,
                 to_iban=body.to_account,
-                amount_cents=body.to_cents(),
+                amount_cents=body.amount_cents,
                 currency=body.currency,
                 idempotency_key=body.idempotency_key,
             ),

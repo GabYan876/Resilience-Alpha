@@ -25,6 +25,9 @@ class Settings:
     docker_proxy_url: str
     ingest_token: str  # protège POST /incidents (appelé par le détecteur)
     probe_token: str  # jeton du compte de test utilisé par la sonde de transaction
+    probe_from_account: str = "TEST-0001"
+    probe_to_account: str = "TEST-0002"
+    probe_amount_cents: int = 100
     database_recovery_url: str = "http://db-recovery:8001"
     restore_safety_margin_s: float = 15.0  # écart détection/corruption exclu de la restauration
     blocklist_path: str = "/blocklist/blocked.txt"  # liste lue par le WAF (volume partagé)
@@ -51,6 +54,9 @@ class Settings:
             restore_safety_margin_s=float(os.environ.get("DB_RESTORE_SAFETY_MARGIN_S", "15")),
             ingest_token=os.environ["REMEDIATION_INGEST_TOKEN"],
             probe_token=os.environ.get("PROBE_TOKEN", ""),
+            probe_from_account=os.environ.get("FROM_ACCOUNT", "TEST-0001"),
+            probe_to_account=os.environ.get("TO_ACCOUNT", "TEST-0002"),
+            probe_amount_cents=int(os.environ.get("AMOUNT_CENTS", "100")),
             blocklist_path=os.environ.get("WAF_BLOCKLIST_PATH", "/blocklist/blocked.txt"),
             http_timeout_s=float(os.environ.get("HTTP_TIMEOUT_S", "3")),
             restart_timeout_s=float(os.environ.get("RESTART_TIMEOUT_S", "30")),

@@ -79,12 +79,11 @@ Corps de la requête :
 |---|---|---|---|
 | `from_account` | chaîne (1–34) | oui | IBAN fictif du compte source |
 | `to_account` | chaîne (1–34) | oui | IBAN fictif du compte destinataire |
-| `amount_cents` | entier > 0 | un des deux | Montant en centimes (forme canonique) |
-| `amount` | décimal > 0 | un des deux | Montant en unités (ex. `1.50`), converti en centimes avec `Decimal` |
+| `amount_cents` | entier > 0 | oui | Montant en centimes (ex. `150` pour 1,50 €) |
 | `currency` | chaîne de 3 caractères | non (défaut `EUR`) | Mise en majuscules automatiquement |
 | `idempotency_key` | chaîne (≤ 64) | non | Clé d'idempotence ; générée par le serveur si absente |
 
-Il faut fournir **exactement un** de `amount_cents` ou `amount`. Un montant plus précis que le centime (`1.005`) est refusé.
+Le montant est toujours un entier de centimes : un nombre décimal (`1.5`) est refusé.
 
 Exemple (depuis un conteneur du réseau `resilience-net`) :
 
@@ -172,7 +171,7 @@ Le contrat de la sonde (`POST /transactions` + `PROBE_TOKEN`) reste inchangé.
 
 ## Montants, devises et idempotence
 
-- **Aucun `float` ne touche à de l'argent.** Les montants sont des entiers de centimes (`BIGINT` en base). La forme `amount` (unités) est convertie via `Decimal`, puis refusée si elle n'est pas un nombre entier de centimes.
+- **Aucun `float` ne touche à de l'argent.** Les montants sont des entiers de centimes (`BIGINT` en base). 
 - **Devise** : `EUR` par défaut. Un compte n'accepte que sa propre devise, sinon la transaction est rejetée (409).
 - **Idempotence** : `idempotency_key` est unique en base (`uq_transactions_idempotency_key`). Rejouer la même clé ne débite jamais deux fois, ce dont dépend la sonde de reprise. Sans clé fournie, le serveur en génère une, donc chaque appel est une nouvelle transaction.
 - **Concurrence** : les comptes sont lus avec `SELECT … FOR UPDATE`, pour que deux virements simultanés ne partent pas du même solde.
@@ -314,7 +313,7 @@ Limites relevées en relecture (suivi à prévoir) :
 La sonde (`services/remediation/app/adapters/api_probe.py`) envoie :
 
 ```json
-{ "from_account": "TEST-0001", "to_account": "TEST-0002", "amount": 1.0 }
+{ "from_account": "TEST-0001", "to_account": "TEST-0002", "amount_cents": 100, "idempotency_key": "check-<uuid>" }
 ```
 
-avec `Authorization: Bearer <PROBE_TOKEN>` si un jeton est configuré, sur `POST {API_BASE_URL}/transactions` (par défaut `http://api:8000`). Elle considère la reprise prouvée uniquement si la réponse est un **2xx**, d'où le `409` pour les refus. La vérification de santé appelle `GET /health`, qui renvoie `503` si la base est tombée.
+avec `Authorization: Bearer <PROBE_TOKEN>` si un jeton est configuré, sur `POST {API_BASE_URL}/transactions` (par défaut `http://api:8000`). Elle considère la reprise prouvée uniquement si la réponse est un **2xx** dont le corps porte `status: "settled"`, d'où le `409` pour les refus. La vérification de santé appelle `GET /health`, qui renvoie `503` si la base est tombée.

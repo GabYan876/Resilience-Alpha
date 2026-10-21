@@ -86,7 +86,14 @@ def build_pipeline(
     )
     verifier = HealthAndProbeVerifier(
         health,
-        ApiTransactionProbe(client, settings.api_base_url, settings.probe_token),
+        ApiTransactionProbe(
+            client,
+            settings.api_base_url,
+            settings.probe_token,
+            settings.probe_from_account,
+            settings.probe_to_account,
+            settings.probe_amount_cents,
+        ),
         health_wait_s=settings.verify_wait_s,
     )
     return RemediationPipeline(
