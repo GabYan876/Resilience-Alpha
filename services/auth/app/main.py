@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.adapters.engine import SqlAlchemyHealthProbe, build_engine
 from app.adapters.logging_publisher import JsonEventPublisher
@@ -49,4 +50,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         field = ".".join(str(p) for p in errors[0]["loc"][1:]) if errors else "requête"
         return JSONResponse({"error": f"champ invalide : {field}"}, status_code=422)
 
+    # /metrics pour Prometheus (panneau « Santé des services ») ; /health et /metrics exclus.
+    Instrumentator(excluded_handlers=["/metrics", "/health"]).instrument(app).expose(
+        app, endpoint="/metrics", include_in_schema=False
+    )
     return app
