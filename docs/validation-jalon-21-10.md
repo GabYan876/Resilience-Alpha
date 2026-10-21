@@ -23,15 +23,15 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
   - RAG isolé : **réalisé côté Compose** — `rag-assistant` : réseau `rag` seul membre, `read_only: true`, `cap_drop: ALL`, `no-new-privileges`, corpus monté `:ro`, et `LLM_MODEL` par défaut = `llama3.1:8b` (le modèle qui a résisté le 20/10, pas le 3B qui avait cédé).
   - ER6 prouvé : **partiel, assumé comme tel** — la config de démo utilise déjà le modèle qui résiste, mais un seul scénario et 3 questions ont été joués (`04-matrice-tracabilite.md` ligne ER6) : pas une garantie, reste `EN COURS`. Gap reporté en §8 (François).
   - Question WAF de Hugo (ModSecurity/Coraza) : **répondue** le 20/10, revalidée le 21/10 (`06-pilotage-arbitrages.md` ligne 40).
-  - Question SOC de Hugo (Loki/Grafana seuls ou Wazuh) : **toujours ouverte**, aucun arbitrage ni service Wazuh trouvé dans le dépôt. Gap reporté en §8 (Hugo).
+  - Question SOC de Hugo (Loki/Grafana seuls ou Wazuh) : **tranchée** le 21/10 en faveur de Loki/Grafana seuls (`06-pilotage-arbitrages.md`, ligne du 21/10 « Fonction SOC »), confirmé par Hugo.
 
 ## 1. Intégration WAF / logs / SIEM — Hugo
 
-- [ ] WAF ModSecurity + OWASP CRS devant la passerelle ; seul le WAF est publié sur le réseau.
-- [ ] Les logs du WAF arrivent dans Loki (Promtail/Alloy) avec `service`, `trace_id`, `event`.
+- [x] WAF ModSecurity + OWASP CRS devant la passerelle ; seul le WAF est publié sur le réseau. *(`waf` = seul `ports:` du Compose ; 12/12 SQLi bloquées en 403, règle CRS 942100)*
+- [x] Les logs du WAF arrivent dans Loki (Promtail/Alloy) avec `service`, `trace_id`, `event`. *(21/10 : journal d’accès `waf.request`, audit ModSecurity `waf.blocked` / `waf.audit` étiqueté par Alloy ; `trace_id` = `$request_id` pour l’accès, `transaction.unique_id` pour l’audit ; les requêtes du dashboard SIEM et du détecteur filtrent `event="waf.request"`)*
 - [x] Fonction SOC : une règle WAF déclenchée (SQLi) est visible et alertable dans Grafana. *(règle `WAF - Détection SQLi`, PR #55 ; essai du 21/10 : `inactive` puis `firing` après une SQLi)*
-- [ ] Durcissement : conteneurs non-root, réseaux internes (BDD, Vault, gestion), `mem_limit` partout.
-- [ ] Reset d'état : script qui remet la démo à zéro entre deux passages.
+- [x] Durcissement : conteneurs non-root, réseaux internes (BDD, Vault, gestion), `mem_limit` partout. *(21/10 : `gateway` Caddy passé en `nobody` (65534) ; seules exceptions root, les 3 `docker-socket-proxy`, qui lisent le socket Docker root et restent bornés par `cap_drop: ALL`, `no-new-privileges`, sections d'API limitées et réseau interne ; Vault non déployé, secrets SOPS)*
+- [x] Reset d'état : script qui remet la démo à zéro entre deux passages. *(`scripts/reset_demo.sh`, rejoué 5 fois le 21/10)*
 
 ## 2. Intégration ML / remédiation — Kevin
 
@@ -89,7 +89,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | Écart | Responsable | Échéance | Pourquoi ça bloque |
 |---|---|---|---|
 | Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
-| Choix Loki/Grafana seuls vs Wazuh pour le SIEM | Hugo | Jeudi matin | Tranche la fonction SOC du pilier Cyber |
 | Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise) | François | Jeudi, avant les essais | Sans ce plan écrit, les ≥ 5 démos sans intervention ne sont pas pilotables |
 | `attack/sqli_injection.py` rejoué depuis le PC Attaquant vers le PC Hôte (fait localement seulement) | François | Jeudi, avec le chaos | Même preuve que le flood ER1 : il faut la refaire depuis l'attaquant réel, pas juste localement |
 | RAG ER6 : résiste sur `llama3.1:8b`, cède sur `llama3.2:3b` (1 seul scénario, 3 questions) ; modèle de démo et isolement du PC Linux à confirmer | François | Jeudi avant le chaos | Le modèle utilisé en démo doit être celui qui résiste, sinon ER6 n'est plus couvert |
@@ -98,8 +97,6 @@ cochées. Tout ce qui est listé ici est confirmé encore ouvert.
 | Trame `Pres.pptx` et pitch | Gabriel | Jeudi | Jury vendredi |
 | Dossier PDF (plan 8–12 p., répartition des sections) | François | Jeudi, avant gel du code | Rendu obligatoire |
 | `ruff format` fonctionnel sur chaque poste ; réseau privé du binôme (hotspot ou box) confirmé opérationnel entre PC Attaquant et PC Hôte | Tous | Jeudi matin | Condition du chaos en réseau réel |
-| Les 5 réseaux Docker réalisables dans le Compose (reliquat du 19/10) | Hugo | Jeudi matin | Isolation réseau du dossier Infra |
-| Durcissement WAF détaillé : conteneurs non-root, réseaux internes, `mem_limit` partout (section Hugo §1, non auto-vérifiable sans sa confirmation) | Hugo | Jeudi matin | Pilier Cyber, durcissement obligatoire |
 
 Non listés ici parce que déjà prouvés avec preuve référencée (voir §2, §3, §6) : fil rouge flood
 depuis le PC Attaquant, SQLi bloqué/visible en local, S4 (2 passages), restauration à froid, revue

@@ -142,10 +142,11 @@ services:
         condition: service_healthy
       auth:
         condition: service_healthy
+    user: "65534:65534" # nobody : Caddy n'a aucun besoin d'être root, il écoute sur 8080
     read_only: true
     tmpfs:
-      - /data # état Caddy
-      - /config
+      - /data:uid=65534,gid=65534 # état Caddy
+      - /config:uid=65534,gid=65534
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
       interval: 10s

@@ -99,7 +99,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({service=\"waf\"} | json | status=\"403\" [$__range])) - (sum(count_over_time({container=\"resilience-waf\"} |= \"\\\"is_interrupted\\\":true\" [$__range])) or vector(0))",
+          "expr": "sum(count_over_time({service=\"waf\", event=\"waf.request\"} | json | status=\"403\" [$__range])) - (sum(count_over_time({container=\"resilience-waf\"} |= \"\\\"is_interrupted\\\":true\" [$__range])) or vector(0))",
           "legendFormat": "",
           "queryType": "instant",
           "instant": true
@@ -255,7 +255,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (status) (rate({service=\"waf\"} | json [30s]))",
+          "expr": "sum by (status) (rate({service=\"waf\", event=\"waf.request\"} | json [30s]))",
           "legendFormat": "{{status}}",
           "queryType": "range"
         }
@@ -306,7 +306,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "topk(5, sum by (sub) (rate({service=\"waf\"} | json | sub != \"\" [30s])))",
+          "expr": "topk(5, sum by (sub) (rate({service=\"waf\", event=\"waf.request\"} | json | sub != \"\" [30s])))",
           "legendFormat": "{{sub}}",
           "queryType": "range"
         }
@@ -448,7 +448,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "topk(10, sum by (sub) (count_over_time({service=\"waf\"} | json | sub != \"\" [$__range])))",
+          "expr": "topk(10, sum by (sub) (count_over_time({service=\"waf\", event=\"waf.request\"} | json | sub != \"\" [$__range])))",
           "legendFormat": "",
           "queryType": "instant",
           "instant": true,

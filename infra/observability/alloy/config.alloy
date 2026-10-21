@@ -89,6 +89,31 @@ loki.process "journal_projet" {
     }
   }
 
+  // Journal d'audit ModSecurity (JSON, une ligne par transaction, objet racine `transaction`) :
+  // il ne suit pas la convention du projet. On lui pose ici `service` et `event` (valeurs
+  // fermées : waf.blocked si la requête a été interrompue, waf.audit sinon) et on reprend
+  // l'identifiant de transaction ModSecurity comme `trace_id` (différent du `$request_id`
+  // du journal d'accès `waf.request`). Les lignes d'accès, déjà conformes, ne passent pas ici.
+  stage.match {
+    selector = "{container=\"resilience-waf\"} |= \"\\\"is_interrupted\\\":true\""
+    stage.json {
+      expressions = { trace_id = "transaction.unique_id" }
+    }
+    stage.static_labels {
+      values = { service = "waf", event = "waf.blocked" }
+    }
+  }
+
+  stage.match {
+    selector = "{container=\"resilience-waf\"} |= \"\\\"is_interrupted\\\":false\""
+    stage.json {
+      expressions = { trace_id = "transaction.unique_id" }
+    }
+    stage.static_labels {
+      values = { service = "waf", event = "waf.audit" }
+    }
+  }
+
   // Seuls `service` et `event` sont indexés : tous deux ont un domaine de valeurs
   // fermé et petit. `trace_id` en est volontairement exclu — l'API en génère un
   // uuid4 par transaction, donc l'indexer créerait un flux Loki par transaction.
