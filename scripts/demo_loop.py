@@ -11,7 +11,7 @@ il est décomposé en délai de détection et temps de remédiation.
 
     python scripts/demo_loop.py --runs 5
 
-Bibliothèque standard seule. Attaque limitée à la passerelle locale (voir attack/flood_http.py).
+Bibliothèque standard seule. Attaque limitée aux hôtes autorisés de attack/flood_http.py (PC Hôte du consortium).
 """
 
 from __future__ import annotations
@@ -45,6 +45,22 @@ class Run:
     @property
     def success(self) -> bool:
         return self.resolved and self.probe_ok
+
+
+def default_base_url() -> str:
+    """Adresse du WAF : `WAF_BIND_HOST` (environnement, sinon `.env`), 127.0.0.1 à défaut.
+
+    Le WAF n'écoute que sur cette adresse ; viser 127.0.0.1 alors qu'elle vaut l'IP du
+    réseau privé du binôme ferait refuser le flood.
+    """
+    host = os.environ.get("WAF_BIND_HOST", "")
+    env_file = REPO_ROOT / ".env"
+    if not host and env_file.exists():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "WAF_BIND_HOST":
+                host = value.strip()
+    return f"http://{host or '127.0.0.1'}:8080"
 
 
 def find_bash() -> str:
@@ -112,6 +128,8 @@ def run_cycle(index: int, args: argparse.Namespace) -> Run:
         [
             sys.executable,
             str(REPO_ROOT / "attack/flood_http.py"),
+            "--base-url",
+            args.base_url,
             "--duration",
             str(args.flood_duration),
             "--rate",
@@ -161,6 +179,11 @@ def report(runs: list[Run]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--runs", type=int, default=5)
+    parser.add_argument(
+        "--base-url",
+        default=default_base_url(),
+        help="WAF visé (défaut : WAF_BIND_HOST de .env, sinon 127.0.0.1)",
+    )
     parser.add_argument("--flood-duration", type=float, default=30.0, help="secondes")
     parser.add_argument(
         "--flood-rate", type=int, default=60, help="threads concurrents"
