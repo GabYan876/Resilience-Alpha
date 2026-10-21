@@ -64,22 +64,21 @@ flowchart LR
 
 | Service | Rôle | Réseaux | Publié ? | Propriétaire |
 |---|---|---|---|---|
-| `waf` | ModSecurity + OWASP CRS (nginx), niveau de paranoïa 1 ; refuse les sources de la liste de blocage (njs) ; journal d'audit JSON vers Loki | `resilience-net` | **oui**, `127.0.0.1:8080` (seul point d'entrée) | Hugo |
-| `frontend` | Front paiement (le dashboard de supervision est Grafana, pile d'observabilité) | public, app | via WAF | Gabriel |
+| `waf` | ModSecurity + OWASP CRS (nginx), niveau de paranoïa 1 ; refuse les sources de la liste de blocage (njs) ; journal d'audit JSON vers Loki | `resilience-net` | **oui**, `${WAF_BIND_HOST:-127.0.0.1}:8080` (seul point d'entrée ; `127.0.0.1` par défaut, IP LAN/hotspot du PC Hôte en essai réel) | Hugo |
+| `gateway` | Caddy : build multi-étapes qui embarque le front React (`frontend/`) servi en statique, et route `/auth/*` → `auth`, `/me/*` → `api`. Placée derrière le WAF ; aucun conteneur `frontend` séparé | app | non (joignable par le WAF seulement) | Gabriel / Hugo |
 | `api` | API métier (transactions) | app | non | Antoine |
 | `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
-| `gateway` | Caddy : sert le front, route `/auth/*` → `auth` et `/me/*` → `api`. Placée derrière le WAF | app | non (joignable par le WAF seulement) | Gabriel / Hugo |
-| `db` | Base de données (fictive) | app | non | Antoine |
+| `postgres` | Base de données (fictive) | app | non | Antoine |
 | `db-recovery` | Sauvegarde `pg_dump` toutes les 5 min (12 gardées, volume `postgres-backups`) et restauration `pg_restore` ; rôle propriétaire, 128 Mo | db-internal, control-internal | non | Antoine |
-| `prometheus`, `loki`, `grafana` | Métriques, logs, SOC | obs | non (Grafana via WAF) | Hugo |
+| `prometheus`, `loki`, `alloy`, `grafana` | Métriques, logs (Alloy ingère, pas Promtail), SOC | obs | non, Grafana exposé en local (`127.0.0.1:3000`) ; pas encore via le WAF (voir §6) | Hugo |
 | `anomaly-detector` | ML (IsolationForest) sur métriques/logs ; invariants du grand livre pour `database_corruption` | obs, control | non | Kevin |
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
-| `docker-proxy` | Passerelle Docker d'Alloy : lecture seule (`GET /containers`, `/networks`) | pile obs | non | Hugo |
-| `vault` | Secrets | control | non | Hugo |
+| `docker-proxy`, `docker-proxy-autoheal` | Passerelles Docker d'Alloy (lecture seule) et de l'auto-guérison d'Alloy (restart-only, ajoutée le 21/10) ; voir `observabilite.md` §7bis | pile obs | non | Hugo |
+| `vault` | **Non déployé.** Secrets en `.env` (SOPS/Vault encore à trancher, voir §6) ; `RotateSecretAction`/`SecretRotator` sans implémentation prod (TODO dans `remediation/app/main.py`) | — | — | Hugo |
 | `rag-assistant` | Assistant RAG (LangChain ; modèle Ollama ≤ 8B hébergé hors Compose) | rag | non (interrogé par `docker compose exec`) | François |
 
-**Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif (Grafana reste lié à `127.0.0.1:3000` tant qu'il n'est pas servi via le WAF sur `192.168.137.1`). Aucun composant, hors les deux passerelles `docker-proxy-ctl` et `docker-proxy`, ne touche `docker.sock`.
+**Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif. Grafana reste lié à `127.0.0.1:3000`, pas encore servi via le WAF. Aucun composant, hors les passerelles `docker-proxy-ctl`, `docker-proxy` et `docker-proxy-autoheal`, ne touche `docker.sock`.
 
 ### Réseaux Docker implémentés
 

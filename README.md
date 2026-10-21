@@ -17,7 +17,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
 ## Architecture
 
 ```
- PC Attaquant ──► WAF ──► Front (React) ──► API métier ──► BDD
+ PC Attaquant ──► WAF ──► Gateway (Caddy + front React) ──► API métier ──► BDD
                   │                          │  └─► Auth
                   ▼                          ▼
               Logs / métriques ──► Prometheus · Loki ──► Grafana / SIEM
@@ -84,7 +84,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 > Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
 
-> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide), restauration de la BDD (`RestoreDatabaseAction`), script d'injection SQL, exposition sur `192.168.137.1`.
+> **Écarts restants** (échéance mercredi) : playbooks Ansible (`infra/ansible/`, vides), Vault/SOPS (`infra/secrets/`, vide — `RotateSecretAction`/`VaultSecretRotator` sans implémentation prod), script d'injection SQL, exposition de la pile sur `192.168.137.1` (aujourd'hui testée sur `127.0.0.1` ou l'IP LAN du PC Hôte via `WAF_BIND_HOST`). Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
@@ -118,7 +118,7 @@ Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans 
 
 La cible reste un déploiement en une commande via Ansible (`infra/ansible/site.yml`, à écrire).
 
-Accès actuel (poste hôte uniquement) : front Pay-Now sur `http://127.0.0.1:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000`. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
+Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana sur `http://127.0.0.1:3000` (pas encore via le WAF). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN/hotspot du PC Hôte (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Cible : front, Grafana et dashboard via le WAF sur `192.168.137.1`.
 
 ## Lancer la démonstration
 
