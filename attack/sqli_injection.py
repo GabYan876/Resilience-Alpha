@@ -72,7 +72,9 @@ def _check_target(base_url: str, confirmed: bool) -> None:
         )
 
 
-def _post(base_url: str, path: str, body: dict, token: str | None = None) -> tuple[int, str]:
+def _post(
+    base_url: str, path: str, body: dict, token: str | None = None
+) -> tuple[int, str]:
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -89,7 +91,9 @@ def _post(base_url: str, path: str, body: dict, token: str | None = None) -> tup
 
 
 def login(base_url: str, email: str, password: str) -> str | None:
-    status, body = _post(base_url, "/auth/login", {"email": email, "password": password})
+    status, body = _post(
+        base_url, "/auth/login", {"email": email, "password": password}
+    )
     if status != 200:
         return None
     try:
@@ -111,7 +115,11 @@ def attack_transfer(base_url: str, token: str) -> list[tuple[str, int]]:
     """Charges dans `to_account` (IBAN du bénéficiaire) de `/me/transfers`, authentifié."""
     results = []
     for payload in SQLI_PAYLOADS:
-        body = {"to_account": payload, "amount_cents": 100, "idempotency_key": "sqli-probe"}
+        body = {
+            "to_account": payload,
+            "amount_cents": 100,
+            "idempotency_key": "sqli-probe",
+        }
         status, _ = _post(base_url, "/me/transfers", body, token=token)
         results.append((payload, status))
     return results
@@ -155,7 +163,10 @@ def main() -> None:
             "(/me/transfers) est ignoré. Lancer scripts/seed_demo.py si besoin."
         )
         return
-    report("2) /me/transfers, champ to_account, avec jeton valide :", attack_transfer(base_url, token))
+    report(
+        "2) /me/transfers, champ to_account, avec jeton valide :",
+        attack_transfer(base_url, token),
+    )
 
     print(
         "\nPreuve attendue dans Loki/Grafana (dashboard `resilience-alpha`, panneau SIEM/WAF) : "

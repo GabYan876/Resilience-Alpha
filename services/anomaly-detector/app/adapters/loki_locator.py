@@ -24,7 +24,8 @@ class LokiAttackerLocator:
         self._client = client
         self._url = f"{base_url}/loki/api/v1/query"
         self._query = (
-            f'sum by (sub) (count_over_time({{service="waf", event="waf.request"}} | json | sub != "" [{window}]))'
+            'sum by (sub) (count_over_time({service="waf", event="waf.request"}'
+            f' | json | sub != "" [{window}]))'
         )
         self._min_requests = min_requests
         self._min_share = min_share

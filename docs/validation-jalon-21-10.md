@@ -16,7 +16,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] Hugo : Loki/Grafana seuls ou Wazuh pour le SIEM. *(Loki/Grafana seuls, confirmé par Hugo le 21/10 ; `06-pilotage-arbitrages.md`)*
 - [x] Arbitrage « à valider » du 20/10 : passerelle Docker non distinguée, WAF par **compte** plutôt que par IP — validé le 21/10 sur 5 passages réels (`06-pilotage-arbitrages.md` ligne 40).
 - [x] Gabriel : Grafana accepté comme dashboard de supervision (sujet) ; `resilience-alpha.json` parcouru pendant un flood (`06-pilotage-arbitrages.md` ligne 41).
-- [ ] Tous : `ruff format` fonctionne sur chaque PC ; réseau privé du binôme (hotspot `RESILIENCE-G<n>` ou box) opérationnel entre PC Attaquant et PC Hôte.
+- [ ] Tous : `ruff format` fonctionne sur chaque PC *(vérifié sur le PC de Kevin le 21/10 : `ruff format --check` et `ruff check` passent sur tout le dépôt après correction de 10 fichiers ; reste à confirmer sur les autres postes)* ; réseau privé du binôme (hotspot `RESILIENCE-G<n>` ou box) opérationnel entre PC Attaquant et PC Hôte.
 - [x] Reliquat du 19/10 : cases EBIOS (ateliers 1 à 3) cochées et réponses d'Antoine et de Kevin reportées dans `validation-jalon-19-10.md`.
 - [x] Reliquat du 19/10 restant, vérifié le 21/10 contre le dépôt (voir `validation-jalon-19-10.md` §Hugo) :
   - 5 réseaux Docker : **réalisés**, chaque service n'a que les réseaux dont il a besoin (`rag-assistant` seul sur `rag`, `docker-proxy-ctl` seul sur `control-internal`, etc.), seul le WAF publie un port.
@@ -62,7 +62,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [x] Script d'injection SQL (ER2) : `attack/sqli_injection.py` (gabarit substitué par Kevin le 21/10, François reprend pour le chaos de jeudi). 12/12 charges bloquées (403) à travers le WAF, règle CRS 942100, tracé dans Loki — voir `docs/gouvernance/02-pca-pra.md` §7. Rejoué depuis le PC Attaquant vers le PC Hôte, sur le réseau privé du binôme (confirmé par l'équipe le 21/10), comme le flood ER1.
 - [ ] Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise).
-- [ ] Périmètre offensif respecté : jamais le campus, un autre groupe ni Internet.
+- [x] Périmètre offensif respecté : jamais le campus, un autre groupe ni Internet. *(garde-fou `ALLOWED_HOSTS` dans `attack/flood_http.py` et `attack/sqli_injection.py` : cibles `10.0.0.5`, `8.8.8.8` et `192.168.1.50` refusées sans `--yes-i-know-the-target`, essayé le 21/10 ; seuls la boucle locale et les PC Hôte du binôme passent. Les essais réels du 21/10 n'ont visé que le PC Hôte.)*
 - [ ] RAG : ER6 prouvé (injection de prompt sans effet), lecture seule vérifiée, Ollama sur le PC Linux dédié, modèle ≤ 8B.
 - [ ] Dossier PDF : plan en 8–12 pages et répartition des sections.
 

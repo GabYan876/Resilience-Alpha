@@ -48,19 +48,12 @@ def make_client():
 def test_restore_requires_probe_token():
     with make_client() as client:
         assert client.post("/restore").status_code == 401
-        assert (
-            client.post(
-                "/restore", headers={"Authorization": "Bearer wrong"}
-            ).status_code
-            == 401
-        )
+        assert client.post("/restore", headers={"Authorization": "Bearer wrong"}).status_code == 401
 
 
 def test_restore_is_available_with_probe_token():
     with make_client() as client:
-        response = client.post(
-            "/restore", headers={"Authorization": "Bearer probe-secret"}
-        )
+        response = client.post("/restore", headers={"Authorization": "Bearer probe-secret"})
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "archive": "backup-test.dump"}
 
