@@ -16,7 +16,12 @@ from tests.fakes import (
     make_account,
 )
 
-PROBE_PAYLOAD = {"from_account": "TEST-0001", "to_account": "TEST-0002", "amount": 1.0}
+PROBE_PAYLOAD = {
+    "from_account": "TEST-0001",
+    "to_account": "TEST-0002",
+    "amount_cents": 100,
+    "idempotency_key": "check-test",
+}
 
 
 def _client(
@@ -62,7 +67,7 @@ def test_health_ne_ment_pas_quand_la_base_est_injoignable() -> None:
 
 
 def test_la_charge_utile_de_la_sonde_de_remediation_est_acceptee() -> None:
-    """Contrat avec `services/remediation` : `amount` en unités, converti en centimes."""
+    """Contrat avec `services/remediation` : montant en centimes et clé d'idempotence."""
     client, _ = _client()
 
     response = client.post("/transactions", json=PROBE_PAYLOAD)
@@ -85,28 +90,24 @@ def test_montant_en_centimes_accepte() -> None:
     assert response.json()["amount_cents"] == 2_500
 
 
-def test_les_deux_formes_de_montant_ensemble_sont_refusees() -> None:
+def test_montant_en_unites_refuse() -> None:
+    """L'ancien champ `amount` (unités) n'existe plus : `amount_cents` est obligatoire."""
     client, _ = _client()
 
     response = client.post(
         "/transactions",
-        json={
-            "from_account": "TEST-0001",
-            "to_account": "TEST-0002",
-            "amount": 1.0,
-            "amount_cents": 100,
-        },
+        json={"from_account": "TEST-0001", "to_account": "TEST-0002", "amount": 1.0},
     )
 
     assert response.status_code == 422
 
 
-def test_montant_plus_precis_que_le_centime_refuse() -> None:
+def test_montant_en_centimes_non_entier_refuse() -> None:
     client, _ = _client()
 
     response = client.post(
         "/transactions",
-        json={"from_account": "TEST-0001", "to_account": "TEST-0002", "amount": "1.005"},
+        json={"from_account": "TEST-0001", "to_account": "TEST-0002", "amount_cents": 1.5},
     )
 
     assert response.status_code == 422
