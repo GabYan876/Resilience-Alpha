@@ -14,7 +14,8 @@
 # Le réseau `resilience-net` est créé par infra/compose/docker-compose.yml et déclaré
 # ici en `external` : lancer la pile principale d'abord.
 #
-# Budget mémoire : 512 + 384 + 128 + 256 + 32 = 1312 Mo (1,28 Go) sur 16 Go.
+# Budget mémoire : 512 + 384 + 128 + 256 + 32 (prometheus/loki/alloy/grafana/docker-proxy)
+# + 32 + 24 (docker-proxy-autoheal/autoheal) = 1368 Mo (1,34 Go) sur 16 Go.
 
 name: resilience-alpha-obs
 
@@ -169,13 +170,92 @@ services:
         condition: service_healthy
       docker-proxy:
         condition: service_started
+    labels:
+      # Repéré par `autoheal` (voir plus bas) : seul conteneur que ce label autorise à
+      # redémarrer.
+      autoheal: "true"
     healthcheck:
-      # L'image Alloy n'embarque ni curl ni wget : test TCP via bash.
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/12345"]
+      # L'image Alloy n'embarque ni curl ni wget : test TCP via bash. Le résolveur DNS
+      # intégré de Docker Desktop/WSL2 échoue par intermittence sur ce conteneur
+      # multi-réseaux (déjà observé entre anomaly-detector et prometheus) ; quand ça
+      # arrive ici, Alloy reste « up » mais ne joint plus jamais docker-proxy et
+      # n'ingère plus aucun log, sans jamais planter tout seul. Le test vérifie donc
+      # aussi la jonction vers docker-proxy, pas seulement le port d'Alloy lui-même, pour
+      # détecter précisément cette panne silencieuse.
+      test:
+        - CMD
+        - bash
+        - -c
+        - "exec 3<>/dev/tcp/127.0.0.1/12345 && exec 4<>/dev/tcp/docker-proxy/2375"
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 20s
+    logging: *logging
+    <<: *hardening
+
+  # Redémarre automatiquement tout conteneur marqué `autoheal: "true"` dès que Docker le
+  # signale `unhealthy` (seul Alloy porte ce label aujourd'hui). Sans ce composant, un
+  # healthcheck qui détecte la panne ne suffit pas : en Docker Compose simple (hors
+  # Swarm), rien ne redémarre un conteneur unhealthy par lui-même.
+  autoheal:
+    # Épinglé par digest : aucun tag numéroté publié ne gère DOCKER_SOCK en tcp://
+    # (seul `latest` le fait ; on fige donc son contenu actuel plutôt que de suivre
+    # un tag mouvant).
+    image: willfarrell/autoheal@sha256:7221058d5f68f4aef6eccd88417c6ae18436ad81b8f9d98a204901033b662740
+    container_name: resilience-autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: "15"
+      AUTOHEAL_START_PERIOD: "20"
+      DOCKER_SOCK: tcp://docker-proxy-autoheal:2375
+    networks:
+      - autoheal-internal
+    mem_limit: 24m
+    depends_on:
+      docker-proxy-autoheal:
+        condition: service_started
+    logging: *logging
+    <<: *hardening
+
+  # Passerelle Docker dédiée à `autoheal`, distincte de `docker-proxy` (lecture seule,
+  # utilisée par Alloy) : seules les sections nécessaires à surveiller la santé des
+  # conteneurs et à redémarrer celui qui est marqué `autoheal` sont ouvertes.
+  docker-proxy-autoheal:
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0
+    container_name: resilience-docker-proxy-autoheal
+    restart: unless-stopped
+    environment:
+      EVENTS: "1"
+      CONTAINERS: "1"
+      ALLOW_RESTARTS: "1"
+      # POST doit valoir 1 pour qu'ALLOW_RESTARTS soit évalué (même contrainte que
+      # docker-proxy-ctl dans la pile principale) ; tout le reste refusé explicitement.
+      POST: "1"
+      BUILD: "0"
+      COMMIT: "0"
+      CONFIGS: "0"
+      DISTRIBUTION: "0"
+      EXEC: "0"
+      IMAGES: "0"
+      INFO: "0"
+      NETWORKS: "0"
+      NODES: "0"
+      PLUGINS: "0"
+      SECRETS: "0"
+      SERVICES: "0"
+      SESSION: "0"
+      SWARM: "0"
+      SYSTEM: "0"
+      TASKS: "0"
+      VERSION: "0"
+      VOLUMES: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - autoheal-internal
+    mem_limit: 32m
     logging: *logging
     <<: *hardening
 
@@ -249,6 +329,12 @@ networks:
   # route sortante, donc la passerelle n'est joignable depuis rien d'autre.
   docker-proxy-net:
     name: resilience-docker-proxy-net
+    driver: bridge
+    internal: true
+
+  # autoheal et sa propre passerelle Docker, et personne d'autre.
+  autoheal-internal:
+    name: resilience-autoheal-internal
     driver: bridge
     internal: true
 
