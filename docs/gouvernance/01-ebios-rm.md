@@ -77,14 +77,14 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 | ID | Scénario | Script d'attaque | Vraisemblance | Détection prévue (ML, WAF, log) |
 |---|---|---|---|---|
 | SO1 | Flood : compte créé, connexion, rafale sur `/me/account` jusqu'à épuiser le pool de connexions BDD | `attack/flood_http.py` | Forte (outil simple, aucun prérequis) | Détecteur ML sur métriques Prometheus ; journal d'accès du WAF dans Loki pour désigner le compte |
-| SO2 | SQLi / exfiltration : reconnaissance des routes, injection dans un paramètre, extraction | À écrire (François, bonus) | Moyenne (CRS bloque les motifs courants au niveau 1) | Règles CRS dans le journal d'audit du WAF, vues dans Loki et Grafana |
+| SO2 | SQLi / exfiltration : reconnaissance des routes, injection dans un paramètre, extraction | `attack/sqli_injection.py` (écrit le 21/10) | Moyenne (CRS bloque les motifs courants au niveau 1) | Règles CRS dans le journal d'audit du WAF, vues dans Loki et Grafana — 12/12 charges bloquées le 21/10 (règle 942100), voir `02-pca-pra.md` §7 |
 
 ## Atelier 5 — Traitement du risque
 
 | Risque | Niveau initial | Mesure | Où dans le dépôt | Preuve (test/démo) | Risque résiduel |
 |---|---|---|---|---|---|
-| Flood | 3 Grave | Blocage de la source (IP et compte) + restart + vérif transaction | `services/remediation/` | `scripts/demo_loop.py` : 5/5 reprises, RTO 33-48 s | Faible : un attaquant peut créer d'autres comptes ; IP non distinguée sous Docker Desktop |
-| SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | Aucune démo : script SQLi à écrire | Moyen : pas de `VaultSecretRotator`, investigation manuelle | |
+| Flood | 3 Grave | Blocage de la source (IP et compte) + restart + vérif transaction | `services/remediation/` | `scripts/demo_loop.py` : 5/5 reprises, RTO 33-48 s ; rejoué le 21/10 depuis le PC Attaquant à travers le WAF : 5/5, `02-pca-pra.md` §7 | Faible : un attaquant peut créer d'autres comptes ; IP non distinguée sous Docker Desktop |
+| SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction` | `attack/sqli_injection.py` le 21/10 : 12/12 charges bloquées (403, règle CRS 942100), `02-pca-pra.md` §7 | Moyen : blocage prouvé, mais pas de `VaultSecretRotator`, investigation manuelle |
 | Détournement du moteur | 4 Critique | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config (à faire avec Hugo) | Moyen : un jeton volé permet de déclencher des redémarrages |
 | Faux positif / contournement ML | 2 Significative | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | `evaluate` : 0 faux positif sur 120 mesures | Moyen : le score d'IsolationForest sature, seuil à recalibrer sur trafic réel |
 

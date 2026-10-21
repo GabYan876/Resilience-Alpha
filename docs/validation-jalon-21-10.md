@@ -42,7 +42,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] S4 (corruption BDD) rejoué avec la pile complète ; RTO et RPO mesurés et reportés dans `02-pca-pra.md` (2 passages le 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
 - [x] 1ers tests de restauration à froid : arrêt complet puis redémarrage en une commande, transaction de test réussie (pile isolée, volumes conservés ; `scripts/check_transaction.sh` réussi le 21/10).
 - [x] Script de vérification de transaction utilisé par le vérificateur et par la démo : même chemin.
-- [ ] EBIOS ateliers 4 et 5 mis à jour avec les mesures du 21/10 ; matrice de traçabilité cohérente.
+- [x] EBIOS ateliers 4 et 5 mis à jour avec les mesures du 21/10 ; matrice de traçabilité cohérente (`01-ebios-rm.md` ateliers 4/5, `04-matrice-tracabilite.md` lignes ER1/ER2/ER4 passées à PROUVÉ avec preuve référencée).
 - [ ] Doc d'API à jour si une route a changé.
 
 ## 4. Front et dashboard — Gabriel
@@ -63,10 +63,10 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 6. Cohérence d'intégration — Kevin
 
-- [ ] Matrice de traçabilité : lignes SQLi, rotation de secrets et détournement du moteur passées à jour (`EN COURS` → `PROUVÉ` quand la preuve existe).
-- [ ] `docs/architecture/architecture.md` et `README.md` alignés avec la pile réellement déployée.
-- [ ] Branches fusionnées sur `main` ; PR relues par le tech lead.
-- [ ] Liste des écarts restants pour le jeudi, avec un responsable chacun.
+- [x] Matrice de traçabilité : lignes SQLi et détournement du moteur passées à `PROUVÉ` (preuve référencée) ; rotation de secrets reste `EN COURS` (`VaultSecretRotator` à écrire, voir §8 écart Vault/SOPS) — c'est l'état réel, pas un oubli.
+- [x] `docs/architecture/architecture.md` et `README.md` alignés avec la pile réellement déployée (fait le 21/10 : services renommés, `gateway` documenté comme embarquant le front, `vault` marqué non déployé).
+- [x] Branches fusionnées sur `main` ; PR relues par le tech lead (`gh pr list --state open` vide le 21/10, toutes les branches `kevin/*` et `docs/*` supprimées après fusion).
+- [x] Liste des écarts restants pour le jeudi, avec un responsable chacun — voir §8.
 
 ## 7. Critères de sortie du jalon
 
@@ -74,4 +74,32 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 - [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7). **Non « traitée »** : `RotateSecretAction`/`VaultSecretRotator` et la procédure d'investigation restent à développer (reliquat §0, écart connu pour jeudi).
 - [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
 - [x] 1ers tests de restauration consignés (RTO / RPO mesurés) : restauration à froid (§3) et S4 corruption BDD (§3, `02-pca-pra.md` §7).
-- [ ] Les écarts restants ont un responsable et une échéance jeudi (chaos engineering, ≥ 5 démos, clip, gel du code à 17h).
+- [x] Les écarts restants ont un responsable et une échéance jeudi — voir §8.
+
+## 8. Écarts restants pour le jeudi
+
+Vérifiés le 21/10 contre l'état réel du dépôt (code, Compose, docs), pas seulement contre les cases
+cochées. Tout ce qui est listé ici est confirmé encore ouvert.
+
+| Écart | Responsable | Échéance | Pourquoi ça bloque |
+|---|---|---|---|
+| Ansible (`infra/ansible/playbooks` et `roles` encore vides, seul un `.gitkeep`) | Hugo | Jeudi matin | « Une commande » n'est pas tenu sans lui |
+| Vault/SOPS tranché, `RotateSecretAction`/`VaultSecretRotator` implémentée (aujourd'hui : `Protocol` + `TODO` dans `remediation/app/main.py`) | Hugo, Kevin | Jeudi avant le chaos | S2 reste bloqué-seulement, jamais traité ; `DecisionPolicy` ne peut pas distinguer dispo/compromission sans ça |
+| Front, Grafana et dashboard exposés via le WAF sur `192.168.137.1` (aucune route WAF vers le front/Grafana trouvée dans la config actuelle) | Gabriel, Hugo | Jeudi avant le chaos | Le jury doit voir le dashboard et le front depuis le PC Hôte, pas `127.0.0.1` |
+| Mesure de la RAM de la pile complète (`docker stats`) | Hugo | Jeudi matin | Contrainte 16 Go non vérifiée ; risque de découvrir un dépassement pendant la démo |
+| Choix Loki/Grafana seuls vs Wazuh pour le SIEM | Hugo | Jeudi matin | Tranche la fonction SOC du pilier Cyber |
+| Scénario de chaos du jeudi préparé (liste des pannes, ordre, critères de reprise) | François | Jeudi, avant les essais | Sans ce plan écrit, les ≥ 5 démos sans intervention ne sont pas pilotables |
+| `attack/sqli_injection.py` rejoué depuis le PC Attaquant vers `192.168.137.1` (fait localement seulement) | François | Jeudi, avec le chaos | Même preuve que le flood ER1 : il faut la refaire depuis l'attaquant réel, pas juste localement |
+| RAG ER6 : résiste sur `llama3.1:8b`, cède sur `llama3.2:3b` (1 seul scénario, 3 questions) ; modèle de démo et isolement du PC Linux à confirmer | François | Jeudi avant le chaos | Le modèle utilisé en démo doit être celui qui résiste, sinon ER6 n'est plus couvert |
+| Front de paiement joignable via le WAF depuis le PC Attaquant | Gabriel | Jeudi avant le chaos | Dépend de l'écart WAF ci-dessus |
+| Clip chrono 60 s (scénario écrit, 1re prise sans coupe) | Gabriel | Jeudi, avant gel du code 17h | Rendu obligatoire |
+| NIS2/DORA relu et relié aux essais réels du 21/10 | Gabriel | Jeudi matin | Rendu obligatoire (pilier Gouvernance) |
+| Trame `Pres.pptx` et pitch | Gabriel | Jeudi | Jury vendredi |
+| Dossier PDF (plan 8–12 p., répartition des sections) | François | Jeudi, avant gel du code | Rendu obligatoire |
+| `ruff format` fonctionnel sur chaque poste ; hotspot `RESILIENCE-G<n>` et PC Hôte `192.168.137.1` confirmés partout | Tous | Jeudi matin | Condition du chaos en réseau réel |
+| Les 5 réseaux Docker réalisables dans le Compose (reliquat du 19/10) | Hugo | Jeudi matin | Isolation réseau du dossier Infra |
+| Durcissement WAF détaillé : conteneurs non-root, réseaux internes, `mem_limit` partout (section Hugo §1, non auto-vérifiable sans sa confirmation) | Hugo | Jeudi matin | Pilier Cyber, durcissement obligatoire |
+
+Non listés ici parce que déjà prouvés avec preuve référencée (voir §2, §3, §6) : fil rouge flood
+depuis le PC Attaquant, SQLi bloqué/visible en local, S4 (2 passages), restauration à froid, revue
+docker-socket-proxy, alignement architecture/README, matrice de traçabilité et ateliers EBIOS 4/5.
