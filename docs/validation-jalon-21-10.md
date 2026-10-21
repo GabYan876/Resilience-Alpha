@@ -52,7 +52,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 ## 4. Front et dashboard — Gabriel
 
-- [ ] Front de paiement joignable via le WAF depuis le PC Attaquant.
+- [x] Front de paiement joignable via le WAF depuis le PC Attaquant. *(confirmé par Kevin le 21/10)*
 - [ ] Dashboard Grafana lisible avant / pendant / après : disponibilité, latence, requêtes bloquées, événements `incident.*`.
 - [ ] Clip chrono 60 s : scénario écrit et 1re prise d'essai (sans coupe).
 - [ ] NIS2/DORA relu et relié aux essais réels du 21/10.
