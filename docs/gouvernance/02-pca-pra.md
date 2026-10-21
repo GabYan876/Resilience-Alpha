@@ -61,7 +61,7 @@ Chaque essai : date, scénario, résultat, RTO observé, intervention humaine (o
 
 Objectif : ≥ 5 passages sans intervention — **atteint le 21/10** depuis le PC Attaquant, à travers le WAF.
 
-Écart constaté le 21/10 : `block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages — seul `block_subject` agit, l'IP réelle de l'attaquant n'est jamais remontée au moteur de remédiation (item encore ouvert dans `validation-jalon-21-10.md` §2). `restart_service` et la vérification transactionnelle compensent, mais la ligne « le blocage d'IP agit sur l'IP réelle de l'attaquant » reste à prouver.
+`block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages, `block_subject` seul agit — confirme, sans le contredire, l'arbitrage du 20/10 (`06-pilotage-arbitrages.md` ligne 40) : sous Docker Desktop, le WAF voit la passerelle Docker (`172.25.0.1`) pour tout le trafic LAN, attaquant ou légitime, donc `attacker_ip` n'est volontairement jamais renseigné par le détecteur (`detection.py`) et un blocage par IP couperait tout le monde. Ce n'est pas une régression à corriger ; voir `validation-jalon-21-10.md` §2.
 
 ## 8. Risques qui subsistent après la reprise
 - **Attaquant qui revient** : bloqué par compte, il peut en créer un autre ; sous Docker Desktop l'IP n'est pas distinguée.
