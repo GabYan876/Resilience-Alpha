@@ -84,8 +84,12 @@ Sans modèle, le service refuse de démarrer (erreur claire dans les logs) : mie
 
 - Une cible **arrêtée** n'est pas le cas d'usage du ML (panne binaire) : elle relève du health check
   périodique (scénario S3).
-- `attacker_ip` n'est pas renseigné : l'IP viendra des logs du WAF (Loki) quand `BlockIpAction`
-  existera. Tant que la politique n'a que `RestartServiceAction`, ce n'est pas bloquant.
+- `attacker_ip` n'est volontairement jamais renseigné : sous Docker Desktop, le WAF voit la
+  passerelle Docker (`172.25.0.1`) pour tout le trafic LAN, attaquant ou légitime (mesuré, flood
+  réel depuis le PC Attaquant le 21/10) — un locator d'IP désignerait la passerelle, pas
+  l'attaquant, et `BlockIpAction` couperait tout le monde. `attacker_subject`
+  (`LokiAttackerLocator`) est la seule désignation de source fiable dans cet environnement ;
+  voir `docs/architecture/architecture.md` et `docs/gouvernance/06-pilotage-arbitrages.md` (20/10).
 - `database_corruption` repose sur des **invariants** (compteurs en ajout seul), pas sur le ML : une
   altération qui conserve les compteurs et l'équilibre des écritures (un montant modifié) n'est pas vue.
 - Hors corruption de base, seul `IncidentKind.AVAILABILITY` est émis. La compromission (SQLi/exfiltration) demandera un
