@@ -36,12 +36,15 @@ build/
 ml/models/*
 !ml/models/.gitkeep
 ml/data/*.csv
+!ml/data/normal.csv
+!ml/data/holdout.csv
+!ml/data/attack.csv
 ml/data/*.parquet
 .ipynb_checkpoints/
 
 # Docker / données locales
 *.log
-data/
+/data/
 volumes/
 
 # Ansible

@@ -97,9 +97,11 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 # 2. Modèle ML : absent d'un clone neuf (ml/models/* est ignoré par Git, un .joblib est du code
 #    désérialisé) et le détecteur refuse de démarrer sans lui. On le construit et on l'entraîne
-#    sur le jeu versionné ml/data/normal.csv. MSYS_NO_PATHCONV=1 évite que Git Bash réécrive les chemins.
+#    sur le jeu versionné ml/data/normal.csv. On passe par `docker run` et non `compose run` :
+#    le service monte /models en lecture seule, ce qui empêche d'y écrire le modèle.
+#    MSYS_NO_PATHCONV=1 évite que Git Bash réécrive les chemins.
 docker compose --env-file .env -f infra/compose/docker-compose.yml build anomaly-detector
-MSYS_NO_PATHCONV=1 docker compose --env-file .env -f infra/compose/docker-compose.yml run --rm --no-deps   -v ./ml/data:/data:ro -v ./ml/models:/models -e DATASET_PATH=/data/normal.csv   anomaly-detector python -m app.cli train
+MSYS_NO_PATHCONV=1 docker run --rm --env-file .env -v "$(pwd -W)/ml/data:/data:ro" -v "$(pwd -W)/ml/models:/models"   -e DATASET_PATH=/data/normal.csv -e MODEL_PATH=/models/isolation_forest.joblib   resilience-alpha/anomaly-detector:dev python -m app.cli train
 
 # 3. Socle : base, migrations (avec le jeu de données fictif), API, auth, passerelle, WAF,
 #    moteur de remédiation, détecteur. --env-file est obligatoire : sans lui PostgreSQL refuse de démarrer.
