@@ -186,3 +186,10 @@ docker compose --env-file .env -f infra/compose/docker-compose.yml config --quie
 docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --wait --build
 ./scripts/check_transaction.sh
 ```
+
+### Dépannage du démarrage de la pile
+
+| Symptôme | Cause | Solution |
+|---|---|---|
+| `pull access denied for resilience-alpha/<service>, repository does not exist` | Les images `resilience-alpha/*:dev` n'existent sur aucun registre : elles se construisent en local. `up` sans `--build` tente de les télécharger. | Ajouter `--build` : `docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build --wait`. Construire d'abord `anomaly-detector` (voir le README). |
+| `failed to copy: httpReadSeeker ... cloudfront.docker.com ... EOF` | Connexion coupée pendant le téléchargement d'une image publique (postgres, modsecurity-crs, docker-socket-proxy). Problème réseau, pas de dépôt. | Relancer la même commande : les couches déjà reçues sont conservées. Sinon tester `docker pull postgres:16-alpine` seul, changer de réseau (partage 4G), vérifier DNS/MTU. |
