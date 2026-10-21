@@ -8,7 +8,7 @@ Les cases cochées ont une preuve dans le dépôt ; les autres attendent la conf
 
 Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-10.md) : à solder avant d'ouvrir le jalon du 21/10.
 
-- [x] **Ansible (Hugo)** : `infra/ansible/Deploy.ps1`, `site.yml` et rôles (preflight, vérification) ; `-CheckOnly` et `-VerifyOnly` essayés en réel le 21/10 (11 services en marche + transaction de test). Le déploiement complet depuis un clone neuf reste à rejouer avec un tiers (§7).
+- [x] **Ansible (Hugo)** : `infra/ansible/Deploy.ps1`, `site.yml` et rôles (preflight, vérification) ; `-CheckOnly` et `-VerifyOnly` essayés en réel le 21/10 (11 services en marche + transaction de test). Déploiement complet depuis un clone neuf essayé (§7).
 - [x] **Vault ou SOPS (Hugo, Kevin)** : tranché **SOPS + age** le 21/10 (`06-pilotage-arbitrages.md`). `JWT_SECRET`, `PROBE_TOKEN` et mots de passe BDD dans `infra/secrets/app.enc.yaml`/`jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator`. Essai réel : `POST /incidents kind=compromise` → JWT tourné, `auth`/`api` redémarrés, transaction de test encore réglée.
 - [x] **Fil rouge avec le PC Attaquant** : flood rejoué depuis le PC Attaquant, à travers le WAF — 5 passages le 21/10, voir `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Front, Grafana et dashboard exposés via le WAF : `/grafana` routé par la passerelle, port 3000 dépublié, vérifié depuis un second PC sur la box (`192.168.1.140:8080`, login, dashboard, `POST /api/ds/query` sans 403). `WAF_BIND_HOST` et `GRAFANA_ROOT_URL` réglés sur cette IP dans `.env`. Arbitrage du 21/10 (`06-pilotage-arbitrages.md`) : le réseau n'importe pas (hotspot ou box), seul compte le réseau privé du binôme — box et hotspot sont équivalents pour la démo.
@@ -77,7 +77,7 @@ Cases restées ouvertes dans [`validation-jalon-20-10.md`](validation-jalon-20-1
 
 - [x] Le fil rouge tourne de bout en bout **depuis le PC Attaquant, à travers le WAF**, avec détection ML et reprise vérifiée par transaction (5/5 le 21/10, voir §2).
 - [x] Au moins une attaque de compromission (SQLi) est **bloquée et visible dans le SIEM/Grafana** (12/12, règle CRS 942100, `02-pca-pra.md` §7), et maintenant aussi **traitée** côté remédiation : `RotateSecretAction`/`SopsSecretRotator` tourne le JWT et redémarre `auth`/`api`, transaction de test vérifiée après coup. La procédure d'investigation manuelle reste à développer (écart §8).
-- [ ] Un tiers lance le socle avec une commande (Ansible) et la doc.
+- [x] Le socle se lance en une commande depuis un clone neuf (Ansible) : `Deploy.ps1 -RenderEnv` essayé le 21/10 sur un clone vierge du dépôt (sans `.env` ni modèle ML) → `.env` rendu depuis SOPS, modèle entraîné, 17 conteneurs, services vérifiés, transaction de test réussie, front joignable via le WAF (HTTP 200). Essai fait par Kevin ; une relecture du README par un autre membre reste souhaitable.
 - [x] 1ers tests de restauration consignés (RTO / RPO mesurés) : restauration à froid (§3) et S4 corruption BDD (§3, `02-pca-pra.md` §7).
 - [x] Les écarts restants ont un responsable et une échéance jeudi — voir §8.
 
