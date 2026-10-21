@@ -1,0 +1,130 @@
+# Répartition réelle du travail (d'après l'historique Git)
+
+Établie le 21/10/2026 puis mise à jour après le dernier commit (jalon du 22/10), à partir de `git log --all` (183 commits, 66 PR) et des diffs par commit et par PR.
+Elle montre ce qui a été **réellement livré**, pas ce que prévoyait le debrief.
+
+## 1. Identités Git
+
+| Personne | Identités Git / GitHub | Commits (hors merges) | PR ouvertes |
+|---|---|---|---|
+| Kevin | `MrSuricate` / `Kevin Ferraretto` (`MrSuricate2` sur GitHub) | 101 | 54 sur 66 |
+| François | `francois` (`Francoistlb` sur GitHub) | 18 | 4 (#7, #8, #9, #30) |
+| Antoine | `eosiswastaken` (« eosis » sur GitHub) | 5 | 4 (#31, #36, #41, #42) |
+| Gabriel | `GabYan876` | 1 | 2 (#4, #21) |
+| Hugo | `Hugo Pécal` (`Hogupeck` sur GitHub) | 2 | 2 (#55, #62) |
+
+- Les 55 commits de merge « Kevin Ferraretto » sont des merges de PR faits par le tech lead. Ils ne comptent pas comme travail de contenu.
+
+## 2. Tableau de répartition réelle
+
+| Périmètre | Qui a livré | Preuves (PR / commits) | Volume approximatif |
+|---|---|---|---|
+| Architecture, conventions, CONTRIBUTING, hook pre-push | Kevin | #2, #5, #6 | ~1 500 lignes |
+| Moteur de remédiation (pipeline, actions, politique, vérificateur, proxy Docker, `/metrics`, `/incidents`, watcher de crash, blocage par compte, rotation de secrets) | Kevin | #2, #11, #12, #14, #15, #23, #50 | ~2 300 lignes + 103 fichiers |
+| Détecteur ML (IsolationForest), jeu de données, trafic de fond, mesure des faux positifs | Kevin | #17, #18, #33, #43 | ~2 000 lignes |
+| Service d'authentification (JWT), passerelle Caddy | Kevin | `f493305`, `c15fbe8`, `ceb6fda` | ~930 lignes |
+| WAF ModSecurity + CRS, dashboard SIEM, durcissement Caddy, logs d'audit WAF dans Loki, Grafana via le WAF | Kevin | #22, #51, #57 | ~1 200 lignes |
+| Corrections de l'API métier (deadlock des virements, `/me`, `/metrics` auth, montant) | Kevin | #19, `28c5af5`, #53 | ~800 lignes |
+| Boucle de démo rejouable, campagne de 5 passages de flood, auto-guérison d'Alloy | Kevin | #23, #37, #61 | ~500 lignes |
+| Script d'attaque SQLi (ER2), flood (horodatage de début) | Kevin (SQLi, #45), François (flood, `0e44b59`) | #45 | ~350 lignes |
+| Gouvernance : EBIOS RM ateliers 1 à 5, PCA/PRA, NIS2/DORA, AMDEC, matrice de traçabilité, registre des arbitrages | Kevin (rédaction), Antoine (retouches mineures) | #1, #3, #27, #28 | ~660 lignes, 55 fichiers |
+| Documentation : README, architecture, jalons 19/10, 20/10, 21/10, procédures | Kevin (très majoritaire), François (architecture de l'observabilité, `docs/dev.md`) | #10, #13, #24 à #29, #32, #44 à #49, #52, #56, #58 à #60 | ~1 200 lignes |
+| Socle PostgreSQL, migrations Alembic, API métier de transactions (domaine, cas d'usage, adaptateurs, tests) | François | #8 (`17e02e0`, `66d3735`, `29868be`, `8d978ac`) | ~2 900 lignes |
+| Pile d'observabilité (Prometheus, Loki, Alloy, Grafana), dashboard provisionné, Compose du socle, scripts de démo | François | #9 (`6a1ffe1`, `f404434`, `0aae393`, `dd72429`) | ~1 700 lignes |
+| Outillage Claude Code partagé (plugins, MCP context7, hook rtk) | François | #7 | ~240 lignes |
+| Assistant RAG isolé (LangChain + Ollama) et doc de segmentation | François | #30 (`a13beef`, `045eb0c`) | ~1 270 lignes |
+| Sauvegarde et restauration PostgreSQL (S4), sonde de transaction unifiée | Antoine | #31, #36 (`eff6f01`, `6fdacca`) | ~930 lignes |
+| Mesures RTO/RPO de S4 sur pile complète, restauration à froid | Antoine | #41, #42 | docs |
+| Détection automatique de la corruption de la base (S4 Zero-Touch) | Kevin | `3dbe268`, `9efce59`, `ba2c41b` | ~600 lignes |
+| Front de paiement Pay-Now (interface d'origine adaptée au back) | Gabriel | #4, #21 | ~9 200 lignes ajoutées |
+| Front : déplacement vers `frontend/`, session conservée, retrait des scripts tiers | Kevin | #16, `c1a7a4c`, `ac44f35` | ~400 lignes |
+| Dashboard Grafana provisionné (création) puis validation | Création : François (#9). Validation : consignée par Kevin comme faite par Gabriel, sans trace Git de Gabriel | #9, #53, #54, #60 | docs |
+| Alerting Grafana (règle d'alerte SQLi) | Hugo | #55 (`bcf2d08`) | 64 lignes |
+| Documentation de la règle d'alerte, arbitrage SOC (Loki/Grafana seuls) | Kevin, arbitrage confirmé par Hugo | #56, `a038d6c` | docs |
+| Secrets : `.sops.yaml`, `infra/secrets`, rotation | Kevin | #50 | ~130 lignes |
+| Runner Ansible, commande de déploiement unique (`Deploy.ps1`), rôles preflight/application/observability/verify | Hugo | #62 (`f285f48`) | ~440 lignes, 14 fichiers |
+| Option `-RenderEnv` de `Deploy.ps1` (rendu du `.env` depuis SOPS) | Kevin | #63 (`55b5cdb`) | ~35 lignes |
+| Formatage `ruff` du dépôt, validation du jalon du 22/10 | Kevin | #65, #66 | 10 fichiers + 77 lignes de doc |
+
+## 3. Part de chacun (lignes ajoutées, hors merges)
+
+| Personne | Lignes ajoutées | Part du code applicatif et infra | Remarque |
+|---|---|---|---|
+| Kevin | ~17 600 | ~65 % | `-5 114` lignes côté front sont un déplacement de dossier, pas une suppression de contenu |
+| Gabriel | ~9 200 | front uniquement | Un seul commit, qui importe l'application Pay-Now |
+| François | ~6 200 | BDD, API, observabilité, RAG, outillage | 18 commits |
+| Antoine | ~1 000 | sauvegarde BDD, sonde | 5 commits |
+| Hugo | ~510 | alerting Grafana, Ansible | 2 commits |
+
+Le compte de lignes surestime le front de Gabriel : l'application Pay-Now d'origine est importée telle quelle, puis adaptée. Il mesure la quantité de texte, pas l'effort ni la difficulté.
+
+## 3 bis. Diagramme de Gantt (travail réellement commité)
+
+Les dates sont celles des commits et des merges de PR, à la journée près. Chaque barre va du premier au dernier commit du lot, sans refléter le temps passé dessus. Le diagramme s'affiche sur GitHub et dans les éditeurs compatibles Mermaid.
+
+```mermaid
+gantt
+    title Travail réel par personne (19/10 au 21/10/2026)
+    dateFormat YYYY-MM-DD
+    axisFormat %d/%m
+    todayMarker off
+
+    section Kevin
+    Architecture, conventions, gouvernance (squelettes)  :k1, 2026-10-19, 1d
+    Moteur de remédiation, proxy Docker, /metrics        :k2, 2026-10-19, 1d
+    Auth JWT, passerelle Caddy, espace client            :k3, 2026-10-19, 1d
+    Détecteur ML, trafic de fond, deadlock virements     :k4, 2026-10-20, 1d
+    WAF ModSecurity, blocage par compte, dashboard SIEM  :k5, 2026-10-20, 1d
+    Watcher de crash, boucle de démo, détection S4       :k6, 2026-10-20, 1d
+    EBIOS 1 à 5, NIS2/DORA, PCA/PRA, AMDEC               :k7, 2026-10-20, 2d
+    SOPS, rotation de secrets, durcissement Caddy        :k8, 2026-10-21, 1d
+    Autoheal Alloy, campagne flood, script SQLi          :k9, 2026-10-21, 1d
+    Jalons, README, clôture des écarts                   :k10, 2026-10-19, 3d
+    -RenderEnv, ruff, validation du jalon du 22/10       :k11, 2026-10-21, 1d
+
+    section François
+    Outillage Claude Code                                :f1, 2026-10-19, 1d
+    BDD PostgreSQL et API métier                         :f2, 2026-10-19, 1d
+    Pile d'observabilité et Compose du socle             :f3, 2026-10-19, 1d
+    Assistant RAG, horodatage du flood                   :f4, 2026-10-20, 1d
+
+    section Gabriel
+    Intégration de l'app Pay-Now                         :g1, 2026-10-19, 1d
+    Reprise de l'interface d'origine adaptée au back     :g2, 2026-10-20, 1d
+
+    section Antoine
+    Sauvegarde et restauration PostgreSQL (S4)           :a1, 2026-10-20, 1d
+    Sonde de transaction unifiée, mesures S4             :a2, 2026-10-21, 1d
+
+    section Hugo
+    Alerting Grafana (règle SQLi)                        :h1, 2026-10-21, 1d
+    Runner Ansible et Deploy.ps1                         :h2, 2026-10-21, 1d
+
+    section Échéances
+    Gel du code à 17h                                    :milestone, m1, 2026-10-22, 0d
+    Remise avant 23h59                                   :milestone, m2, 2026-10-22, 0d
+```
+
+Lecture : Kevin occupe les trois jours sans interruption, François travaille surtout le 19/10, Gabriel, Antoine et Hugo n'apparaissent qu'à partir du 20/10 ou du 21/10, et la dernière ligne droite (jeudi 22/10) repose encore presque entièrement sur Kevin.
+
+## 4. Écarts avec la répartition prévue (`CLAUDE.md`)
+
+| Rôle prévu | Prévu | Constaté dans Git |
+|---|---|---|
+| Hugo : Infra + Cyber (Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau) | Tout le périmètre infra et cyber | 2 commits : alerting Grafana et runner Ansible avec `Deploy.ps1`. Le WAF, le SIEM, le durcissement, SOPS et le Compose ont été faits par Kevin ; l'observabilité par François. |
+| Kevin : tech lead + remédiation | Architecture, remédiation, ML, intégration | Conforme, mais Kevin a aussi porté l'infra, la cyber, l'auth, la gouvernance et la doc. |
+| Antoine : backend, BDD, API, auth, vérification de transaction, EBIOS, PCA/PRA | Backend + gouvernance | Commits sous `eosiswastaken` : sonde de transaction, sauvegarde et restauration BDD, mesures S4. BDD et API livrées par François ; auth, EBIOS et PCA/PRA par Kevin. |
+| Gabriel : front, Clip Chrono, Grafana, NIS2/DORA, pitch, Pres.pptx | Front + gouvernance + rendus | Front livré. NIS2/DORA rédigé par Kevin. Aucun commit sur le pitch ou la présentation (ces fichiers ne sont pas dans Git). |
+| François : RAG + Red Team | RAG, scripts d'attaque, chaos, Dossier PDF | RAG livré. Il a aussi fait BDD, API et observabilité. Le script SQLi a été écrit par Kevin. |
+
+## 5. Points d'attention avant le gel du code (jeudi 17h)
+
+- **Charge concentrée sur une personne** : environ deux tiers du code et presque toute la gouvernance viennent de Kevin. Le jury demande que chacun explique le code qu'il présente.
+- **Preuves de contribution** : les rendus (Dossier PDF, Pres.pptx, clip) ne sont pas versionnés, donc cette analyse ne les couvre pas.
+
+## 6. Méthode et limites
+
+- Sources : `git log --all --numstat`, `git shortlog`, `gh pr list` (auteur de chaque PR).
+- Un commit ou une PR est attribué·e à son auteur Git. Le travail fait à plusieurs sur un même poste, ou commité par une autre personne, n'apparaît pas.
+- Les volumes de lignes sont approximatifs et incluent les tests, la documentation et les fichiers générés.
+- Les lignes ne mesurent ni la difficulté ni l'effort de conception.
