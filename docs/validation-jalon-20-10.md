@@ -20,7 +20,7 @@ Cases restées ouvertes dans [`validation-jalon-19-10.md`](validation-jalon-19-1
 
 - [x] Compose : base, migrations, API, auth, passerelle, WAF, moteur de remédiation, détecteur, observabilité (`infra/compose/`).
 - [x] `mem_limit` posé sur les conteneurs du Compose.
-- [ ] **Ansible** : `infra/ansible/site.yml`, rôles et playbooks sont vides (`.gitkeep`). À écrire : un playbook qui enchaîne `.env`, socle, observabilité, vérification. Sans lui, « une commande » n'est pas tenu.
+- [x] **Ansible** : `infra/ansible/Deploy.ps1` + `site.yml`/rôles (preflight, vérification), voir `infra/ansible/README.md`. Fait le 21/10 ; `-CheckOnly` et `-VerifyOnly` (services + transaction de test) essayés en réel.
 - [x] **Vault ou SOPS** : tranché SOPS + age le 21/10 ; `infra/secrets/app.enc.yaml` et `jwt.enc.yaml`, `RotateSecretAction` branchée sur `SopsSecretRotator` (`06-pilotage-arbitrages.md`).
 - [x] Exposer front, Grafana et dashboard via le WAF (`/grafana`, port 3000 dépublié, `WAF_BIND_HOST`) : fait et vérifié depuis un second PC le 21/10.
 - [x] Mesure de la RAM de la pile complète (`docker stats`) : 885 Mo au repos, 990 Mo en pic sous flood le 21/10 (`validation-jalon-21-10.md`).
