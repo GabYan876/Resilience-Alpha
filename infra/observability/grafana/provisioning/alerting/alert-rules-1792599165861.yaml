@@ -62,3 +62,116 @@ groups:
             service: waf
             severity: warning
           isPaused: false
+        - uid: resalpha-flood-incident
+          title: Flood - Incident détecté par le ML
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: loki
+              model:
+                datasource:
+                    type: loki
+                    uid: loki
+                editorMode: code
+                expr: "sum(count_over_time({service=\"remediation\", event=\"incident.detected\"}[2m])) or on() vector(0)"
+                hide: false
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: instant
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: Le détecteur d'anomalies (ML) a ouvert un incident de disponibilité, typiquement un flood HTTP. Le moteur de remédiation prend le relais (blocage IP, redémarrage, sonde de transaction).
+            summary: Attaque par saturation détectée, remédiation automatique en cours.
+          labels:
+            attack_type: flood
+            service: anomaly-detector
+            severity: critical
+          isPaused: false
+        - uid: resalpha-api-5xx
+          title: API - Taux d'erreurs 5xx élevé
+          condition: C
+          data:
+            - refId: A
+              queryType: instant
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                datasource:
+                    type: prometheus
+                    uid: prometheus
+                editorMode: code
+                expr: "sum(rate(http_requests_total{service=\"api\", status=~\"5.*\"}[1m])) / clamp_min(sum(rate(http_requests_total{service=\"api\"}[1m])), 0.001)"
+                hide: false
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: A
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0.05
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            description: Plus de 5 % des requêtes de l'API répondent en 5xx sur la dernière minute. Signe de saturation (pool de connexions épuisé) ou de panne.
+            summary: L'API se dégrade sous la charge.
+          labels:
+            attack_type: flood
+            service: api
+            severity: critical
+          isPaused: false
