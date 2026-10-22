@@ -169,12 +169,21 @@ void handleLed() {
 
 void setup() {
   Serial.begin(115200);
+  delay(200);
+  Serial.println("BOOT");
   pinMode(PIN_GREEN, OUTPUT);
   pinMode(PIN_RED, OUTPUT);
   drive(false, false);
 
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  // La carte sert un serveur HTTP : l'économie d'énergie WiFi lui ferait manquer des requêtes
+  // ARP, et l'hôte ne saurait plus la joindre du tout (ARP FAILED) malgré une association valide.
+#if defined(ARDUINO_ARCH_ESP32)
+  WiFi.setSleep(false);
+#else
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+#endif
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   const char* headers[] = {"X-Counter", "X-Signature"};
@@ -186,8 +195,8 @@ void setup() {
 void loop() {
   // L'IP est réannoncée toutes les 30 s : elle sert à renseigner LED_URL du PC Hôte, et un
   // moniteur série branché après le démarrage doit pouvoir la lire sans redémarrer la carte.
-  if (millis() - lastAnnounce >= ANNOUNCE_PERIOD_MS || lastAnnounce == 0) {
-    lastAnnounce = millis();
+  if (static_cast<int32_t>(millis() - lastAnnounce) >= 0) {
+    lastAnnounce = millis() + ANNOUNCE_PERIOD_MS;
     if (WiFi.status() == WL_CONNECTED) Serial.println("IP " + WiFi.localIP().toString());
     else Serial.printf("WIFI non connecte (status=%d)\n", WiFi.status());
   }
