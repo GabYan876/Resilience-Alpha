@@ -52,8 +52,8 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 ## 4. Hygiène du dépôt
 
 - [ ] Supprimer les branches de travail distantes une fois la fusion LED faite (`origin/pr/*`, `francois/*`, `kevin/*`, `gabriel/*`, `antoine/*`, `infra/*`, `fix/*`, `eosiswastaken-*`, `docs/*`) ; `gh pr list --state open` doit rester vide.
-- [ ] `mem_limit` présent sur tous les conteneurs de `infra/compose/docker-compose.yml` (comptage rapide non concluant : 11 occurrences de `limit` pour 19 entrées de premier niveau, à contrôler à la main).
-- [ ] Seul le WAF publie un port (aucune interface Grafana / Prometheus / Loki / proxy exposée).
+- [x] `mem_limit` présent sur les 18 services des deux fichiers compose (Kevin, 22/10 : 11 + 7, aucun `deploy:`).
+- [x] Seul le WAF publie un port (Kevin, 22/10 : `${WAF_BIND_HOST}:8080:8080`, aucun autre `ports:`).
 - [ ] `ruff check` et `ruff format --check` confirmés sur les postes de Hugo, Antoine, Gabriel et François après `git pull`.
 - [ ] `infra/ansible/README.md` relu par un autre membre que Kevin.
 - [ ] Dashboard Grafana vérifié sur les trois temps (Gabriel).
