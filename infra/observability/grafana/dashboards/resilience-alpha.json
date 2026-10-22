@@ -11,7 +11,7 @@
   "editable": true,
   "graphTooltip": 1,
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "10s",
   "time": {
     "from": "now-30m",
@@ -1043,6 +1043,108 @@
       }
     },
     {
+      "id": 19,
+      "type": "stat",
+      "title": "Accès refusés sans rôle",
+      "description": "auth.access.denied_no_role : visage et mot de passe valides, mais aucune habilitation.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "instant",
+          "expr": "sum(count_over_time({service=\"auth\", event=~\"auth.access.denied_no_role\"} [$__range]))",
+          "legendFormat": "Accès refusés sans rôle"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Actions d'administration",
+      "description": "auth.admin.* : habilitation attribuée ou retirée, déblocage, écriture refusée à un opérateur.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "instant",
+          "expr": "sum(count_over_time({service=\"auth\", event=~\"auth.admin.*\"} [$__range]))",
+          "legendFormat": "Actions d'administration"
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 18,
       "type": "logs",
       "title": "Journal d'authentification du back-office",
@@ -1055,7 +1157,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 50
       },
       "targets": [
         {
@@ -1065,7 +1167,7 @@
             "uid": "loki"
           },
           "queryType": "range",
-          "expr": "{service=\"auth\", event=~\"auth\\.(face|password|login|locked|camera|led).*\"} | json identifier_hash=\"data.identifier_hash\" | line_format \"{{.event}} · id={{.identifier_hash}} · trace={{.trace_id}}\""
+          "expr": "{service=\"auth\", event=~\"auth\\.(face|password|login|locked|camera|led|access|admin).*\"} | json identifier_hash=\"data.identifier_hash\" | line_format \"{{.event}} · id={{.identifier_hash}} · trace={{.trace_id}}\""
         }
       ],
       "options": {
