@@ -38,6 +38,8 @@ Décision du 19/10 : une seule échelle à 4 niveaux (proposition de définition
 | ER4 | Détournement du moteur de remédiation (droits élevés) ou du `docker-socket-proxy` | Détection et reprise | Droits élevés sur les conteneurs, perte de contrôle | 4 Critique |
 | ER5 | Faux positif ou contournement du modèle ML (coupure inutile, ou attaque non vue) | Détection et reprise, Traitement d'un paiement | Coupure inutile ou attaque non vue ; reprise automatique attendue | 2 Significative |
 | ER6 | Abus de l'assistant RAG (injection de prompt, fuite de documents indexés) | Confidentialité | Fuite de la documentation indexée (non confidentielle) | 2 Significative |
+| ER7 | Accès frauduleux au back-office (usurpation de visage, mot de passe volé, force brute) — ajouté le 22/10, consigne additionnelle 1 | Confidentialité, Intégrité, Détection et reprise | Habilitations modifiées, gabarits biométriques lus, perte de contrôle du back-office | 4 Critique |
+| ER8 | Indisponibilité de l'authentification renforcée (caméra, agent hôte ou ESP8266 en panne) — ajouté le 22/10 | Accès des opérateurs | Back-office inaccessible (échec fermé), aucun paiement client touché | 2 Significative |
 
 ### Socle de sécurité (écarts)
 Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l'ANSSI**, limité aux règles pertinentes pour le démonstrateur. Pour chaque règle : état (appliquée / partielle / absente) + preuve dans le dépôt. Les numéros de règles sont à reporter depuis le guide.
@@ -69,6 +71,7 @@ Référentiel retenu (décision du 19/10) : **Guide d'hygiène informatique de l
 | SS3 | Attaquant externe | Compromettre la chaîne logicielle | Image/dépendance piégée | 4 Critique | Versions épinglées, WAF par digest ; scan de vulnérabilités à ajouter |
 | SS4 | Attaquant externe | Prendre le contrôle de l'hôte | Détournement du moteur de remédiation ou du `docker-socket-proxy` | 4 Critique | Proxy limité au redémarrage/arrêt d'un conteneur existant, réseau `control` interne, jeton sur `POST /incidents` |
 | SS5 | Attaquant externe | Rendre la détection aveugle ou déclencher des coupures | Données forgées pour tromper le modèle ML (faux négatifs / faux positifs) | 2 Significative | Seuil appris, confirmation sur 3 mesures, vérification avant clôture |
+| SS6 | Attaquant externe ou physique | Entrer dans le back-office | Photo/écran devant la caméra, mot de passe volé ou deviné, force brute sur l'identifiant, ou voie physique (débrancher la caméra / l'ESP8266) | 4 Critique | Vérification 1:1 + mot de passe, blocage 5 min par identifiant, échec fermé ; **détection de vivacité non prévue** (risque accepté, à assumer) |
 
 ## Atelier 4 — Scénarios opérationnels
 
@@ -78,6 +81,7 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 |---|---|---|---|---|
 | SO1 | Flood : compte créé, connexion, rafale sur `/me/account` jusqu'à épuiser le pool de connexions BDD | `attack/flood_http.py` | Forte (outil simple, aucun prérequis) | Détecteur ML sur métriques Prometheus ; journal d'accès du WAF dans Loki pour désigner le compte |
 | SO2 | SQLi / exfiltration : reconnaissance des routes, injection dans un paramètre, extraction | `attack/sqli_injection.py` (écrit le 21/10) | Moyenne (CRS bloque les motifs courants au niveau 1) | Règles CRS dans le journal d'audit du WAF, vues dans Loki et Grafana — 12/12 charges bloquées le 21/10 (règle 942100), voir `02-pca-pra.md` §7 |
+| SO3 | Force brute / usurpation sur le back-office : essais répétés d'identifiants, présentation d'une photo | À écrire (François, consigne additionnelle 1) | Moyenne (photo : aucune défense de vivacité) | Événements `auth.face.rejected` et `auth.lockout.started` dans Loki ; **non implémenté à ce jour** |
 
 ## Atelier 5 — Traitement du risque
 
@@ -87,5 +91,6 @@ Pour chaque scénario stratégique : séquence (reconnaissance → intrusion →
 | SQLi | 4 Critique | WAF + rotation de secrets + investigation (manuelle, assumée) | `infra/waf/`, `RotateSecretAction`/`SopsSecretRotator` | `attack/sqli_injection.py` le 21/10 : 12/12 charges bloquées (403, règle CRS 942100) ; rotation essayée en réel (`POST /incidents kind=compromise`), `02-pca-pra.md` §7 | Moyen : blocage et rotation prouvés, mais déclenchement manuel (pas de détecteur de compromission automatique) et investigation toujours manuelle |
 | Détournement du moteur | 4 Critique | `docker-socket-proxy` (endpoints restreints), token sur `POST /incidents` | `infra/compose/`, `services/remediation/app/api/routes.py` | Revue de la config (à faire avec Hugo) | Moyen : un jeton volé permet de déclencher des redémarrages |
 | Faux positif / contournement ML | 2 Significative | Seuil calibré, vérification de reprise avant clôture | `services/remediation/`, `ml/` | `evaluate` : 0 faux positif sur 120 mesures | Moyen : le score d'IsolationForest sature, seuil à recalibrer sur trafic réel |
+| Accès frauduleux au back-office (ER7) | 4 Critique | Caméra USB + reconnaissance 1:1, mot de passe, blocage 5 min par identifiant, gabarits chiffrés (SOPS) | À créer : `services/auth`, `host-agent/camera`, `firmware/esp8266-led/` ; conception dans `docs/consigne-additionnelle-1.md` | **Aucune à ce jour** (conception seulement) | Élevé tant que non essayé ; moyen après essai (usurpation par photo non couverte) |
 
 Les lignes alimentent [04-matrice-tracabilite.md](04-matrice-tracabilite.md).

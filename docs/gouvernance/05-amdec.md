@@ -36,6 +36,8 @@ avec le scénario S4. RPN = G × F × D ; en gras, les RPN ≥ 24 (seuil d'actio
 | Modèle ML | Dérive ou contournement | Données d'entraînement non représentatives, trafic forgé | Attaque non vue ou coupure inutile | 3 | 2 | 3 | 18 | Réentraînement, seuil calibré | Retour arrière | Mesure de qualité hors ligne seulement |
 | docker-socket-proxy | Détourné ou trop permissif | Mauvaise liste d'endpoints | Prise de contrôle de l'hôte | 4 | 1 | 3 | 12 | Endpoints restreints, réseau interne | Rotation des secrets, reconstruction | Pas de surveillance des appels |
 | Assistant RAG | Injection de prompt | Document indexé piégé | Fuite d'information indexée | 2 | 3 | 4 | **24** | Lecture seule, aucun accès privilégié | Désactivation du service | ER6 non prouvée |
+| Authentification faciale (`auth` + agent caméra) | Usurpation (photo, écran) acceptée | Pas de détection de vivacité | Accès au back-office avec identifiant + mot de passe volés | 4 | 2 | 4 | **32** | Mot de passe en plus du visage, blocage 5 min | Révocation d'habilitation, rotation | Cotation prévisionnelle (22/10), aucun essai réel |
+| Agent caméra / ESP8266 | Panne ou débranchement | Matériel, WiFi du point d'accès | Back-office inaccessible (échec fermé), LED fausse | 2 | 3 | 2 | 12 | Échec fermé, durées de LED dans le firmware | Procédure de dépannage, compte de secours à définir | Cotation prévisionnelle (22/10) |
 | PC Hôte | Indisponible | Panne matérielle / réseau hotspot | Plateforme entière arrêtée | 4 | 1 | 1 | 4 | Non démontrable (SPOF) | Hors périmètre | Panne immédiatement visible |
 
 ## Priorités qui en découlent
