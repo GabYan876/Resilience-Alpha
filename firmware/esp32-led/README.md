@@ -58,7 +58,8 @@ GPIO, piloter chaque couleur avec un transistor/MOSFET adapté au lieu d'augment
    maintenir **BOOT**, appuyer puis relâcher **EN**, puis relâcher **BOOT** lorsque l'écriture commence.
    Utiliser le pilote USB-série correspondant à la carte (souvent CP210x ou CH340) si aucun port n'apparaît.
    Ouvrir le moniteur série à 115200 bauds : l'adresse WiFi est affichée sous la forme `IP ESP32 : ...`
-   après connexion au point d'accès.
+   après connexion au point d'accès, puis réannoncée toutes les 30 s (ligne `WIFI non connecte` tant que la
+   connexion échoue).
 4. Dans le `.env` du PC Hôte : `LED_URL=http://<ip-esp>` et `LED_TOKEN=<même secret que secrets.h>`
    (secret généré : `python -c "import secrets; print(secrets.token_urlsafe(32))"`).
 5. Essai depuis le PC Hôte :
@@ -86,6 +87,11 @@ PY
 
 ## État de la vérification
 
-Compilation validée avec `pio run -d firmware/esp32-led -e esp32dev` (PlatformIO 6.6.0, Arduino-ESP32 2.0.14,
-en-tête `secrets.h` local copié depuis l'exemple). Le firmware n'a pas été flashé ni essayé sur banc : vérifier les
-cinq modes, la coupure réseau pendant `green_solid` et les deux couleurs avant de déclarer le comportement matériel validé.
+- **Compilation** validée avec `pio run -d firmware/esp32-led -e esp32dev` (PlatformIO 6.6.0, Arduino-ESP32 2.0.14,
+  en-tête `secrets.h` local copié depuis l'exemple). La réannonce de l'IP (30 s) n'a pas été recompilée depuis son ajout.
+- **Banc** (22/10, d'après François, carte ESP32-D0WD-V3 rev 3.1, flash 76,9 %, RAM 14,5 %) : les 5 modes
+  répondent `200` et le comportement des LED a été vérifié à l'œil ; signature fausse refusée en `401`, compteur
+  rejoué et compteur ancien refusés en `409`.
+- **Reste à essayer** : le parcours d'authentification complet de bout en bout et la coupure réseau pendant `green_solid`.
+- **Couleur** : le banc utilise une LED **jaune** à la place de la verte. Le protocole garde les noms `green_*` ;
+  l'écart avec la consigne (LED bicolore vert/rouge) est une limite assumée tant qu'une LED verte n'est pas montée.
