@@ -183,3 +183,5 @@ cd services/rag-assistant && python -m pytest -q
 ## Limites connues
 
 À compléter au fil du sprint (limites du modèle ML, périmètre NIS2/DORA démontrable par un prototype, écarts avec un contexte industriel).
+
+- **Consigne additionnelle 1 (22/10)** : authentification du back-office par caméra USB, reconnaissance de visage, habilitations et ESP8266 (LED bicolore). Conception dans [`docs/consigne-additionnelle-1.md`](docs/consigne-additionnelle-1.md) ; **non implémentée à ce jour**. Même livrée, la détection de vivacité (photo devant la caméra) ne serait pas couverte.

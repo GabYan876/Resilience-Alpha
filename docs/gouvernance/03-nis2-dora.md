@@ -23,6 +23,7 @@ Couverture : **Couverte** (preuve dans le dépôt ou mesurée), **Partielle** (u
 | Tests de résilience | Tests réguliers | DORA chap. IV | Chaos du jeudi, ≥ 5 démos | Journal des essais (`02-pca-pra.md` § 7) | Partielle : 5 démos flood et 1 crash joués ; chaos du jeudi à venir |
 | Cryptographie / secrets | Gestion des clés | NIS2 art. 21 | SOPS + age, rotation | `RotateSecretAction`/`SopsSecretRotator` (codée, testée, essayée en réel) ; `infra/secrets/*.enc.yaml` | Couverte : secrets chiffrés au repos, rotation JWT prouvée ; déclenchement encore manuel (pas de détecteur de compromission automatique) |
 | Contrôle d'accès | Moindre privilège | NIS2 art. 21 | docker-socket-proxy, réseaux internes, jeton sur `POST /incidents`, `cap_drop` sur le WAF | `infra/compose/` | Couverte : seul le WAF publie un port ; moteur sans accès direct à `docker.sock` |
+| Authentification forte | Authentification multifacteur pour l'accès aux systèmes critiques | NIS2 art. 21 (MFA) / DORA chap. II | Visage (caméra USB) + mot de passe, blocage, habilitations — consigne additionnelle 1 | `docs/consigne-additionnelle-1.md` | **Non couverte** : conception seule, rien d'essayé. Donnée biométrique : RGPD art. 9, à traiter dans le dossier |
 | Risque tiers | Dépendances et fournisseurs | DORA chap. V / NIS2 chaîne d'approvisionnement | Images et dépendances épinglées | Images à version fixe, WAF par digest, `requirements.txt` en `==`, `package-lock.json` | Partielle : pas de scan de vulnérabilités ni de SBOM |
 
 ## 3. Non démontrable par un prototype de 4 jours

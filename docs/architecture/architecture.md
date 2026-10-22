@@ -180,7 +180,22 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 - Le RAG n'a aucun accès au moteur de remédiation ni à Docker.
 - Reset d'état : `scripts/reset_demo.sh` (débloque les IP, rejoue le schéma et le seed, purge les archives S4 puis sauvegarde l'état propre) pour ≥ 5 passages.
 
+## 5bis. Authentification renforcée du back-office (consigne additionnelle 1, **à implémenter**)
+
+Conception, interprétations à trancher et découpage : [`../consigne-additionnelle-1.md`](../consigne-additionnelle-1.md). Éléments d'architecture, **non encore déployés** :
+
+| Composant | Rôle | Où | Publié ? |
+|---|---|---|---|
+| `auth` (étendu) | Machine à états identifiant → visage → mot de passe, verrouillage (2 échecs → 5 min), habilitations | Compose, réseaux app/db | non |
+| `host-agent/camera` | Ouvre la caméra USB du PC Hôte, détecte et compare le visage (OpenCV YuNet + SFace) ; API locale + jeton | **natif Windows, hors Docker** (Docker Desktop ne voit pas l'USB) | non, joignable par `auth` seulement |
+| ESP8266 (`firmware/esp8266-led/`) | LED bicolore, `POST /led` (jeton), WiFi du point d'accès | matériel | non |
+| Tables `roles`, `face_templates`, `login_lockouts` | Habilitations, gabarits chiffrés, blocages | BDD | non |
+
+Ports : `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` ; événements `auth.face.recognized|rejected`, `auth.lockout.started`, `auth.role.changed` vers Loki. Échec fermé : sans caméra ou agent, pas d'accès.
+
 ## 6. Questions ouvertes
+
+- Consigne additionnelle 1 : gel du code, interprétation du « etc. » du blocage, matériel disponible (voir `consigne-additionnelle-1.md` §2 et §8).
 
 - WAF : ModSecurity + CRS et liste de blocage par fichier retenus le 20/10 ; à valider avec Hugo.
 - Transport détecteur → remédiation : HTTP direct sur `POST /incidents` (en place).

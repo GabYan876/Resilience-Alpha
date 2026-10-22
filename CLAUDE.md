@@ -16,6 +16,15 @@ Un conteneur qui redémarre ne prouve rien : la remédiation n'est « réussie �
 4. **Cyber** : attaque réelle depuis le PC Attaquant, WAF (ModSecurity/Coraza), SIEM ou fonction SOC (Loki/Grafana, ou Wazuh si RAM), durcissement, Vault ou SOPS.
 5. **Gouvernance** : EBIOS RM, PCA/PRA, NIS2/DORA reliés à l'architecture et aux essais réels.
 
+## Consignes additionnelles (le sujet évolue)
+
+Le sujet prévoit des consignes en cours de route : les lire dans `docs/` (`WorkShop … Consigne Additionnelle N.pdf`) et les analyser dans `docs/consigne-additionnelle-<N>.md`.
+
+- **Consigne 1 (22/10)** : authentification du back-office renforcée. Identifiant → **caméra USB branchée sur le PC Hôte** → reconnaissance de visage (IA légère, 1:1) → mot de passe ; 1 reprise puis blocage 5 min ; gestion des habilitations dans le back-office ; **ESP8266** (CLion + PlatformIO) avec LED bicolore reflétant l'état (éteinte, vert clignotant, vert fixe 30 s, rouge clignotant ×10, rouge fixe 30 s). Voir [`docs/consigne-additionnelle-1.md`](docs/consigne-additionnelle-1.md).
+- Règles associées : gabarit biométrique (jamais l'image) chiffré et jamais dans Git/zip/logs/IA externe ; seuls les membres consentants de l'équipe sont enrôlés ; échec fermé (caméra ou agent en panne = pas d'accès) ; blocage par **identifiant**, pas par IP ; même architecture hexagonale (ports `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore`).
+- Docker Desktop ne voit pas la caméra USB : capture et inférence dans un agent hôte natif, hors Compose.
+- Ne pas dégrader le fil rouge existant : développement sur branche, `pytest` et `scripts/demo_loop.py --runs 5` verts avant merge.
+
 ## Stack retenue
 
 - Services : **Python / FastAPI** partout (suggestion du debrief : simplifie ML + remédiation). Node.js ou Go uniquement si justifié.

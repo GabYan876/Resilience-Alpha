@@ -15,6 +15,17 @@ Cases restées ouvertes dans [`validation-jalon-21-10.md`](validation-jalon-21-1
 - [ ] Relecture du README `infra/ansible/README.md` par un autre membre que Kevin (clone neuf essayé le 21/10 par Kevin seul).
 - [ ] Trame `Pres.pptx`, NIS2/DORA relu et relié aux essais du 21/10 (Gabriel), plan du Dossier PDF (François) : échéances « jeudi matin » du §8 de la veille.
 
+## 0bis. Consigne additionnelle 1 (reçue le 22/10)
+
+Authentification du back-office renforcée : caméra USB sur le PC Hôte + reconnaissance de visage + habilitations + ESP8266 (LED bicolore). Analyse complète : [`consigne-additionnelle-1.md`](consigne-additionnelle-1.md). **Avant toute ligne de code**, à trancher ensemble :
+
+- [ ] **Arbitrage calendrier (Kevin + équipe)** : gel de 17h maintenu ou décalé ? Demander à l'enseignant. Sans réponse, viser la tranche minimale démontrable (§8 de l'analyse).
+- [ ] Interprétations validées (§2 de l'analyse) : « recommencer 1 fois puis bloqué 5 min, etc. », compteur d'échecs, blocage par identifiant, vérification 1:1.
+- [ ] Matériel disponible : caméra USB sur le PC Hôte (Kevin), ESP8266 + LED bicolore + résistances (Hugo), WiFi du point d'accès joignable par l'ESP8266.
+- [ ] Choix agent hôte natif (option A) confirmé, RAM de l'agent mesurée sur le PC Hôte.
+- [ ] Consentement écrit des membres enrôlés ; aucun gabarit hors du PC Hôte (§5 de l'analyse).
+- [ ] Lots L1 à L6 attribués (§7 de l'analyse) ; code sur branche, merge seulement si `pytest` et `demo_loop.py --runs 5` restent verts.
+
 ## 1. Infra et durcissement — Hugo
 
 - [ ] Déploiement en une commande rejoué à froid sur le PC Hôte final (`Deploy.ps1 -RenderEnv` sur clone neuf, ou `Deploy.ps1` si `.env` existe), pile complète saine, transaction de test réussie.
@@ -67,6 +78,7 @@ Cases restées ouvertes dans [`validation-jalon-21-10.md`](validation-jalon-21-1
 - [ ] Clip 60 s sans coupe livré (§4).
 - [ ] Code gelé à 17h, `main` stable, PR ouvertes = 0 (§2, §6).
 - [ ] Remise complète avant **23h59** : `-Dossier.pdf`, `-Pres.pptx`, `-VidChrono.mp4`, `-Code.zip` sans secret.
+- [ ] Consigne additionnelle 1 : soit tranche minimale démontrée (identifiant → caméra → LED → mot de passe → blocage 5 min) avec preuve, soit écart consigné au §8 avec responsable. Aucun point « prouvé » sans essai réel sur le PC Hôte.
 
 ## 8. Écarts restants pour le vendredi
 
@@ -74,4 +86,5 @@ Cases restées ouvertes dans [`validation-jalon-21-10.md`](validation-jalon-21-1
 
 | Écart | Responsable | Pourquoi c'est assumé |
 |---|---|---|
-| *(à compléter après le chaos)* | | |
+| Consigne additionnelle 1 : parties non livrées (reconnaissance de visage, habilitations, ESP8266) | À fixer après l'arbitrage du §0bis | Reçue le jour du chaos ; spécifiée dans `consigne-additionnelle-1.md` |
+| *(autres écarts à compléter après le chaos)* | | |
