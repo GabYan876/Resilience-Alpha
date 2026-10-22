@@ -141,30 +141,62 @@ composition root (D).
 
 ### 4.1 Dev
 
-- Microservices **Python / FastAPI** : API métier, auth, BDD, `db-recovery`.
-- Front de paiement **React + Tailwind CSS** (servi en statique derrière le WAF).
-- **Moteur de remédiation** (pipeline `Detector → DecisionPolicy → RemediationAction[] →
-  RecoveryVerifier`).
-- Tableau de bord de supervision **Grafana** provisionné
-  (`infra/observability/grafana/dashboards/resilience-alpha.json`), alimenté par Prometheus et
-  Loki (décision du 20/10 : pas de dashboard React).
+| Composant | Technologie et choix | Détail vérifiable |
+|---|---|---|
+| API métier | FastAPI, SQLAlchemy 2 asynchrone (asyncpg), Alembic ; image `python:3.12-slim`, utilisateur non-root, `mem_limit` 256 Mo | Virements en **grand livre à double entrée**, montants en centimes entiers (aucun `float`), idempotence par clé unique ; `GET /health` fait un vrai `SELECT 1` |
+| Base de données | PostgreSQL 16, réseau interne `db-internal` | Contraintes portées par la base (solde ≥ 0, montant > 0, comptes distincts) ; rôles `app_rw` (ni `DELETE` ni DDL, écritures comptables non modifiables) et `app_ro` (RAG) |
+| Authentification | FastAPI, JWT HS256, hachage argon2 | Parcours client (`/auth/register`, `/auth/login`) et parcours back-office renforcé (§4.6) |
+| Sauvegarde / restauration | Service `db-recovery` : `pg_dump` toutes les 300 s, 12 archives gardées, `pg_restore` en une transaction | Archives `0600`, écriture atomique, restauration bornée par `before=<date>` |
+| Front de paiement | **Pay-Now** : React + TypeScript + Tailwind + Vite | Construit dans l'image `gateway`, servi en statique par Caddy derrière le WAF ; aucun script tiers ni CDN ; session en `sessionStorage` |
+| Moteur de remédiation | Pipeline `Detector → DecisionPolicy → RemediationAction[] → RecoveryVerifier` (§5) | Accès Docker uniquement via `docker-socket-proxy` |
+| Supervision | **Grafana** provisionné (`infra/observability/grafana/dashboards/resilience-alpha.json`), alimenté par Prometheus et Loki | Décision du 20/10 : pas de dashboard React |
 
 ### 4.2 Infra
 
-- Orchestration **Docker Compose** (deux piles autonomes : socle et observabilité), automatisation
-  **Ansible** ; déploiement reproductible en une commande.
-- Observabilité **Prometheus + Grafana + Loki** (ingestion par **Alloy**, pas Promtail ni Elastic).
-- Contrainte RAM (PC Hôte 16 Go) : `mem_limit` sur chaque conteneur ; référence mesurée au repos
-  885 Mo, pic 990 Mo sous flood ; Ollama déporté sur un 3e PC.
+- Orchestration **Docker Compose** en **deux projets autonomes** : `resilience-alpha` (socle) et
+  `resilience-alpha-obs` (observabilité). Ils ne sont volontairement pas fusionnés : la pile
+  d'observabilité survit aux redémarrages déclenchés par le moteur de remédiation, ce qui permet de
+  montrer l'incident *pendant* qu'il a lieu.
+- **Déploiement en une commande** : `infra/ansible/Deploy.ps1` (Windows + Docker Desktop) enchaîne
+  contrôle du `.env`, modèle ML s'il est absent, socle, observabilité, vérification Ansible puis
+  **transaction de test réelle**. Option `-RenderEnv` pour produire le `.env` depuis SOPS sur un
+  clone neuf, `-CheckOnly` pour valider sans déployer.
+- Observabilité **Prometheus + Grafana + Loki**, ingestion par **Alloy** (pas Promtail ni Elastic).
+  Images épinglées :
+
+| Service | Image | RAM |
+|---|---|---|
+| Prometheus | `prom/prometheus:v3.1.0` | 512 Mo |
+| Loki | `grafana/loki:3.4.2` (rétention 24 h) | 384 Mo |
+| Alloy | `grafana/alloy:v1.7.1` | 128 Mo |
+| Grafana | `grafana/grafana:11.5.2`, seule interface consultable, sous `/grafana` derrière le WAF | 256 Mo |
+| docker-proxy | `ghcr.io/tecnativa/docker-socket-proxy:v0.5.0`, lecture seule (`CONTAINERS=1`, `NETWORKS=1`) | 32 Mo |
+
+- Pas d'Alertmanager, de node-exporter ni de cAdvisor : l'alerting intégré de Grafana ne sert qu'à la
+  visibilité SOC, la détection appartient au ML.
+- **Contrainte RAM** (PC Hôte 16 Go) : `mem_limit` sur les 18 services des deux fichiers Compose.
+  Mesures : pile de base **885 Mo au repos, pic 990 Mo sous flood** ; pile d'observabilité
+  **1 312 Mo** (somme des limites) ; Ollama déporté sur un 3e PC (`192.168.137.157`).
+- **Exposition réseau** : seul le WAF publie un port (`${WAF_BIND_HOST:-127.0.0.1}:8080`) ; le port 3000
+  de Grafana n'est plus publié.
 
 ### 4.3 IA / Data
 
-- **Détection d'anomalies par ML** : `IsolationForest` (scikit-learn) sur des métriques
-  Prometheus (débit de requêtes, taux d'erreur, latence p95, disponibilité) et des logs Loki.
-  Pas de règles codées en dur ; seuil appris, confirmation sur 3 mesures avant alerte.
+- **Détection d'anomalies par ML** : `IsolationForest` (scikit-learn) sur 4 mesures Prometheus
+  (débit de requêtes, part de 5xx, latence p95, `up`), échantillonnées toutes les 5 s. Pas de règles
+  codées en dur : le seuil est **appris** à l'entraînement (plus mauvais score du trafic normal, moins
+  une marge), avec confirmation sur 3 jugements consécutifs et un silence de refroidissement. Le jeu
+  d'entraînement fictif est versionné (`ml/data/normal.csv`), donc un clone neuf peut s'entraîner.
+- **Surveillance d'intégrité de la base** (S4) : un second cas d'usage lit trois compteurs
+  (`GET /integrity`, aucune donnée) et signale `database_corruption` quand un invariant du grand livre
+  est violé (compteur qui baisse alors que les tables sont en ajout seul, écritures déséquilibrées).
+- **Qualité mesurée** : 0 fausse alerte sur 120 puis 60 mesures normales inédites (21/10 puis 22/10),
+  attaque détectée (alerte à la 5e mesure).
 - **Assistant RAG** : Ollama + LangChain, modèle `llama3.1:8b` (≤ 8B paramètres), embeddings
-  `nomic-embed-text`. Lecture seule sur la documentation indexée, **aucun outil, aucun accès
-  privilégié**. Interrogé hors ligne via `docker compose exec`.
+  `nomic-embed-text`, 8 extraits par question, température 0, **sources citées**. Lecture seule sur la
+  documentation indexée, **aucun outil, aucun accès privilégié**, réseau `resilience-rag` isolé, conteneur
+  `read_only` et `cap_drop: ALL`, jeton obligatoire, texte des questions jamais journalisé. Réponse en
+  7 à 16 s. Interrogé hors ligne via `docker compose exec`.
 
 ### 4.4 Cyber
 
@@ -172,7 +204,9 @@ composition root (D).
   et `attack/sqli_injection.py` (injection SQL). Garde-fous `ALLOWED_HOSTS` : toute cible hors
   périmètre exige `--yes-i-know-the-target`, jamais utilisé en démonstration.
 - **WAF** ModSecurity + OWASP CRS (niveau de paranoïa 1), seul point d'entrée.
-- **SOC** : fonction SIEM assurée par Loki + Grafana (décision du 21/10 : pas de Wazuh).
+- **SOC** : fonction SIEM assurée par Loki + Grafana (décision du 21/10 : pas de Wazuh). La règle
+  d'alerte **« WAF - Détection SQLi »** (dossier `SOC`) est provisionnée par le code et passe en
+  `Firing` dès que le WAF journalise une injection SQL.
 - **Secrets** : SOPS + age (choix du 21/10), aucun secret en clair dans le dépôt, les images, les
   logs ni le zip ; `.env` ignoré, `.env.example` fourni ; rotation `SopsSecretRotator` essayée en
   réel.
@@ -192,6 +226,40 @@ composition root (D).
   pertinentes reliées au démonstrateur et obligations non démontrables par un prototype de 4 jours.
 - **AMDEC** et **matrice de traçabilité** : [`gouvernance/05-amdec.md`](gouvernance/05-amdec.md),
   [`gouvernance/04-matrice-tracabilite.md`](gouvernance/04-matrice-tracabilite.md).
+
+### 4.6 Authentification renforcée du back-office (consigne additionnelle 1)
+
+Parcours **identifiant → caméra USB → reconnaissance de visage 1:1 → mot de passe**, en échec fermé :
+caméra ou agent en panne, pas d'accès. Docker Desktop ne voyant pas la caméra USB, la capture et
+l'inférence tournent dans un **agent hôte natif** (`host-agent/camera`, hors Compose).
+
+```mermaid
+sequenceDiagram
+    participant U as Utilisateur
+    participant A as auth (FastAPI)
+    participant C as Agent caméra (hôte)
+    participant L as LED ESP32
+    U->>A: POST /auth/admin/identify
+    A->>C: caméra on, verify(identifiant)
+    C-->>A: match oui / non (gabarit chiffré, jamais l'image)
+    A->>L: vert clignotant (ou rouge fixe)
+    U->>A: POST /auth/admin/login (mot de passe)
+    A->>L: vert fixe 30 s (ou rouge clignotant)
+    A-->>U: jeton back-office (audience backoffice, 15 min, rôle relu à chaque requête)
+```
+
+| Exigence de la consigne | Réalisation | État au 22/10 |
+|---|---|---|
+| Reconnaissance de visage 1:1, IA légère | OpenCV YuNet + SFace, seuil 0,363 ; ~198 Mo de RAM caméra allumée | Prouvé en réel via le WAF |
+| Mesure du seuil | Membre enrôlé : similarité 0,752 à 0,806 (10 mesures) ; autre membre consentant : 0,023 à 0,094 (10 mesures) | Échantillon minimal (1 imposteur), pas un taux d'erreur |
+| 1 reprise puis blocage 5 min | Blocage **par identifiant** (pas par IP), `423` avec `Retry-After: 300` | Prouvé, en mémoire (non persisté) |
+| Habilitations | Rôles `admin` / `operator`, aucun accès sans rôle, console `/admin/console`, jeton distinct refusé par l'API métier | Livré, testé avec des doubles (63 tests `auth`) |
+| LED bicolore d'état | Firmware ESP32-DevKitC (PlatformIO), `POST /led` signé HMAC-SHA256 avec compteur anti-rejeu, filtre sur l'IP du PC Hôte, durées dans le firmware | Flashé et essayé sur banc : 5 modes OK, signature invalide 401, rejeu 409, IP hors liste 403 |
+| Confidentialité biométrique | Gabarit de 128 valeurs chiffré (Fernet), jamais d'image, jamais dans Git, zip ou logs ; membres consentants seulement ; identifiant journalisé sous forme d'empreinte | Consentement écrit non formalisé |
+
+Matériel : la consigne prévoyait un ESP8266 ; la carte disponible est une ESP32-DevKitC. Le firmware est
+adapté en conséquence (GPIO25 vert, GPIO26 rouge, résistances de 220 à 330 Ω). La signature passe par
+des paramètres d'URL car le `WebServer` ESP32 ne restitue pas les en-têtes personnalisés (PR #103).
 
 ---
 
@@ -327,7 +395,54 @@ résilience (DORA), continuité (PCA/PRA, RTO/RPO mesurés au §6), contrôle d'
 
 ---
 
-## 8. Limites connues et risques résiduels
+## 8. Équipe et contributions réelles
+
+Répartition établie d'après l'historique Git de `main` (au 22/10 au soir : environ 180 commits hors fusions, plus de 100 PR
+fusionnées), détail et méthode dans [`repartition-reelle.md`](repartition-reelle.md). Elle mesure ce qui a été
+**livré**, pas ce que prévoyait le debrief ; les lignes ne mesurent ni l'effort ni la difficulté.
+
+| Membre | Rôle prévu | Livré (preuves : PR) | Lignes ajoutées |
+|---|---|---|---|
+| Kevin | Tech lead, remédiation, ML | Architecture, moteur de remédiation, détecteur ML, auth JWT et passerelle Caddy, WAF et SIEM, SOPS, boucle de démo, alertes Grafana flood (#99), filet de sécurité du blocage WAF (#101), consigne 1 : machine à états d'auth, agent caméra, page `/admin`, LED signée HMAC (#72, #75, #94, #103), gouvernance de base (EBIOS, PCA/PRA, AMDEC), dossier | ~18 500 |
+| François | IA RAG, Red Team | Socle PostgreSQL et API métier (#8), pile d'observabilité (#9), assistant RAG isolé (#30), outillage partagé (#7), banc ER6 d'injection de prompt et scénario de chaos (#74), portage du firmware LED sur ESP32 et WiFi (#96, #98), assemblage du dossier (#84) | ~6 800 |
+| Gabriel | Front, Grafana, NIS2/DORA | Front de paiement Pay-Now (#4, #21), habilitations et console `/admin/console` (#93), NIS2/DORA relu et relié aux essais réels | ~10 400 (front importé puis adapté) |
+| Antoine | Backend | Sauvegarde et restauration PostgreSQL (#31, #36), sonde de transaction unifiée, mesures RTO/RPO de S4 (#41, #42), rejeu S4 et restauration à froid (#90, #91), EBIOS et PCA mis à jour après le chaos (#92), firmware ESP32 (#87), documentation des API (#100) | ~1 700 |
+| Hugo | Infra, Cyber | Règle d'alerte Grafana SQLi (#55), runner Ansible et `Deploy.ps1` (#62) ; essais d'installation sur WSL puis Windows (19 et 20/10, sans trace Git). Persistance du blocage et réseau de l'ESP32 prévus pour la consigne 1 : non livrés | ~500 |
+
+```mermaid
+gantt
+    title Travail réellement commité (19/10 au 22/10/2026)
+    dateFormat YYYY-MM-DD
+    axisFormat %d/%m
+    todayMarker off
+    section Kevin
+    Architecture, remédiation, auth, passerelle     :2026-10-19, 1d
+    ML, WAF, détection S4, EBIOS, PCA/PRA           :2026-10-20, 2d
+    SOPS, rotation, campagne flood                  :2026-10-21, 1d
+    Consigne 1, alertes, rejeu, dossier             :2026-10-22, 1d
+    section François
+    BDD, API, observabilité, outillage              :2026-10-19, 1d
+    Assistant RAG                                   :2026-10-20, 1d
+    Banc ER6, firmware ESP32, dossier               :2026-10-22, 1d
+    section Gabriel
+    Front Pay-Now                                   :2026-10-19, 2d
+    Habilitations, NIS2/DORA                        :2026-10-22, 1d
+    section Antoine
+    Sauvegarde et restauration BDD                  :2026-10-20, 1d
+    Sonde unifiée, mesures S4                       :2026-10-21, 1d
+    Firmware ESP32, rejeu S4, EBIOS/PCA             :2026-10-22, 1d
+    section Hugo
+    Essais d'installation (échecs)                  :crit, 2026-10-19, 2d
+    Alerting Grafana, Ansible, Deploy.ps1           :2026-10-21, 1d
+```
+
+Au dernier jour, la charge restante (cohérence du dossier, rejeu, rendus) repose sur le tech lead, l'équipe
+n'étant plus disponible : les statuts de gouvernance « à valider » ont été soldés par une relecture de Kevin
+le 22/10, mentionnée comme telle dans les documents.
+
+---
+
+## 9. Limites connues et risques résiduels
 
 Présentées honnêtement, comme limites assumées (voir « Limites connues » du
 [`README.md`](../README.md)) :
@@ -363,17 +478,20 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 
 ---
 
-## 9. Reproductibilité
+## 10. Reproductibilité
 
-- Déploiement en une commande (Docker Compose + Ansible) ; voir [`README.md`](../README.md) et
-  [`dev.md`](dev.md).
+- Déploiement en une commande (Docker Compose + Ansible) : `.\infra\ansible\Deploy.ps1` ; voir
+  [`README.md`](../README.md), [`infra/ansible/README.md`](../infra/ansible/README.md) et [`dev.md`](dev.md).
+  Le script ne remet pas la base à zéro et ne contient aucun secret.
+- Tests : `pytest` par service (api 58, auth 64, remédiation 85, détecteur 45, agent caméra 21), `ruff` et
+  `tsc` propres.
 - Secrets rendus localement via `scripts/render_env.sh` ; aucun secret dans le `-Code.zip`.
 - Démonstration rejouable : `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5`.
 - Tout le code (y compris généré) est compris et explicable par son auteur devant le jury.
 
 ---
 
-## 10. Rendus
+## 11. Rendus
 
 `Workshop2026-M2-G2/` : `-Dossier.pdf` (ce document), `-Pres.pptx`, `-VidChrono.mp4` (≤ 60 s, sans
 coupe), `-Code.zip` (sources, infra, scripts d'attaque/ML, tests, doc API, README, **sans secret**).

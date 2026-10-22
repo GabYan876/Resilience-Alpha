@@ -1,19 +1,19 @@
 # Répartition réelle du travail (d'après l'historique Git)
 
-Établie le 21/10/2026 puis mise à jour après le dernier commit (jalon du 22/10), à partir de `git log --all` (183 commits, 66 PR) et des diffs par commit et par PR.
+Établie le 21/10/2026, puis mise à jour le 22/10 au soir à partir de `git log main` (179 commits hors fusions, 106 PR fusionnées) et des diffs par commit et par PR. Les sections 1 à 5 portent sur tout l'historique de `main` ; le §7 détaille la consigne additionnelle 1.
 Elle montre ce qui a été **réellement livré**, pas ce que prévoyait le debrief.
 
 ## 1. Identités Git
 
-| Personne | Identités Git / GitHub | Commits (hors merges) | PR ouvertes |
+| Personne | Identités Git / GitHub | Commits (hors merges) | PR fusionnées |
 |---|---|---|---|
-| Kevin | `MrSuricate` / `Kevin Ferraretto` (`MrSuricate2` sur GitHub) | 101 | 54 sur 66 |
-| François | `francois` (`Francoistlb` sur GitHub) | 18 | 4 (#7, #8, #9, #30) |
-| Antoine | `eosiswastaken` (« eosis » sur GitHub) | 5 | 4 (#31, #36, #41, #42) |
-| Gabriel | `GabYan876` | 1 | 2 (#4, #21) |
+| Kevin | `MrSuricate` / `Kevin Ferraretto` (`MrSuricate2` sur GitHub) | 138 | 84 sur 106 |
+| François | `francois` / `François Talaban` (`Francoistlb` sur GitHub) | 24 | 8 (#7, #8, #9, #30, #74, #82, #84, #96) |
+| Antoine | `eosiswastaken` / `eosis` | 11 | 9 (#31, #36, #41, #42, #87, #90, #91, #92, #100) |
+| Gabriel | `Gabriel` / `GabYan876` | 4 | 3 (#4, #21, #93) |
 | Hugo | `Hugo Pécal` (`Hogupeck` sur GitHub) | 2 | 2 (#55, #62) |
 
-- Les 55 commits de merge « Kevin Ferraretto » sont des merges de PR faits par le tech lead. Ils ne comptent pas comme travail de contenu.
+- Les commits « Kevin Ferraretto » sont des fusions de PR (squash) faites par le tech lead ; les 8 commits de ce type comptés ci-dessus portent le contenu de ses propres PR. Les merges classiques ne comptent pas comme travail de contenu.
 
 ## 2. Tableau de répartition réelle
 
@@ -45,27 +45,39 @@ Elle montre ce qui a été **réellement livré**, pas ce que prévoyait le debr
 | Essais d'installation de la pile : lundi 19/10 sur WSL (échec, erreur réseau), mardi 20/10 sur Windows (échec), mercredi 21/10 réussi | Hugo | Déclaré par l'équipe, **aucune trace Git** (travail d'environnement) | n/a |
 | Runner Ansible, commande de déploiement unique (`Deploy.ps1`), rôles preflight/application/observability/verify | Hugo | #62 (`f285f48`) | ~440 lignes, 14 fichiers |
 | Option `-RenderEnv` de `Deploy.ps1` (rendu du `.env` depuis SOPS) | Kevin | #63 (`55b5cdb`) | ~35 lignes |
+| Consigne 1 : machine à états d'authentification, agent caméra (YuNet + SFace), page `/admin`, panneaux Grafana `auth.*` | Kevin | #72, #75, #76, #77 | ~3 500 lignes |
+| Consigne 1 : LED signée HMAC-SHA256 côté `auth` et firmware ESP8266 initial, puis correctif de signature par l'URL | Kevin | #94, #103 | ~600 lignes |
+| Consigne 1 : habilitations `admin` / `operator`, console `/admin/console`, jeton de back-office distinct | Gabriel | #93 (`58e120f`) | ~1 200 lignes |
+| Consigne 1 : firmware ESP32-DevKit (PlatformIO, requêtes signées), contrôle web des LED | Antoine | #87 (`d317668`, `aa0abf5`) | ~600 lignes |
+| Consigne 1 : portage du firmware sur ESP32 (env `esp32dev`), ré-annonce d'IP toutes les 30 s, WiFi maintenu éveillé | François | #96, #98 (`fc586d8`, `2da5798`, `9f3c0b1`) | ~400 lignes |
+| Banc d'injection de prompt ER6 multi-scénarios et scénario de chaos | François | #74 (`df54ac1`) | ~550 lignes |
+| Rejeu S4 du chaos du 22/10, restauration à froid complète, EBIOS et PCA mis à jour après le chaos, documentation des API | Antoine | #90, #91, #92, #100 | docs |
+| NIS2/DORA relu et relié aux essais réels du 20 au 22/10 | Gabriel | `1c2c9d6` | docs |
+| Alertes Grafana flood (incident ML, 5xx API), filet de sécurité du blocage WAF (`GET /blocklist`) | Kevin | #99, #101 | ~300 lignes |
+| Dossier technique : version initiale (François), complétée et corrigée (Kevin) | François, Kevin | #82, #84, #88, #102 | docs |
 | Formatage `ruff` du dépôt, validation du jalon du 22/10 | Kevin | #65, #66 | 10 fichiers + 77 lignes de doc |
 
 ## 3. Part de chacun (lignes ajoutées, hors merges)
 
 | Personne | Lignes ajoutées | Part du code applicatif et infra | Remarque |
 |---|---|---|---|
-| Kevin | ~17 600 | ~65 % | `-5 114` lignes côté front sont un déplacement de dossier, pas une suppression de contenu |
-| Gabriel | ~9 200 | front uniquement | Un seul commit, qui importe l'application Pay-Now |
-| François | ~6 200 | BDD, API, observabilité, RAG, outillage | 18 commits |
-| Antoine | ~1 000 | sauvegarde BDD, sonde | 5 commits |
-| Hugo | ~510 | alerting Grafana, Ansible | 2 commits |
+| Kevin | ~18 500 | ~60 % | `-5 114` lignes côté front sont un déplacement de dossier, pas une suppression de contenu |
+| Gabriel | ~10 400 | front et habilitations | Un commit importe l'application Pay-Now (~9 200 lignes), trois autres portent les habilitations et NIS2/DORA |
+| François | ~6 800 | BDD, API, observabilité, RAG, banc ER6, firmware ESP32 | 24 commits |
+| Antoine | ~1 700 | sauvegarde BDD, sonde, firmware ESP32, docs de reprise | 11 commits |
+| Hugo | ~500 | alerting Grafana, Ansible | 2 commits |
+
+Chiffres calculés le 22/10 sur `git log main --no-merges --numstat`, identités Git regroupées par personne.
 
 Le compte de lignes surestime le front de Gabriel : l'application Pay-Now d'origine est importée telle quelle, puis adaptée. Il mesure la quantité de texte, pas l'effort ni la difficulté.
 
 ## 3 bis. Diagramme de Gantt (travail réellement commité)
 
-Les dates sont celles des commits et des merges de PR, à la journée près. Les deux barres rouges de Hugo (essais d'installation ratés) sont déclarées par l'équipe et absentes de Git. Chaque barre va du premier au dernier commit du lot, sans refléter le temps passé dessus. Le diagramme s'affiche sur GitHub et dans les éditeurs compatibles Mermaid.
+Les dates sont celles des commits et des merges de PR, à la journée près (le 22/10 a été ajouté après la consigne additionnelle 1). Les deux barres rouges de Hugo (essais d'installation ratés) sont déclarées par l'équipe et absentes de Git. Chaque barre va du premier au dernier commit du lot, sans refléter le temps passé dessus. Le diagramme s'affiche sur GitHub et dans les éditeurs compatibles Mermaid.
 
 ```mermaid
 gantt
-    title Travail réel par personne (19/10 au 21/10/2026)
+    title Travail réel par personne (19/10 au 22/10/2026)
     dateFormat YYYY-MM-DD
     axisFormat %d/%m
     todayMarker off
@@ -82,20 +94,25 @@ gantt
     Autoheal Alloy, campagne flood, script SQLi          :k9, 2026-10-21, 1d
     Jalons, README, clôture des écarts                   :k10, 2026-10-19, 3d
     -RenderEnv, ruff, validation du jalon du 22/10       :k11, 2026-10-21, 1d
+    Consigne 1 : auth, agent caméra, /admin, LED, rejeu  :k12, 2026-10-22, 1d
+    Alertes flood, blocklist, correctif LED, docs        :k13, 2026-10-22, 1d
 
     section François
     Outillage Claude Code                                :f1, 2026-10-19, 1d
     BDD PostgreSQL et API métier                         :f2, 2026-10-19, 1d
     Pile d'observabilité et Compose du socle             :f3, 2026-10-19, 1d
     Assistant RAG, horodatage du flood                   :f4, 2026-10-20, 1d
+    Banc ER6, firmware ESP32, dossier                    :f5, 2026-10-22, 1d
 
     section Gabriel
     Intégration de l'app Pay-Now                         :g1, 2026-10-19, 1d
     Reprise de l'interface d'origine adaptée au back     :g2, 2026-10-20, 1d
+    Habilitations, console, NIS2/DORA                    :g3, 2026-10-22, 1d
 
     section Antoine
     Sauvegarde et restauration PostgreSQL (S4)           :a1, 2026-10-20, 1d
     Sonde de transaction unifiée, mesures S4             :a2, 2026-10-21, 1d
+    Firmware ESP32, rejeu S4, EBIOS/PCA, API docs        :a3, 2026-10-22, 1d
 
     section Hugo
     Installation sur WSL (échec, erreur réseau)          :crit, h0, 2026-10-19, 1d
@@ -104,26 +121,26 @@ gantt
     Runner Ansible et Deploy.ps1                         :h2, 2026-10-21, 1d
 
     section Échéances
-    Gel du code à 17h                                    :milestone, m1, 2026-10-22, 0d
+    Gel du code à 17h (dérogation accordée)              :milestone, m1, 2026-10-22, 0d
     Remise avant 23h59                                   :milestone, m2, 2026-10-22, 0d
 ```
 
-Lecture : Kevin occupe les trois jours sans interruption, François travaille surtout le 19/10, Gabriel et Antoine n'apparaissent qu'à partir du 20/10 ou du 21/10, et la dernière ligne droite (jeudi 22/10) repose encore presque entièrement sur Kevin.
+Lecture : Kevin occupe les quatre jours sans interruption ; François travaille surtout le 19/10 puis revient le 22/10 ; Gabriel et Antoine n'apparaissent qu'à partir du 20/10 ou du 21/10 et contribuent surtout le 22/10 (consigne 1) ; Hugo reste à deux commits. La dernière ligne droite (rejeu, dossier, présentation, rendus) repose presque entièrement sur Kevin, l'équipe n'étant plus disponible le 22/10 au soir.
 
 ## 4. Écarts avec la répartition prévue (`CLAUDE.md`)
 
 | Rôle prévu | Prévu | Constaté dans Git |
 |---|---|---|
-| Hugo : Infra + Cyber (Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau) | Tout le périmètre infra et cyber | 2 commits : alerting Grafana et runner Ansible avec `Deploy.ps1`. Les 19 et 20/10 ont été consacrés à des essais d'installation qui ont échoué (WSL puis Windows), d'où l'absence de commits avant le 21/10 ; l'installation a réussi le 21/10 et Hugo a pu avancer. Le WAF, le SIEM, le durcissement, SOPS et le Compose ont été faits par Kevin ; l'observabilité par François. |
+| Hugo : Infra + Cyber (Compose, Ansible, Prom/Grafana/Loki, WAF, SIEM, Vault/SOPS, durcissement, réseau) | Tout le périmètre infra et cyber | Toujours 2 commits au 22/10 : alerting Grafana et runner Ansible avec `Deploy.ps1`. Aucun des lots L1 (persistance) et L3 (réseau) de la consigne 1 n'est livré. Les 19 et 20/10 ont été consacrés à des essais d'installation qui ont échoué (WSL puis Windows), d'où l'absence de commits avant le 21/10 ; l'installation a réussi le 21/10 et Hugo a pu avancer. Le WAF, le SIEM, le durcissement, SOPS et le Compose ont été faits par Kevin ; l'observabilité par François. |
 | Kevin : tech lead + remédiation | Architecture, remédiation, ML, intégration | Conforme, mais Kevin a aussi porté l'infra, la cyber, l'auth, la gouvernance et la doc. |
-| Antoine : backend, BDD, API, auth, vérification de transaction, EBIOS, PCA/PRA | Backend + gouvernance | Commits sous `eosiswastaken` : sonde de transaction, sauvegarde et restauration BDD, mesures S4. BDD et API livrées par François ; auth, EBIOS et PCA/PRA par Kevin. |
-| Gabriel : front, Clip Chrono, Grafana, NIS2/DORA, pitch, Pres.pptx | Front + gouvernance + rendus | Front livré. NIS2/DORA rédigé par Kevin. Aucun commit sur le pitch ou la présentation (ces fichiers ne sont pas dans Git). |
-| François : RAG + Red Team | RAG, scripts d'attaque, chaos, Dossier PDF | RAG livré. Il a aussi fait BDD, API et observabilité. Le script SQLi a été écrit par Kevin. |
+| Antoine : backend, BDD, API, auth, vérification de transaction, EBIOS, PCA/PRA | Backend + gouvernance | Commits sous `eosiswastaken` : sonde de transaction, sauvegarde et restauration BDD, mesures S4, rejeu S4 et restauration à froid, EBIOS et PCA mis à jour après le chaos (#92), firmware ESP32 (#87), documentation des API (#100). BDD et API livrées par François ; auth et rédaction initiale d'EBIOS et PCA/PRA par Kevin. |
+| Gabriel : front, Clip Chrono, Grafana, NIS2/DORA, pitch, Pres.pptx | Front + gouvernance + rendus | Front livré, puis habilitations et console du back-office (#93) et relecture de NIS2/DORA le 22/10 (rédigé d'abord par Kevin). Le pitch et la présentation ne sont pas dans Git ; le `Pres.pptx` final a été corrigé et complété par Kevin dans Canva le 22/10. |
+| François : RAG + Red Team | RAG, scripts d'attaque, chaos, Dossier PDF | RAG livré. Il a aussi fait BDD, API, observabilité, le banc ER6 (#74) et le portage du firmware sur ESP32. Le script SQLi a été écrit par Kevin ; les scripts d'attaque de la consigne 1 (L5) ne sont pas écrits. |
 
 ## 5. Points d'attention avant le gel du code (jeudi 17h)
 
-- **Charge concentrée sur une personne** : environ deux tiers du code et presque toute la gouvernance viennent de Kevin. Le jury demande que chacun explique le code qu'il présente.
-- **Preuves de contribution** : les rendus (Dossier PDF, Pres.pptx, clip) ne sont pas versionnés, donc cette analyse ne les couvre pas.
+- **Charge concentrée sur une personne** : environ 60 % du code applicatif et infra, presque toute la gouvernance de base et tous les rendus finaux viennent de Kevin. Le jury demande que chacun explique le code qu'il présente.
+- **Preuves de contribution** : les rendus (Dossier PDF, Pres.pptx, clip, zip) ne sont pas versionnés, donc cette analyse ne les couvre pas ; seul le Dossier existe en Markdown (`docs/dossier.md`).
 
 ## 7. Répartition de la consigne additionnelle 1 (prévisionnelle, 22/10)
 
@@ -155,9 +172,9 @@ Mis à jour par Kevin après le merge de la PR #72 (`fd95d3b`, commits `e4f71fb`
 | L1 persistance | Hugo | À faire | Aucune. Le blocage est **en mémoire** (perdu au redémarrage de `auth`) en attendant `PostgresLockoutStore` | Tables, migration, adaptateur, test de redémarrage |
 | L3 réseau et déploiement | Hugo | À faire | Aucune. `Deploy.ps1` ne lance pas encore l'agent (`host-agent/camera/run.ps1` existe et relit désormais le jeton dans le `.env`) ; `render_env.sh` génère `HOST_AGENT_URL` et `HOST_AGENT_TOKEN` | WiFi de l'ESP32, pare-feu, lancement de l'agent |
 | L3 firmware | Antoine | **Flashé et essayé sur banc** (PR #87, correctif PR #103) | `firmware/esp32-led/` (PlatformIO, ESP32-DevKitC/V1) : `POST /led` signé HMAC-SHA256 (compteur anti-rejeu) et filtre sur l'IP du PC Hôte, 5 modes, durées dans le firmware ; README avec contrat, câblage GPIO25/26 et flash USB | Le 22/10 : compilation (`pio run -d firmware/esp32-led -e esp32dev`), flash sur COM3, IP 192.168.137.226. Les 5 modes renvoient 200 depuis le PC Hôte et depuis le conteneur `auth` ; signature invalide 401, rejeu 409, IP hors liste 403. La signature passe par des paramètres d'URL car le `WebServer` ESP32 ne rend pas les en-têtes personnalisés (PR #103). Voie rouge reprise après un contact fragile, puis confirmée | Coupure réseau de l'ESP32 en cours de séquence, photo ou vidéo de la LED |
-| L4 page `/admin` | Kevin (connexion, PR #75) puis Gabriel (habilitations, console) | **Livré en partie** (PR #75, `2430ebc` ; PR de Gabriel du 22/10, branche `gabriel/backoffice-habilitations`) | Connexion : page `/admin` (identifiant, visage, mot de passe ; messages 403, 503, 401 ; compte à rebours 423) jouée contre le vrai back ; section « Authentification du back-office » du dashboard (6 événements comptés dans Loki). Habilitations (Gabriel) : rôles `admin` / `operator`, refus sans rôle (`auth.access.denied_no_role`), jeton de back-office à audience `backoffice` (refusé par l'API métier), console `/admin/console` (habilitations, déblocage, journal d'accès) ; 63 tests `pytest` verts dans `auth`, `tsc` de l'application et `vite build` propres | Habilitations jouées seulement avec des doubles, pas sur le PC Hôte ; aucun test automatisé du front ; panneau « caméra ou agent indisponible » non déclenché ; blocage et habilitations en mémoire ; enrôlement volontairement en ligne de commande |
+| L4 page `/admin` | Kevin (connexion, PR #75) puis Gabriel (habilitations, console) | **Livré en partie** (PR #75, `2430ebc` ; PR #93 de Gabriel, `58e120f`) | Connexion : page `/admin` (identifiant, visage, mot de passe ; messages 403, 503, 401 ; compte à rebours 423) jouée contre le vrai back ; section « Authentification du back-office » du dashboard (6 événements comptés dans Loki). Habilitations (Gabriel) : rôles `admin` / `operator`, refus sans rôle (`auth.access.denied_no_role`), jeton de back-office à audience `backoffice` (refusé par l'API métier), console `/admin/console` (habilitations, déblocage, journal d'accès) ; 63 tests `pytest` verts dans `auth`, `tsc` de l'application et `vite build` propres | Habilitations jouées seulement avec des doubles, pas sur le PC Hôte ; aucun test automatisé du front ; panneau « caméra ou agent indisponible » non déclenché ; blocage et habilitations en mémoire ; enrôlement volontairement en ligne de commande |
 | L5 attaques | François | À faire | Aucune script L5 constaté ; essais manuels du 22/10 sur le banc (mauvais mot de passe, 2e échec et blocage, visage inconnu, agent arrêté) | Force brute scriptée, photo, coupure ESP32, chaos |
-| L6 gouvernance | Hugo + Gabriel | En cours | NIS2/DORA et matrice mis à jour le 22/10 avec les résultats du banc | EBIOS, AMDEC, PCA avec les résultats réels, statuts « à valider » |
+| L6 gouvernance | Hugo + Gabriel (réalisé par Gabriel, Antoine et Kevin) | **Livré** | NIS2/DORA relu par Gabriel (`1c2c9d6`) ; EBIOS et PCA mis à jour par Antoine après le chaos (#92) ; matrice, AMDEC et statuts « à valider » soldés par Kevin le 22/10 (relecture seule, équipe indisponible) ; aucun lot assuré par Hugo | Investigation manuelle de la SQLi non démontrable |
 
 Écarts connus à signaler au jury : habilitations non persistantes (en mémoire, repartent de `BACKOFFICE_ADMINS` au redémarrage), pas de détection de vivacité, blocage non persistant.
 
