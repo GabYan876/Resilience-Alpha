@@ -1,15 +1,28 @@
 // LED bicolore pilotée par `auth` : POST /led {"mode": "off|green_blink|green_solid|red_blink|red_solid"}.
 // Requête signée : X-Counter (croissant) et X-Signature = HMAC-SHA256(secret, "<compteur>." + corps) en hexa.
 // Les durées (30 s, 10 clignotements) sont gérées ici : la LED reste cohérente si le réseau coupe.
+// Deux cartes : D1 mini (ESP8266) et DevKit ESP32. Seules les bibliothèques réseau, le calcul du
+// HMAC et les broches diffèrent ; la machine à états et le contrat HTTP sont communs.
 #include <Arduino.h>
+
+#if defined(ARDUINO_ARCH_ESP32)
+#include <WebServer.h>
+#include <WiFi.h>
+#include <mbedtls/md.h>
+using LedServer = WebServer;
+constexpr uint8_t PIN_GREEN = 25;  // GPIO25, via résistance 220 Ω
+constexpr uint8_t PIN_RED = 26;    // GPIO26, via résistance 220 Ω
+#else
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h>
 #include <bearssl/bearssl_hmac.h>
+using LedServer = ESP8266WebServer;
+constexpr uint8_t PIN_GREEN = D1;  // GPIO5, via résistance 220 Ω
+constexpr uint8_t PIN_RED = D2;    // GPIO4, via résistance 220 Ω
+#endif
 
 #include "secrets.h"
 
-constexpr uint8_t PIN_GREEN = D1;  // GPIO5, via résistance 220 Ω
-constexpr uint8_t PIN_RED = D2;    // GPIO4, via résistance 220 Ω
 constexpr uint32_t SOLID_MS = 30000;
 constexpr uint32_t BLINK_HALF_PERIOD_MS = 300;
 constexpr uint8_t RED_BLINK_COUNT = 10;
@@ -18,10 +31,12 @@ constexpr size_t SIG_HEX_LEN = 64;
 
 enum class Mode { Off, GreenBlink, GreenSolid, RedBlink, RedSolid };
 
-ESP8266WebServer server(80);
+LedServer server(80);
 Mode mode = Mode::Off;
 uint32_t modeStart = 0;
 uint64_t lastCounter = 0;  // en RAM : un rejeu reste possible une fois après un redémarrage
+uint32_t lastAnnounce = 0;
+constexpr uint32_t ANNOUNCE_PERIOD_MS = 30000;
 
 void setMode(Mode next) {
   mode = next;
@@ -71,13 +86,24 @@ bool parseMode(const String& value, Mode& out) {
 String sign(const String& counter, const String& body) {
   const String message = counter + "." + body;
   const char* secret = LED_TOKEN;
+  uint8_t digest[32];
+#if defined(ARDUINO_ARCH_ESP32)
+  mbedtls_md_context_t context;
+  mbedtls_md_init(&context);
+  mbedtls_md_setup(&context, mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), 1);
+  mbedtls_md_hmac_starts(&context, reinterpret_cast<const unsigned char*>(secret), strlen(secret));
+  mbedtls_md_hmac_update(&context, reinterpret_cast<const unsigned char*>(message.c_str()),
+                         message.length());
+  mbedtls_md_hmac_finish(&context, digest);
+  mbedtls_md_free(&context);
+#else
   br_hmac_key_context keyContext;
   br_hmac_context context;
-  uint8_t digest[32];
   br_hmac_key_init(&keyContext, &br_sha256_vtable, secret, strlen(secret));
   br_hmac_init(&context, &keyContext, 0);
   br_hmac_update(&context, message.c_str(), message.length());
   br_hmac_out(&context, digest);
+#endif
   String hex;
   for (uint8_t byte : digest) {
     if (byte < 16) hex += '0';
@@ -158,6 +184,13 @@ void setup() {
 }
 
 void loop() {
+  // L'IP est réannoncée toutes les 30 s : elle sert à renseigner LED_URL du PC Hôte, et un
+  // moniteur série branché après le démarrage doit pouvoir la lire sans redémarrer la carte.
+  if (millis() - lastAnnounce >= ANNOUNCE_PERIOD_MS || lastAnnounce == 0) {
+    lastAnnounce = millis();
+    if (WiFi.status() == WL_CONNECTED) Serial.println("IP " + WiFi.localIP().toString());
+    else Serial.printf("WIFI non connecte (status=%d)\n", WiFi.status());
+  }
   server.handleClient();
   updateLed();
 }

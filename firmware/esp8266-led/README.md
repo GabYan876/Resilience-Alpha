@@ -1,8 +1,12 @@
-# Firmware ESP8266 : LED bicolore d'état
+# Firmware ESP8266 / ESP32 : LED bicolore d'état
 
 Retour visuel de l'authentification du back-office (consigne additionnelle 1, voir
 [`docs/consigne-additionnelle-1.md`](../../docs/consigne-additionnelle-1.md)). Le service `auth` appelle
-l'ESP8266 par le WiFi du point d'accès ; l'accès au back-office **ne dépend pas** de la LED (échec journalisé).
+la carte par le WiFi du point d'accès ; l'accès au back-office **ne dépend pas** de la LED (échec journalisé).
+
+Deux cartes sont gérées par le même code, via les gardes `ARDUINO_ARCH_ESP32` de `src/main.cpp` :
+env `d1_mini` (ESP8266, HMAC BearSSL) et env `esp32dev` (ESP32, HMAC mbedTLS). Seules les
+bibliothèques réseau, le calcul du HMAC et les broches diffèrent ; le contrat HTTP est identique.
 
 ## Contrat
 
@@ -31,7 +35,9 @@ Les durées étant dans le firmware, la LED reste cohérente (et s'éteint) si l
 
 ## Matériel et câblage
 
-ESP8266 (carte D1 mini), LED bicolore rouge/vert à **cathode commune**, 2 résistances de 220 Ω.
+LED rouge et LED verte (ou bicolore rouge/vert à **cathode commune**), 2 résistances de 220 Ω.
+
+ESP8266, carte D1 mini :
 
 | Broche | GPIO | Branchement |
 |---|---|---|
@@ -39,13 +45,25 @@ ESP8266 (carte D1 mini), LED bicolore rouge/vert à **cathode commune**, 2 rési
 | D2 | 4 | anode rouge, via 220 Ω |
 | GND | — | cathode commune |
 
+ESP32, carte DevKit (puce ESP32-D0WD-V3) :
+
+| Broche | GPIO | Branchement |
+|---|---|---|
+| G25 | 25 | anode verte, via 220 Ω |
+| G26 | 26 | anode rouge, via 220 Ω |
+| GND | — | cathode commune |
+
+Les GPIO 6 à 11 sont câblés à la flash interne de l'ESP32 et les GPIO 0, 2, 12, 15 servent au boot :
+aucun ne doit porter la LED. 25 et 26 sont libres sur toutes les cartes ESP32 classiques.
+
 ## Installation
 
-1. Ouvrir `firmware/esp8266-led/` dans **CLion** (plugin PlatformIO) ; en ligne de commande : `pio run`.
+1. Ouvrir `firmware/esp8266-led/` dans **CLion** (plugin PlatformIO) ; en ligne de commande :
+   `pio run -e esp32dev` (ou `-e d1_mini`). Sans `-e`, les deux cartes sont construites.
 2. Copier `include/secrets.h.example` en `include/secrets.h` (ignoré par Git) et renseigner le WiFi
    `RESILIENCE-G<n>`, le secret `LED_TOKEN` et `ALLOWED_HOST_IP` (IP du PC Hôte, `192.168.137.1` avec le hotspot Windows).
-3. Flasher : `pio run -t upload`. Moniteur série à 115200 bauds : l'IP obtenue n'est pas affichée, la relever
-   dans la liste des clients du point d'accès.
+3. Flasher : `pio run -e esp32dev -t upload`. Moniteur série à 115200 bauds (`pio device monitor`) :
+   la carte annonce son adresse une fois connectée, ligne `IP <adresse>`, à reporter dans `LED_URL`.
 4. Dans le `.env` du PC Hôte : `LED_URL=http://<ip-esp>` et `LED_TOKEN=<même secret que secrets.h>`
    (secret généré : `python -c "import secrets; print(secrets.token_urlsafe(32))"`).
 5. Essai depuis le PC Hôte :
@@ -74,5 +92,11 @@ PY
 
 ## État de la vérification
 
-**Non compilé et non essayé sur banc** à la rédaction (pas de PlatformIO sur le poste de revue). À faire par le
-responsable du lot : `pio run`, essai des 5 modes, coupure réseau pendant `green_solid`, photo ou vidéo du banc.
+- **ESP32** : essayé sur banc le 22/10 (carte ESP32-D0WD-V3 rev 3.1, flash 76,9 %, RAM 14,5 %).
+  Les 5 modes répondent `200` et le comportement des LED a été vérifié à l'œil ; signature fausse
+  refusée en `401`, compteur rejoué et compteur ancien refusés en `409`. Reste à essayer : le
+  parcours d'authentification complet de bout en bout et la coupure réseau pendant `green_solid`.
+- **ESP8266** : non compilé et non essayé sur banc, faute de carte D1 mini sur le poste.
+- **Couleur** : le banc utilise une LED **jaune** à la place de la verte. Le protocole garde les noms
+  `green_*` ; l'écart avec la consigne (LED bicolore vert/rouge) doit être tenu pour une limite
+  assumée tant qu'une LED verte n'est pas montée.
