@@ -4,7 +4,7 @@ Statut : version du 22/10, relue par Gabriel et reliée aux essais réels du 20 
 
 Principe du sujet : distinguer les exigences **pertinentes** pour une activité financière fictive des obligations qui **ne peuvent pas être démontrées** par un prototype de 4 jours. Règle appliquée ici : une ligne n'est « Couverte » que si un essai réel la prouve (journal des essais : [`02-pca-pra.md`](02-pca-pra.md) §7) ; sinon, l'écart est nommé.
 
-Textes : NIS2 = directive (UE) 2022/2555 ; DORA = règlement (UE) 2022/2554. Les numéros d'articles ont été précisés le 22/10 ; **à confirmer sur EUR-Lex avant la remise**.
+Textes : NIS2 = directive (UE) 2022/2555 ; DORA = règlement (UE) 2022/2554. Les numéros d'articles ont été précisés le 22/10 ; vérifiés le 22/10 un par un (intitulé et alinéa) sur des miroirs du texte (nis-2-directive.com, digital-operational-resilience-act.com) : aucun écart. EUR-Lex n'a pas répondu (page vide) ; **relire le Journal officiel avant la remise**.
 
 ## 1. Applicabilité
 
