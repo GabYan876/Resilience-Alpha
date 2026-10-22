@@ -11,7 +11,7 @@ Cases restées ouvertes dans [`validation-jalon-21-10.md`](validation-jalon-21-1
 
 - [ ] **`ruff format --check .` et `ruff check .` passent sur chaque poste** (Hugo, Antoine, Gabriel, François) après `git pull` ; confirmé sur le poste de Kevin le 21/10.
 - [ ] **Réseau privé du binôme opérationnel entre PC Attaquant et PC Hôte**, avec `WAF_BIND_HOST` réglé sur l'IP réelle du PC Hôte. Constat du 21/10 soir : `.env` du PC de Kevin fixait `192.168.137.1` (hotspot) alors que seul `192.168.1.140` (box) existait ; le WAF refuse de démarrer si l'IP n'est pas présente. Vérifier l'IP avant chaque essai.
-- [ ] Doc d'API à jour (Antoine) : `services/api/README.md` couvre l'API métier ; le service `auth` (`/auth/register`, `/auth/login`) n'a pas de README.
+- [x] Doc d'API à jour (Antoine) : `services/api/README.md` couvre l'API métier et l'espace client ; `services/auth/README.md` documente les routes d'inscription et de connexion ainsi que le back-office.
 - [ ] Relecture du README `infra/ansible/README.md` par un autre membre que Kevin (clone neuf essayé le 21/10 par Kevin seul).
 - [ ] Trame `Pres.pptx`, NIS2/DORA relu et relié aux essais du 21/10 (Gabriel), plan du Dossier PDF (François) : échéances « jeudi matin » du §8 de la veille.
 
@@ -49,7 +49,7 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 - [x] S4 (corruption BDD) rejoué automatiquement le 22/10 dans une pile S4 locale jetable isolée : 1/1 reprise, RTO 6,38 s de `Tc` à `incident.resolved` (détection 4,83 s, remédiation 1,55 s), RPO 108,78 s ; API saine et transaction de sonde réussie. Détails, horodatages et limites du périmètre dans [`s4-corruption-bdd.md`](procedures/s4-corruption-bdd.md) et [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7.
 - [x] Restauration à froid rejouée en fin de chaos : pile complète isolée arrêtée puis relancée en une commande, transaction réussie ; volumes PostgreSQL/sauvegardes conservés. Preuve et chronométrages (non assimilés à un RTO) dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 et [`restauration-a-froid.md`](procedures/restauration-a-froid.md).
 - [x] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée (ER4 rétrogradé à `EN COURS`, S1 corrigé en `block_subject`).
-- [ ] Doc d'API à jour (voir §0), tests `pytest` verts avant le gel.
+- [x] Doc d'API à jour (voir §0) ; tests `pytest` verts avant le gel : API (58), auth (64) et remediation (80). Commandes et résultats détaillés dans la PR.
 
 ## 4. Front, dashboard, rendus — Gabriel
 

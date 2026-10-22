@@ -7,14 +7,70 @@ Service FastAPI de la plateforme de paiement **fictive**. Deux parcours distinct
 
 Architecture hexagonale : `domain/` (modèles, erreurs, ports `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore`, `RoleStore`, `AccessJournal`), `application/` (`BackOfficeLogin`, `BackOfficeAdmin`), `adapters/` (agent caméra HTTP, LED HTTP, JWT, stockages en mémoire), `api/` (routes, schémas), `main.py` (composition root).
 
+## API client
+
+Ces routes servent l'inscription et la connexion des clients. Les exemples utilisent uniquement
+des données fictives. Les e-mails sont convertis en minuscules avant traitement.
+
+| Méthode et chemin | Corps | Succès | Erreurs métier |
+|---|---|---|---|
+| `POST /auth/register` | `name`, `email`, `number`, `password` | `200` : JWT et profil | `409` e-mail ou numéro déjà utilisé |
+| `POST /auth/login` | `email`, `password` | `200` : JWT et profil | `401` e-mail inconnu ou mot de passe incorrect |
+| `GET /health` | — | `200` si la base répond | `503` si la base est indisponible |
+| `GET /metrics` | — | Métriques Prometheus au format texte | — |
+
+`POST /auth/register` attend un nom de 1 à 120 caractères, un e-mail de 1 à 320 caractères
+au format `local@domaine`, un numéro de 10 à 15 chiffres avec `+` initial facultatif, et un
+mot de passe de 8 à 128 caractères. `POST /auth/login` attend un e-mail au même format et un
+mot de passe de 1 à 128 caractères.
+
+Exemple d'inscription :
+
+```json
+{
+  "name": "Alice Martin",
+  "email": "alice@example.test",
+  "number": "0612345678",
+  "password": "mot-de-passe-fictif"
+}
+```
+
+Les deux routes d'authentification renvoient le même format :
+
+```json
+{
+  "token": "<JWT client>",
+  "resp": {
+    "_id": "<UUID>",
+    "name": "Alice Martin",
+    "email": "alice@example.test",
+    "number": "0612345678",
+    "iban": "<IBAN fictif>",
+    "balance_cents": 100000
+  }
+}
+```
+
+Le profil ne contient pas le mot de passe ni son hachage. Une inscription attribue le solde
+fictif défini par `WELCOME_BALANCE_CENTS` (100 000 centimes par défaut). Un champ invalide ou
+manquant renvoie `422` sous la forme `{"error": "champ invalide : <champ>"}` ; ce message ne
+répète pas la saisie. Une connexion refusée renvoie `401`
+`{"detail": "e-mail ou mot de passe incorrect"}`. Les jetons client sont des JWT HS256 avec
+`sub` (UUID utilisateur), `iat` et `exp` ; leur durée est `JWT_TTL_SECONDS` (7 200 secondes
+par défaut). L'API métier partage `JWT_SECRET` pour les vérifier.
+
 ## Connexion du back-office
 
 | Route | Rôle | Réponses |
 |---|---|---|
-| `POST /auth/admin/identify` | Vérifie le visage via l'agent caméra | 200 `{status}` ; 403 visage non reconnu ; 423 identifiant bloqué (`Retry-After`) ; 503 caméra ou agent indisponible (échec fermé) |
-| `POST /auth/admin/login` | Mot de passe, après un visage reconnu | 200 `{token, identifier, name, role}` ; 401 mauvais mot de passe ; 403 visage non vérifié **ou** compte sans rôle (`reason: "no_role"`) ; 423 bloqué |
+| `POST /auth/admin/identify` `{identifier}` | Vérifie le visage via l'agent caméra | 200 `{"status":"face_recognized"}` ; 403 visage non reconnu ; 423 identifiant bloqué (`Retry-After`) ; 503 caméra ou agent indisponible (échec fermé) |
+| `POST /auth/admin/login` `{identifier, password}` | Mot de passe, après un visage reconnu | 200 `{token, identifier, name, role}` ; 401 mauvais mot de passe ; 403 visage non vérifié ou compte sans rôle (`detail.reason: "no_role"`) ; 423 bloqué |
 
-Un mot de passe faux permet une reprise, puis l'identifiant est bloqué 5 min (blocage **par identifiant**, pas par IP). Un compte sans rôle est refusé même avec un visage et un mot de passe valides, sans échec compté.
+Deux échecs cumulés de reconnaissance faciale et/ou de mot de passe bloquent l'identifiant
+5 minutes (`Retry-After` en secondes) ; blocage **par identifiant**, pas par IP. La reconnaissance
+doit précéder chaque tentative de mot de passe, est à usage unique et expire après 2 minutes.
+Une panne caméra/agent échoue fermé et ne compte pas comme échec. Un compte sans rôle est refusé
+même avec un visage et un mot de passe valides, sans échec compté.
 
 ## Habilitations et administration
 
@@ -34,15 +90,23 @@ GET/POST uniquement : le CRS du WAF refuse PUT et DELETE par défaut. Un `operat
 
 ## Événements (Loki)
 
-JSON structuré (`service`, `trace_id`, `event`). L'identifiant n'apparaît que sous forme d'empreinte.
+JSON structuré (`service`, `trace_id`, `event`, `at`, `data`). Pour les événements de connexion
+du back-office, l'identifiant n'apparaît dans Loki que sous forme d'empreinte. Les événements
+client incluent `auth.registered`, `auth.login_succeeded` et `auth.login_failed`.
 
-`auth.face.recognized`, `auth.face.rejected`, `auth.face.unavailable`, `auth.password.failed`, `auth.password.refused_no_face`, `auth.locked`, `auth.locked.refused`, `auth.login.succeeded`, `auth.access.denied_no_role`, `auth.admin.role_granted`, `auth.admin.role_revoked`, `auth.admin.unlocked`, `auth.admin.forbidden`, `auth.led.unavailable`.
+Événements back-office : `auth.face.recognized`, `auth.face.rejected`,
+`auth.face.unavailable`, `auth.password.failed`, `auth.password.refused_no_face`,
+`auth.locked`, `auth.locked.refused`, `auth.login.succeeded`,
+`auth.access.denied_no_role`, `auth.admin.role_granted`, `auth.admin.role_revoked`,
+`auth.admin.unlocked`, `auth.admin.forbidden`, `auth.led.unavailable`,
+`auth.camera.stop_failed`.
 
 ## Configuration
 
 | Variable | Rôle |
 |---|---|
-| `DATABASE_URL`, `JWT_SECRET` / `JWT_SECRET_FILE` | Base et secret JWT (≥ 32 caractères, jamais en clair dans le dépôt) |
+| `DATABASE_URL`, `JWT_SECRET` / `JWT_SECRET_FILE` | Base et secret JWT partagé avec l'API (≥ 32 caractères, jamais en clair dans le dépôt) |
+| `JWT_TTL_SECONDS` | Durée du JWT client (7 200 secondes par défaut) |
 | `HOST_AGENT_URL`, `HOST_AGENT_TOKEN` | Agent caméra natif. Absent : le back-office échoue fermé (503) |
 | `LED_URL`, `LED_TOKEN` | ESP32 (LED bicolore, requêtes signées HMAC). Absent : pas de retour visuel, accès inchangé |
 | `BACKOFFICE_ADMINS` | Premiers `admin`, séparés par des virgules. **Vide : personne n'entre** (échec fermé) |
