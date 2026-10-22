@@ -40,3 +40,18 @@ def test_no_temporary_file_left_behind(tmp_path):
     path, ips, _ = make(tmp_path)
     ips.block("10.0.0.1")
     assert [p.name for p in tmp_path.iterdir()] == [path.name]
+
+
+def test_list_entries_is_empty_without_file(tmp_path):
+    file = BlocklistFile(str(tmp_path / "blocked.txt"))
+    assert file.list_entries() == []
+
+
+def test_list_entries_reflects_blocks_and_unblocks(tmp_path):
+    path, ips, subjects = make(tmp_path)
+    file = BlocklistFile(str(path))
+    ips.block("10.0.0.1")
+    subjects.block("abc")
+    assert file.list_entries() == ["ip:10.0.0.1", "sub:abc"]
+    ips.unblock("10.0.0.1")
+    assert file.list_entries() == ["sub:abc"]

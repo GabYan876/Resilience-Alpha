@@ -118,6 +118,9 @@ def create_app(settings: Settings | None = None, client: httpx.Client | None = N
     client = client or httpx.Client(timeout=settings.http_timeout_s)
     store = InMemoryIncidentStore()
     pipeline = build_pipeline(settings, client, store)
+    # Même fichier que celui câblé dans le pipeline (BlockIpAction / BlockSubjectAction) :
+    # une seule instance de `BlocklistFile` par app, l'écriture étant verrouillée en interne.
+    blocklist_inspector = BlocklistFile(settings.blocklist_path)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -133,7 +136,14 @@ def create_app(settings: Settings | None = None, client: httpx.Client | None = N
             watcher.stop()
 
     app = FastAPI(title="remediation", lifespan=lifespan)
-    app.include_router(build_router(lambda: pipeline, lambda: settings.ingest_token, lambda: store))
+    app.include_router(
+        build_router(
+            lambda: pipeline,
+            lambda: settings.ingest_token,
+            lambda: store,
+            lambda: blocklist_inspector,
+        )
+    )
     # /metrics pour Prometheus ; /health et /metrics sont exclus des métriques de latence.
     # Registre propre à chaque app : le registre global lèverait des doublons à chaque create_app.
     Instrumentator(

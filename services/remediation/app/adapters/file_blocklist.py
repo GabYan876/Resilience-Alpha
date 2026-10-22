@@ -30,6 +30,11 @@ class BlocklistFile:
         with self._lock:
             self._write([e for e in self._read() if e != entry])
 
+    def list_entries(self) -> list[str]:
+        """Lecture seule, pour l'inspection (route /blocklist, démo rejouable)."""
+        with self._lock:
+            return self._read()
+
     def _read(self) -> list[str]:
         try:
             return [line for line in self._path.read_text(encoding="utf-8").splitlines() if line]

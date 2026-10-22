@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 import httpx
 from fastapi.testclient import TestClient
 
@@ -7,13 +10,17 @@ from app.main import create_app
 TOKEN = "test-token"  # placeholder de test, pas un vrai secret
 
 
-def make_client(handler) -> TestClient:
+def make_client(handler, blocklist_path: str | None = None) -> TestClient:
+    # Par défaut un fichier temporaire portable : le vrai chemin (`/blocklist/...`, un volume
+    # Docker) n'existe pas sur un poste de dev hors conteneur.
+    blocklist_path = blocklist_path or str(Path(tempfile.mkdtemp()) / "blocked.txt")
     settings = Settings(
         api_base_url="http://api",
         api_health_url="http://api/health",
         docker_proxy_url="http://proxy",
         ingest_token=TOKEN,
         probe_token="",
+        blocklist_path=blocklist_path,
     )
     http = httpx.Client(transport=httpx.MockTransport(handler))
     app = create_app(settings, http)  # même câblage que la prod, transport HTTP simulé
@@ -93,6 +100,21 @@ def test_get_incident_by_id_and_unknown():
     created = client.post("/incidents", json=FLOOD, headers=AUTH).json()
     assert client.get(f"/incidents/{created['id']}", headers=AUTH).json()["id"] == created["id"]
     assert client.get("/incidents/inconnu", headers=AUTH).status_code == 404
+
+
+def test_blocklist_requires_token():
+    assert make_client(ok_handler).get("/blocklist").status_code == 401
+
+
+def test_blocklist_is_empty_at_start():
+    assert make_client(ok_handler).get("/blocklist", headers=AUTH).json() == {"entries": []}
+
+
+def test_blocklist_reflects_flood_remediation():
+    client = make_client(ok_handler)
+    client.post("/incidents", json=FLOOD, headers=AUTH)
+    entries = client.get("/blocklist", headers=AUTH).json()["entries"]
+    assert entries == ["ip:192.168.137.50"]
 
 
 def test_metrics_exposes_prometheus_counters_without_token():
