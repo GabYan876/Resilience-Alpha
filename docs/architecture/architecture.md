@@ -188,7 +188,7 @@ Conception, interprétations à trancher et découpage : [`../consigne-additionn
 |---|---|---|---|
 | `auth` (étendu) | Machine à états identifiant → visage → mot de passe, verrouillage (2 échecs → 5 min), habilitations | Compose, réseaux app/db | non |
 | `host-agent/camera` | Ouvre la caméra USB du PC Hôte, détecte et compare le visage (OpenCV YuNet + SFace) ; API locale + jeton | **natif Windows, hors Docker** (Docker Desktop ne voit pas l'USB) | non, joignable par `auth` seulement |
-| ESP8266 (`firmware/esp8266-led/`) | LED bicolore, `POST /led` (jeton), WiFi du point d'accès | matériel | non |
+| ESP8266 (`firmware/esp8266-led/`) | LED bicolore, `POST /led` (requête signée HMAC), WiFi du point d'accès | matériel | non |
 | Tables `roles`, `face_templates`, `login_lockouts` | Habilitations, gabarits chiffrés, blocages | BDD | non |
 
 Ports : `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` ; événements `auth.face.recognized|rejected`, `auth.lockout.started`, `auth.role.changed` vers Loki. Échec fermé : sans caméra ou agent, pas d'accès.

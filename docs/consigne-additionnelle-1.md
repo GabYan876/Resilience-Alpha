@@ -59,7 +59,7 @@ Contrainte technique majeure : **Docker Desktop (WSL2) ne voit pas une caméra U
 
 **Reconnaissance** *(proposition)* : OpenCV `FaceDetectorYN` (YuNet) + `FaceRecognizerSF` (SFace), modèles ONNX d'environ 40 Mo au total, CPU seul, aucune compilation dlib (écarte `face_recognition`, lourd à installer sur Windows). Seuil de similarité cosinus fixé sur les données de l'équipe, mesuré (taux de faux rejet / fausse acceptation) et consigné, comme pour le ML d'anomalies : pas de seuil « au hasard ».
 
-**ESP8266** *(proposition)* : firmware PlatformIO dans `firmware/esp8266-led/` (ouvrable dans CLion), deux GPIO pour la LED bicolore (résistances série), client WiFi du point d'accès. L'ESP8266 expose `POST /led` (`{"mode":"off|green_blink|green_solid|red_blink|red_solid"}`, jeton partagé) ; les durées (30 s, 10 clignotements) sont gérées **dans le firmware** pour que la LED reste cohérente si le réseau coupe. Pas de broker MQTT : un service de plus coûterait de la RAM pour rien.
+**ESP8266** *(proposition)* : firmware PlatformIO dans `firmware/esp8266-led/` (ouvrable dans CLion), deux GPIO pour la LED bicolore (résistances série), client WiFi du point d'accès. L'ESP8266 expose `POST /led` (`{"mode":"off|green_blink|green_solid|red_blink|red_solid"}`, secret partagé : requête signée HMAC-SHA256 avec compteur anti-rejeu) ; les durées (30 s, 10 clignotements) sont gérées **dans le firmware** pour que la LED reste cohérente si le réseau coupe. Pas de broker MQTT : un service de plus coûterait de la RAM pour rien.
 
 ```mermaid
 flowchart LR
