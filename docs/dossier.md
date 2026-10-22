@@ -397,17 +397,17 @@ résilience (DORA), continuité (PCA/PRA, RTO/RPO mesurés au §6), contrôle d'
 
 ## 8. Équipe et contributions réelles
 
-Répartition établie d'après l'historique Git (183 commits, 66 PR au 21/10, mise à jour au 22/10), détail
-et méthode dans [`repartition-reelle.md`](repartition-reelle.md). Elle mesure ce qui a été **livré**, pas
-ce que prévoyait le debrief ; les lignes ne mesurent ni l'effort ni la difficulté.
+Répartition établie d'après l'historique Git de `main` (au 22/10 au soir : environ 180 commits hors fusions, plus de 100 PR
+fusionnées), détail et méthode dans [`repartition-reelle.md`](repartition-reelle.md). Elle mesure ce qui a été
+**livré**, pas ce que prévoyait le debrief ; les lignes ne mesurent ni l'effort ni la difficulté.
 
 | Membre | Rôle prévu | Livré (preuves : PR) | Lignes ajoutées |
 |---|---|---|---|
-| Kevin | Tech lead, remédiation, ML | Architecture, moteur de remédiation, détecteur ML, auth JWT et passerelle Caddy, WAF et SIEM, SOPS, boucle de démo, gouvernance (EBIOS, PCA/PRA, NIS2/DORA, AMDEC), agent caméra et machine à états d'auth (consigne 1) | ~17 600 (101 commits) |
-| François | IA RAG, Red Team | Socle PostgreSQL et API métier (#8), pile d'observabilité (#9), assistant RAG isolé (#30), outillage partagé (#7), horodatage du flood | ~6 200 (18 commits) |
-| Gabriel | Front, Grafana | Front de paiement Pay-Now (#4, #21), habilitations et console `/admin/console` | ~9 200 (front importé puis adapté) |
-| Antoine | Backend | Sauvegarde et restauration PostgreSQL (#31, #36), sonde de transaction unifiée, mesures RTO/RPO de S4 (#41, #42), firmware ESP32 (#87) | ~1 000 |
-| Hugo | Infra, Cyber | Règle d'alerte Grafana SQLi (#55), runner Ansible et `Deploy.ps1` (#62) ; essais d'installation sur WSL puis Windows (19 et 20/10, sans trace Git) | ~510 |
+| Kevin | Tech lead, remédiation, ML | Architecture, moteur de remédiation, détecteur ML, auth JWT et passerelle Caddy, WAF et SIEM, SOPS, boucle de démo, alertes Grafana flood (#99), filet de sécurité du blocage WAF (#101), consigne 1 : machine à états d'auth, agent caméra, page `/admin`, LED signée HMAC (#72, #75, #94, #103), gouvernance de base (EBIOS, PCA/PRA, AMDEC), dossier | ~18 500 |
+| François | IA RAG, Red Team | Socle PostgreSQL et API métier (#8), pile d'observabilité (#9), assistant RAG isolé (#30), outillage partagé (#7), banc ER6 d'injection de prompt et scénario de chaos (#74), portage du firmware LED sur ESP32 et WiFi (#96, #98), assemblage du dossier (#84) | ~6 800 |
+| Gabriel | Front, Grafana, NIS2/DORA | Front de paiement Pay-Now (#4, #21), habilitations et console `/admin/console` (#93), NIS2/DORA relu et relié aux essais réels | ~10 400 (front importé puis adapté) |
+| Antoine | Backend | Sauvegarde et restauration PostgreSQL (#31, #36), sonde de transaction unifiée, mesures RTO/RPO de S4 (#41, #42), rejeu S4 et restauration à froid (#90, #91), EBIOS et PCA mis à jour après le chaos (#92), firmware ESP32 (#87), documentation des API (#100) | ~1 700 |
+| Hugo | Infra, Cyber | Règle d'alerte Grafana SQLi (#55), runner Ansible et `Deploy.ps1` (#62) ; essais d'installation sur WSL puis Windows (19 et 20/10, sans trace Git). Persistance du blocage et réseau de l'ESP32 prévus pour la consigne 1 : non livrés | ~500 |
 
 ```mermaid
 gantt
@@ -418,16 +418,19 @@ gantt
     section Kevin
     Architecture, remédiation, auth, passerelle     :2026-10-19, 1d
     ML, WAF, détection S4, EBIOS, PCA/PRA           :2026-10-20, 2d
-    SOPS, rotation, campagne flood, consigne 1      :2026-10-21, 2d
+    SOPS, rotation, campagne flood                  :2026-10-21, 1d
+    Consigne 1, alertes, rejeu, dossier             :2026-10-22, 1d
     section François
     BDD, API, observabilité, outillage              :2026-10-19, 1d
     Assistant RAG                                   :2026-10-20, 1d
+    Banc ER6, firmware ESP32, dossier               :2026-10-22, 1d
     section Gabriel
     Front Pay-Now                                   :2026-10-19, 2d
-    Habilitations back-office                       :2026-10-22, 1d
+    Habilitations, NIS2/DORA                        :2026-10-22, 1d
     section Antoine
     Sauvegarde et restauration BDD                  :2026-10-20, 1d
-    Sonde unifiée, mesures S4, firmware ESP32       :2026-10-21, 2d
+    Sonde unifiée, mesures S4                       :2026-10-21, 1d
+    Firmware ESP32, rejeu S4, EBIOS/PCA             :2026-10-22, 1d
     section Hugo
     Essais d'installation (échecs)                  :crit, 2026-10-19, 2d
     Alerting Grafana, Ansible, Deploy.ps1           :2026-10-21, 1d
