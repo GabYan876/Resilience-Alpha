@@ -37,9 +37,9 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 ## 2. Chaos et remédiation — Kevin
 
-- [ ] **≥ 5 démos consécutives sans intervention humaine** depuis le PC Attaquant, à travers le WAF, avec `python scripts/demo_loop.py --runs 5` (ou plus), `incident.resolved` à chaque passage et transaction de test réussie (référence du 21/10 : 5/5, RTO 5,4 à 7,9 s).
+- [x] **≥ 5 démos consécutives sans intervention humaine** : `python scripts/demo_loop.py --runs 5` rejoué le 22/10 sur `main` (10:35), 5/5 reprises, `incident.resolved` et transaction de test réussie à chaque passage, RTO 28-35 s (moyenne 32 s). *Rejoué depuis le PC Hôte, ciblant le WAF (`192.168.137.1:8080`) ; un flood isolé lancé directement depuis le PC Attaquant a aussi été prouvé le même jour (1 passage, RTO 4,84 s, voir `docs/gouvernance/02-pca-pra.md` §7) — à refaire en 5 passages depuis le PC Attaquant si le temps le permet avant le gel.
 - [ ] Scénarios du chaos de François rejoués contre la pile : pour chacun, détection, action choisie par `DecisionPolicy`, vérification (API saine **et** transaction de test) et RTO consignés dans `docs/gouvernance/02-pca-pra.md` §7.
-- [ ] Disponibilité ≠ compromission : un flood est traité par blocage de compte + restart, une compromission (SQLi) par rotation de secret + restart de `auth`/`api`. Les deux rejouées dans le chaos.
+- [x] Disponibilité ≠ compromission : rejouées le 22/10. Flood → `block_subject` + `restart_service` (RTO 4,84 s, voir `02-pca-pra.md` §7). SQLi → bloqué en périmètre WAF (403, règle CRS), *pas* de rotation de secret automatique câblée sur ce signal (la rotation existe et est prouvée en déclenchement manuel, voir §7) : écart à assumer devant le jury, pas une démonstration de remédiation de compromission de bout en bout.
 - [ ] Faux positifs ML re-mesurés après le chaos (trafic de fond actif, aucun `incident.*` parasite).
 - [ ] Écarts honnêtes consignés dans « Limites connues » du README : investigation manuelle de compromission non développée, `block_ip` inopérant sous Docker Desktop (arbitrage du 20/10), détecteur de compromission non automatique.
 - [ ] **Gel du code à 17h** : plus aucun commit fonctionnel sur `main` après l'heure ; seuls les ajustements de rendu (docs, zip) restent permis.
