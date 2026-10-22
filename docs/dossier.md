@@ -298,10 +298,8 @@ preuve existe.
 | ER2 SQLi | Investigation manuelle | Procédure et journal | À faire |
 | ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10) | Prouvé |
 | ER6 RAG | Isolation, lecture seule | Banc `attack/rag_prompt_injection/` : 9/10 | Prouvé avec réserve |
-| ER7 / ER8 back-office | Caméra 1:1, échec fermé | Voir §8 (consigne partielle) | Voir note |
-
-> **Note :** dans le document source, les lignes ER7 et ER8 portent encore « À FAIRE / aucune
-> preuve », antérieures aux essais caméra du 22/10 ; la matrice est à remettre à jour.
+| ER7 back-office | Caméra 1:1 + mot de passe + blocage 5 min | Parcours, 423 et 403 essayés via le WAF (22/10) ; pas d'attaque rejouée | En cours |
+| ER8 auth indisponible | Échec fermé | Agent arrêté : `identify` 503, `login` 403 (22/10) ; ESP8266 non essayé | En cours |
 
 ### 7.5 NIS2 / DORA
 
