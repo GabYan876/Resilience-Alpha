@@ -18,7 +18,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
   - [ ] `-Pres.pptx` (Gabriel)
   - [ ] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Gabriel)
   - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 19h, 9 pages, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
-  - [ ] `-Code.zip` sans secret : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
+  - [x] `-Code.zip` sans secret (fait par Kevin le 22/10, à revérifier : aucun `.env` ni clé age dans l'archive) : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
 - [ ] **Rejeu à froid sur le PC Hôte** (Hugo + Kevin), à refaire après la fusion LED :
   - [ ] démarrer Docker Desktop
   - [ ] vérifier l'IP du PC Hôte et `WAF_BIND_HOST` dans `.env` (le WAF refuse de démarrer si l'IP est absente)
