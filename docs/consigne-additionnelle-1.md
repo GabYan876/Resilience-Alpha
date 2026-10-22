@@ -1,7 +1,7 @@
 # Consigne additionnelle 1 — authentification renforcée du back-office
 
 Source : `docs/WorkShop 2026-27 M2 - Consigne Additionnelle 1.pdf` (reçue le 22/10). Le sujet précise : « soyez à l'écoute de toutes nouvelles consignes ».
-Statut : **analyse et conception, aucune ligne de code écrite.** Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
+Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, sans essai sur caméra réelle ; firmware, page `/admin`, persistance du blocage et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
 
 ## 1. Ce que demande la consigne
 

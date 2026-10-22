@@ -127,7 +127,7 @@ Lecture : Kevin occupe les trois jours sans interruption, François travaille su
 
 ## 7. Répartition de la consigne additionnelle 1 (prévisionnelle, 22/10)
 
-Cette section est **prévue, pas réalisée** : rien n'est livré, aucune ligne ci-dessous n'est une preuve. Conception : [`consigne-additionnelle-1.md`](consigne-additionnelle-1.md). Elle est à valider par l'équipe ; l'historique ci-dessus (§5) montre que Kevin porte déjà la majorité du code, donc le code neuf est réparti sur les autres, Kevin ne gardant que la machine à états, l'agent caméra, l'intégration et les revues. Variante du 22/10 : Antoine prend l'IoT (L3) à sa demande, Hugo reprend la persistance (L1) et les documents EBIOS/AMDEC/PCA.
+La répartition ci-dessous est **prévisionnelle** ; seul le lot de Kevin (L1 machine à états, L2 agent hôte) est livré, et l'état réel avec ses preuves figure dans le tableau « Avancement et preuves » plus bas. Les autres lignes restent des prévisions, pas des preuves. Conception : [`consigne-additionnelle-1.md`](consigne-additionnelle-1.md). Elle est à valider par l'équipe ; l'historique ci-dessus (§5) montre que Kevin porte déjà la majorité du code, donc le code neuf est réparti sur les autres, Kevin ne gardant que la machine à états, l'agent caméra, l'intégration et les revues. Variante du 22/10 : Antoine prend l'IoT (L3) à sa demande, Hugo reprend la persistance (L1) et les documents EBIOS/AMDEC/PCA.
 
 Échéances : **J0** = avant le gel (si maintenu, jeudi 17h), **J1** = après arbitrage du calendrier (à confirmer auprès de l'enseignant, voir `validation-jalon-22-10.md` §0bis). Tout se fait sur branche, une PR par lot, relue par Kevin.
 
@@ -140,6 +140,26 @@ Cette section est **prévue, pas réalisée** : rien n'est livré, aucune ligne 
 | François | L5 | 1. Scripts d'attaque `attack/` : force brute sur l'identifiant, présentation d'une photo, coupure de la caméra/de l'ESP8266 (garde-fous `ALLOWED_HOSTS`, depuis le PC Attaquant seulement). 2. Scénario de chaos correspondant et critères de reprise. 3. Rapport honnête : l'usurpation par photo réussit-elle ? | Journal d'attaque avec résultats réels, y compris les échecs de la défense | J1 |
 | Gabriel + Hugo | L6 | Gabriel : NIS2/DORA, Dossier PDF, Pres.pptx, pitch. Hugo : EBIOS (ER7/ER8, SS6, SO3), AMDEC, matrice, PCA (mode dégradé si caméra ou ESP en panne), mis à jour **avec les résultats réels** | Plus aucune ligne « À FAIRE » sans responsable ; aucune ligne « PROUVÉ » sans essai | J1 |
 | Kevin | Transverse | Arbitrage du gel, revue de chaque PR (SOLID, pas de logique dans les routes), `pytest` et `scripts/demo_loop.py --runs 5` verts avant chaque merge, mise à jour de ce tableau avec les preuves | `main` stable | en continu |
+
+### Avancement et preuves (22/10)
+
+Mis à jour par Kevin après le merge de la PR #72 (`fd95d3b`, commits `e4f71fb` et `ccd0d42`). Seul ce qui a été exécuté est marqué « prouvé » ; tout le reste est dit non prouvé.
+
+| Lot | Responsable | État | Preuve (commande ou constat) | Non prouvé / reste à faire |
+|---|---|---|---|---|
+| L1 machine à états | Kevin | **Livré** (PR #72) | `pytest` de `services/auth` : 39 tests verts (hors `test_metrics.py`, dépendance absente du venv local), `ruff` et `black` propres. Les scénarios de la table de la LED, le blocage 2 échecs / 5 min, la libération après 5 min, la remise à zéro après succès, l'usage unique de la reconnaissance et l'échec fermé sont couverts avec des fakes | Le test avec une vraie caméra |
+| Routes et câblage `auth` | Kevin | **Livré** (PR #72) | Image `auth` reconstruite, conteneur sain. Sans agent configuré : `POST /auth/admin/identify` → 503, `POST /auth/admin/login` sans visage → 403 ; le parcours client reste à 401 sur un mauvais mot de passe. `docker compose config` valide avec le `.env` | Les cas 423 + `Retry-After` en conditions réelles (testés seulement avec des fakes) |
+| L2 agent hôte | Kevin | **Livré, non essayé sur caméra** (PR #72) | Agent : 21 tests verts, dont un test de fumée sur les vrais modèles ONNX. Démarrage réel sur le port 8765 : 401 sans jeton, 503 sans caméra (échec fermé) | Un visage enrôlé reconnu, un autre rejeté, caméra éteinte après décision ; **seuil 0,363 non mesuré** ; RAM de l'agent non mesurée ; aucune détection de vivacité |
+| Non-régression du fil rouge | Kevin | **Prouvé** | `scripts/demo_loop.py --runs 5` : avant le merge, 5/5 reprises automatiques, RTO moyen 39 s, max 44 s ; après le merge sur `main`, 5/5, RTO moyen 39 s, max 41 s ; transaction de test réussie à chaque passage | |
+| RAG sur Ollama distant | Kevin (vérification) | **Prouvé** | `OLLAMA_URL=http://192.168.137.157:11434` : `llama3.1:8b` (8,0 B) et `nomic-embed-text` présents ; depuis le conteneur `rag-assistant`, `/ask` → 200 avec 5 sources (13,8 s), sans jeton → 401 | Pare-feu du PC Ollama (n'accepter que `192.168.137.1`) non vérifié |
+| L1 persistance | Hugo | À faire | Aucune. Le blocage est **en mémoire** (perdu au redémarrage de `auth`) en attendant `PostgresLockoutStore` | Tables, migration, adaptateur, test de redémarrage |
+| L3 réseau et déploiement | Hugo | À faire | Aucune. `Deploy.ps1` ne lance pas encore l'agent (`host-agent/camera/run.ps1` existe) | WiFi de l'ESP8266, pare-feu, lancement de l'agent |
+| L3 firmware | Antoine | À faire | Aucune ; le contrat `POST /led` est défini, le client existe côté `auth` (`HttpStatusLed`) mais n'est pas testé contre un ESP8266 | Firmware, câblage, essai sur banc |
+| L4 page `/admin` | Gabriel | À faire | Aucune ; les routes `/auth/admin/*` sont disponibles | Page, parcours, panneau Grafana `auth.*` |
+| L5 attaques | François | À faire | Aucune | Force brute, photo, coupure caméra / ESP8266, chaos |
+| L6 gouvernance | Hugo + Gabriel | À faire | Aucune | EBIOS, AMDEC, matrice, PCA, NIS2/DORA avec les résultats réels |
+
+Écarts connus à signaler au jury : rôles et habilitations non implémentés (tout compte avec gabarit et mot de passe valides obtient un jeton), pas de détection de vivacité, blocage non persistant.
 
 Ordre : L1 et L3 démarrent en parallèle (aucune dépendance matérielle croisée), L2 dès que la caméra est sur le PC Hôte, L4 après le contrat d'API de L1, L5 et L6 en dernier.
 
