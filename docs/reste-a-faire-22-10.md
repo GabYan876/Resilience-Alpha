@@ -15,10 +15,10 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 
 - [x] **Fusionner le correctif LED** (PR #103, `2dabca0`, Kevin, 22/10) : la branche `origin/francois/webserver` porte `a1e91ac` (signature par paramètres d'URL, `espressif32@8.0.0`) et `4050edb` (essai de bout en bout sur banc), absents de `main`. Sur `main`, `services/auth/app/adapters/esp_led.py` envoie `X-Counter` / `X-Signature` en en-têtes, que le WebServer de l'ESP32 ne restitue pas : la LED est refusée en 401. Faire une PR, `pytest` de `auth` vert, reflasher si besoin, fusionner.
 - [ ] **Livrables** dans `Workshop2026-M2-G2/` :
-  - [ ] `-Pres.pptx` (Gabriel)
-  - [ ] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Gabriel)
+  - [x] `-Pres.pptx` (Kevin, 22/10, Canva, 12 diapos ; chiffres alignés sur le rejeu : RTO moyen 31 s, max 34 s)
+  - [x] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Kevin, 22/10)
   - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 19h, 9 pages, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
-  - [x] `-Code.zip` sans secret (fait par Kevin le 22/10, à revérifier : aucun `.env` ni clé age dans l'archive) : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
+  - [x] `-Code.zip` sans secret (fait et vérifié par Kevin le 22/10 : aucun `.env` ni clé age dans l'archive) : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
 - [ ] **Rejeu à froid sur le PC Hôte** (Hugo + Kevin), à refaire après la fusion LED :
   - [ ] démarrer Docker Desktop
   - [ ] vérifier l'IP du PC Hôte et `WAF_BIND_HOST` dans `.env` (le WAF refuse de démarrer si l'IP est absente)
@@ -42,10 +42,10 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 - [x] `docs/gouvernance/03-nis2-dora.md` §4 point 3 : dit « firmware compilé mais non essayé sur banc », alors que la matrice (ER8) et le dossier disent flashé et essayé le 22/10.
 - [x] `docs/validation-jalon-22-10.md` (§7 et §8 remplis, responsables proposés à valider) : cocher ce qui est fait (L2 caméra, remédiation, etc.) et remplir le §8 « Écarts restants » avec un responsable par ligne.
 - [x] `docs/repartition-reelle.md` §7 (L3 firmware, L5, L6) : L3 firmware (« non flashé »), L5 et L6 (« à faire ») à mettre à jour.
-- [ ] `docs/gouvernance/04-matrice-tracabilite.md` : ligne ER2 encore « À FAIRE » (investigation manuelle de la SQLi) ; garder « À FAIRE » avec responsable ou passer en « NON DÉMONTRABLE » expliqué.
+- [x] `docs/gouvernance/04-matrice-tracabilite.md` : ligne ER2 encore « À FAIRE » (investigation manuelle de la SQLi) ; garder « À FAIRE » avec responsable ou passer en « NON DÉMONTRABLE » expliqué.
 - [x] `services/db/README.md` « Reste à implémenter » : points périmés (auth n'est plus un squelette, RPO / S4 mesurés).
 - [x] `README.md` « Limites connues » : retirer « À compléter au fil du sprint » et ajouter les limites ci-dessous.
-- [ ] Statuts « à valider par Antoine / l'équipe » à solder dans EBIOS, AMDEC et PCA/PRA.
+- [x] Statuts « à valider par Antoine / l'équipe » à solder dans EBIOS, AMDEC et PCA/PRA.
 - [ ] Vérifier que `docs/dossier.md` §8 cite le bon numéro de PR pour les habilitations (#93 ou autre).
 - [ ] `README.md`, `architecture.md` et matrice alignés avec la pile réellement déployée.
 

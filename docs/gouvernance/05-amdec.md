@@ -18,7 +18,7 @@ Front → WAF → API métier → auth / BDD ; moteur de remédiation ; observab
 
 ## Tableau
 
-Cotation du 20/10 : **proposition** (Kevin) à valider par Antoine et l'équipe. La colonne D cite la
+Cotation du 20/10 : **proposition** (Kevin), relue par Kevin le 22/10 (équipe indisponible). La colonne D cite la
 preuve disponible ; sans preuve, D vaut 3 ou 4. Les lignes `db-recovery` et « Corruption » sont ajoutées
 avec le scénario S4. RPN = G × F × D ; en gras, les RPN ≥ 24 (seuil d'action indicatif).
 

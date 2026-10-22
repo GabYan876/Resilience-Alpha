@@ -1,6 +1,6 @@
 # PCA / PRA, Resilience-Alpha
 
-Statut : mise à jour du 22/10 ; mesures S4 sur pile complète puis pile S4 isolée, et exercice de restauration à froid isolé. Les autres RTO/RPO restent à valider. Responsable : Antoine.
+Statut : mise à jour du 22/10 ; mesures S4 sur pile complète puis pile S4 isolée, et exercice de restauration à froid isolé. Les autres RTO/RPO ne sont pas mesurés (limite assumée). Relu par Kevin le 22/10. Responsable initial : Antoine.
 
 ## 1. Périmètre et hypothèses
 - Hébergement : PC Hôte unique (Docker Compose). Pas de site de secours réel : à écrire comme limite.
@@ -34,7 +34,7 @@ Mesure du RTO : pour une attaque, **début horodaté de l'attaque → `incident.
 
 ## 4. Responsabilités
 
-Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles décrivent ce que l'équipe fait après (proposition à valider).
+Pendant l'incident, **aucune intervention humaine** (Zero-Touch). Les rôles décrivent ce que l'équipe fait après (proposition, relue par Kevin le 22/10).
 
 | Rôle | Qui | Responsabilité après l'incident |
 |---|---|---|

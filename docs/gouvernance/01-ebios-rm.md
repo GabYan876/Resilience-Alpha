@@ -1,6 +1,6 @@
 # EBIOS Risk Manager, Resilience-Alpha
 
-Statut : ateliers 1 à 5 rédigés le 20/10 sous forme de **propositions à valider par Antoine**. Responsable : Antoine. Données techniques : Hugo, Kevin.
+Statut : ateliers 1 à 5 rédigés le 20/10 sous forme de propositions, relues et reprises par Kevin le 22/10 (équipe indisponible). Responsable initial : Antoine. Données techniques : Hugo, Kevin.
 
 ## Atelier 1, Cadrage et socle de sécurité
 
