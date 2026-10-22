@@ -108,12 +108,12 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 
 | Lot | Contenu | Porteur proposé | Dépend de |
 |---|---|---|---|
-| L1 | Machine à états d'authentification, verrouillage en base, ports | Antoine (backend) + Kevin (architecture) | décisions §2 |
+| L1 | Machine à états d'authentification (Kevin), tables et verrouillage en base (Hugo), ports | Kevin + Hugo | décisions §2 |
 | L2 | Agent hôte caméra + reconnaissance, mesure des seuils | Kevin | caméra sur le PC Hôte |
-| L3 | Firmware ESP8266 (CLion + PlatformIO) + test sur banc | Hugo (réseau/WiFi) | matériel + WiFi du PA |
+| L3 | Firmware ESP8266 (CLion + PlatformIO) + test sur banc ; WiFi et pare-feu | Antoine (firmware), Hugo (réseau) | matériel + WiFi du PA |
 | L4 | Page `/admin`, habilitations, enrôlement | Gabriel | L1 |
 | L5 | Scénarios d'attaque physique/IT (usurpation, force brute, DoS ESP), chaos | François | L1 à L3 |
-| L6 | EBIOS, AMDEC, matrice, NIS2/DORA, PCA, dossier | Antoine + Gabriel | tout |
+| L6 | EBIOS, AMDEC, matrice, PCA (Hugo) ; NIS2/DORA, dossier (Gabriel) | Hugo + Gabriel | tout |
 
 Tâches détaillées, livrables et échéances par personne : [`repartition-reelle.md`](repartition-reelle.md) §7.
 

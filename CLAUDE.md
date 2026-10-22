@@ -111,12 +111,12 @@ Consigne additionnelle 1 (prévisionnelle, à valider par l'équipe ; détail da
 
 | Qui | Lot | Périmètre |
 |---|---|---|
-| Antoine | L1 | Machine à états d'authentification, tables `roles` / `face_templates` / `login_lockouts`, ports + fakes, tests, README `auth` |
-| Kevin | L2 + transverse | Agent hôte caméra et reconnaissance (seuil, RAM), revue des PR, arbitrage du gel |
-| Hugo | L3 | Firmware ESP8266 (CLion + PlatformIO), câblage LED, WiFi du point d'accès, déploiement de l'agent |
+| Hugo | L1 (persistance) + L3 (réseau) | Tables `roles` / `face_templates` / `login_lockouts` et `LockoutStore`, WiFi du point d'accès, pare-feu de l'ESP8266, déploiement de l'agent ; EBIOS, AMDEC, PCA mis à jour |
+| Kevin | L1 (machine à états) + L2 + transverse | Machine à états d'authentification, ports + fakes, agent hôte caméra et reconnaissance (seuil, RAM), revue des PR, arbitrage du gel |
+| Antoine | L3 (firmware) | Firmware ESP8266 (CLion + PlatformIO), câblage LED, test sur banc, README `auth` |
 | Gabriel | L4 + L6 | Page `/admin`, parcours de connexion, panneau Grafana `auth.*` ; NIS2/DORA, pitch, Pres.pptx |
 | François | L5 | Attaques (force brute, photo, coupure caméra/ESP8266), chaos, Dossier PDF |
-| Antoine + Gabriel | L6 | EBIOS, AMDEC, matrice, PCA mis à jour avec les résultats réels |
+| Gabriel + Hugo | L6 | NIS2/DORA, dossier, pitch (Gabriel) ; EBIOS, AMDEC, matrice, PCA avec les résultats réels (Hugo) |
 
 ## Jalons
 
