@@ -46,9 +46,9 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 ## 3. Restauration et backend — Antoine
 
-- [ ] S4 (corruption BDD) rejoué dans le chaos, RTO et RPO consignés (référence du 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
-- [ ] Restauration à froid rejouée en fin de chaos : arrêt complet puis redémarrage en une commande, transaction de test réussie.
-- [ ] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée.
+- [x] S4 (corruption BDD) rejoué automatiquement le 22/10 dans une pile S4 locale jetable isolée : 1/1 reprise, RTO 6,38 s de `Tc` à `incident.resolved` (détection 4,83 s, remédiation 1,55 s), RPO 108,78 s ; API saine et transaction de sonde réussie. Détails, horodatages et limites du périmètre dans [`s4-corruption-bdd.md`](procedures/s4-corruption-bdd.md) et [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7.
+- [x] Restauration à froid rejouée en fin de chaos : pile complète isolée arrêtée puis relancée en une commande, transaction réussie ; volumes PostgreSQL/sauvegardes conservés. Preuve et chronométrages (non assimilés à un RTO) dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 et [`restauration-a-froid.md`](procedures/restauration-a-froid.md).
+- [x] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée (ER4 rétrogradé à `EN COURS`, S1 corrigé en `block_subject`).
 - [ ] Doc d'API à jour (voir §0), tests `pytest` verts avant le gel.
 
 ## 4. Front, dashboard, rendus — Gabriel
@@ -60,9 +60,9 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 ## 5. Attaque et RAG — François
 
-- [ ] **Scénario de chaos écrit** (liste des pannes, ordre, critères de reprise) et rejoué ; chaque attaque lancée uniquement depuis le PC Attaquant vers le PC Hôte (garde-fous `ALLOWED_HOSTS`, jamais le campus, un autre groupe ni Internet).
-- [ ] RAG : ER6 prouvé sur plusieurs scénarios d'injection de prompt (pas seulement 1 scénario / 3 questions), modèle de démo = `llama3.1:8b` (≤ 8B), Ollama sur le PC Linux dédié si RAM < 32 Go, lecture seule vérifiée.
-- [ ] Dossier PDF (8–12 p.) assemblé : architecture, 5 piliers, essais réels avec chiffres, limites.
+- [x] **Scénario de chaos écrit** (liste des pannes, ordre, critères de reprise) et rejoué ; toute attaque ne vise que le PC Hôte (garde-fous `ALLOWED_HOSTS`, jamais le campus, un autre groupe ni Internet). Scénario : [`docs/procedures/chaos-engineering.md`](procedures/chaos-engineering.md) (S1 flood auto, S2 SQLi + déclenchement manuel `compromise`, S4 corruption BDD). Rejeu 22/10 depuis le PC Attaquant à travers le WAF consigné dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 : S1 flood RTO 4,84 s, S2 SQLi 6/6 bloquées (403) ; S4 non rejoué le 22/10 (derniers passages le 21/10, voir §7). Les attaques S1 et S2 viennent du PC Attaquant ; `demo_loop.py` est lancé depuis le PC Hôte. `demo_loop.py --runs 5` rejoué après merge : 5/5, RTO moyen 32 s, max 36 s (consigné dans [`repartition-reelle.md`](repartition-reelle.md)).
+- [x] RAG : ER6 prouvé sur plusieurs scénarios d'injection de prompt (banc [`attack/rag_prompt_injection/`](../attack/rag_prompt_injection/) : 6 scénarios, 10 questions, 2 passages, `temperature=0`). Modèle de démo `llama3.1:8b` (≤ 8B) : 9/10 repoussées, cède sur l'injection conditionnelle ciblée (06) ; `llama3.2:3b` 5/10. Ollama sur le PC Linux dédié (`192.168.137.157:11434`), conteneur en lecture seule avec les restrictions du Compose. Détail et risque résiduel dans [`04-matrice-tracabilite.md`](gouvernance/04-matrice-tracabilite.md) (ER6) et « Limites connues » du README.
+- [ ] Dossier PDF (8–12 p.) assemblé : architecture, 5 piliers, essais réels avec chiffres, limites. Source Markdown : [`dossier.md`](dossier.md) ; reste l'export PDF et le contrôle du nombre de pages.
 - [ ] `Workshop2026-M2-G<n>-Code.zip` : sources, infra, scripts d'attaque/ML, tests, doc d'API, README, **sans secret** (voir §1).
 
 ## 6. Cohérence d'intégration — Kevin
