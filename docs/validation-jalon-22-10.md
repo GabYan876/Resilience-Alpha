@@ -87,10 +87,10 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 | Écart | Responsable | Pourquoi c'est assumé |
 |---|---|---|
-| Consigne additionnelle 1 : persistance du blocage, des habilitations et des gabarits (lot L1, en mémoire) | Hugo | Reçue le jour du chaos ; limite assumée, documentée dans le README |
-| Consigne additionnelle 1 : pas de détection de vivacité (une photo peut tromper la caméra) | François | Hors consigne ; scénario d'attaque à consigner avec son résultat réel |
+| Consigne additionnelle 1 : persistance du blocage, des habilitations et des gabarits (lot L1, en mémoire) | Kevin | Reçue le jour du chaos ; limite assumée, documentée dans le README |
+| Consigne additionnelle 1 : pas de détection de vivacité (une photo peut tromper la caméra) | Kevin | Hors consigne ; scénario d'attaque à consigner avec son résultat réel |
 | Consigne additionnelle 1 : coupure réseau de l'ESP32 en cours de séquence non essayée | Kevin | Les durées sont gérées dans le firmware, essai à refaire si le temps le permet |
 | Compromission (S2) non détectée automatiquement, rotation de secret en déclenchement manuel | Kevin | Voir « Limites connues » du `README.md` |
-| `block_ip` inopérant sous Docker Desktop, blocage par compte (`block_subject`) à la place | Hugo | Arbitrage du 20/10 |
-| Rejeu sur clone neuf (`Deploy.ps1`) et depuis le PC Attaquant | Hugo + Kevin | Rejeu du 22/10 18h55 : 5/5 après reset, pile déjà démarrée |
-| Livrables : `Pres.pptx`, `VidChrono.mp4` (Gabriel), `Dossier.pdf` régénéré (François), `Code.zip` sans secret | Gabriel, François | Remise avant 23h59 |
+| `block_ip` inopérant sous Docker Desktop, blocage par compte (`block_subject`) à la place | Kevin | Arbitrage du 20/10 |
+| Rejeu sur clone neuf (`Deploy.ps1`) et depuis le PC Attaquant | Kevin | Rejeu du 22/10 18h55 : 5/5 après reset, pile déjà démarrée |
+| Livrables : `Pres.pptx`, `VidChrono.mp4` (Gabriel), `Dossier.pdf` régénéré (François), `Code.zip` sans secret | Kevin | Remise avant 23h59 |
