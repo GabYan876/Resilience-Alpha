@@ -46,9 +46,9 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 ## 3. Restauration et backend — Antoine
 
-- [ ] S4 (corruption BDD) rejoué dans le chaos, RTO et RPO consignés (référence du 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
-- [ ] Restauration à froid rejouée en fin de chaos : arrêt complet puis redémarrage en une commande, transaction de test réussie.
-- [ ] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée.
+- [x] S4 (corruption BDD) rejoué automatiquement le 22/10 dans une pile S4 locale jetable isolée : 1/1 reprise, RTO 6,38 s de `Tc` à `incident.resolved` (détection 4,83 s, remédiation 1,55 s), RPO 108,78 s ; API saine et transaction de sonde réussie. Détails, horodatages et limites du périmètre dans [`s4-corruption-bdd.md`](procedures/s4-corruption-bdd.md) et [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7.
+- [x] Restauration à froid rejouée en fin de chaos : pile complète isolée arrêtée puis relancée en une commande, transaction réussie ; volumes PostgreSQL/sauvegardes conservés. Preuve et chronométrages (non assimilés à un RTO) dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 et [`restauration-a-froid.md`](procedures/restauration-a-froid.md).
+- [x] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée (ER4 rétrogradé à `EN COURS`, S1 corrigé en `block_subject`).
 - [ ] Doc d'API à jour (voir §0), tests `pytest` verts avant le gel.
 
 ## 4. Front, dashboard, rendus — Gabriel

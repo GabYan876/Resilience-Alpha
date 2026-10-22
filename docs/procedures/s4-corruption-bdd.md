@@ -29,7 +29,9 @@ RPO et RTO. Le détecteur signale `database_corruption` tout seul (invariants du
 - Incident `resolved` ; la transaction de sonde passe ; les données supprimées sont revenues.
 - **RPO mesuré** = `Tc` − date de l'archive restaurée (champ `archive` de `database.restore.completed`).
   Cible ≤ 5 min.
-- **RTO mesuré** = durée entre `incident.detected` et `incident.resolved`.
+- **RTO mesuré** = durée entre `Tc` (commit de la corruption, horodaté immédiatement après le `COMMIT`)
+  et `incident.resolved`. Consigner aussi `incident.detected` → `incident.resolved` pour isoler la
+  durée de remédiation.
 - Aucune intervention humaine pendant l'étape 4.
 
 ## Échecs attendus (à ne pas masquer)
@@ -100,3 +102,38 @@ complètent sur une pile représentative de la démo réelle. Le RPO varie avec 
 dernière sauvegarde planifiée (300 s d'intervalle), pas un écart imposé comme le 20/10 : le pire cas
 théorique reste l'intervalle de sauvegarde (300 s) + la marge (15 s) ≈ 5 min 15 s, toujours légèrement
 au-dessus de la cible de 5 min. Reporté dans `docs/gouvernance/02-pca-pra.md` §2/§3/§7/§8.
+
+## Rejeu S4 dans le contexte chaos du 22/10 (pile locale jetable)
+
+Un passage automatique a été exécuté sur une pile S4 dédiée : PostgreSQL, API, `db-recovery`,
+remédiation et détecteur, avec Prometheus et Loki démarrés. Les projets Compose, conteneurs,
+réseaux et volumes portaient tous le préfixe `ra-s4-chaos-20261022` ; aucun volume ou réseau
+de la pile active (`resilience-alpha`) ni de `website` n'était monté ou rejoint. L'injection
+visait uniquement ce conteneur PostgreSQL jetable. Le WAF, Alloy et Grafana n'ont pas été lancés :
+ce passage valide le scénario S4 automatisé, pas une attaque depuis le PC Attaquant ni la collecte
+des journaux dans Loki.
+
+Avant l'injection, la transaction de référence a réussi ; l'intégrité comptait 1 transaction et
+2 écritures équilibrées. L'archive propre `backup-20261022T113339.759793Z.dump` a été créée,
+puis la corruption a été appliquée aux deux tables fictives (`DELETE 2` dans `ledger_entries`,
+`DELETE 1` dans `transactions`). `Tc`, relevé immédiatement après le commit, est
+`2026-10-22T11:35:28.536602Z`.
+
+| Passage | Incident / résultat | RTO (`Tc` → `incident.resolved`) | RPO (`Tc` − archive restaurée) |
+|---|---|---|---|
+| 1 (22/10, pile S4 jetable) | détection automatique ; restauration et redémarrage réussis ; API saine et transaction de sonde réussie | **6,376839 s** (détection : 4,826715 s ; `incident.detected` → résolution : 1,550124 s) | **108,776809 s** |
+
+Preuves : incident `719c01d79127434898a87be13d2bdb5f` ; `incident.detected` à
+`11:35:33.363317Z` (`source=db-recovery:integrity`), `database.restore.completed` avec
+`backup-20261022T113339.759793Z.dump`, `verification.completed` à `11:35:34.913408Z`
+(`api_healthy=true`, `probe_transaction_ok=true`) et `incident.resolved` à
+`11:35:34.913441Z`. Après la restauration et la sonde intégrée, une vérification explicite
+supplémentaire a également réussi (`OK santé + transaction réglée (100 centimes)`), avec
+3 transactions, 6 écritures et 0 transaction déséquilibrée. Les événements viennent des journaux
+JSON stdout horodatés des conteneurs isolés ; Alloy n'étant pas lancé, ils ne sont pas présentés
+comme des preuves Loki.
+
+Le RTO est calculé entre `Tc` et `incident.resolved.at` ; le RPO entre `Tc` et l'horodatage UTC
+dans le nom de l'archive effectivement restaurée. Ce passage unique confirme le mécanisme mais
+ne constitue pas une garantie statistique. Résultats reportés dans
+[`../gouvernance/02-pca-pra.md`](../gouvernance/02-pca-pra.md) §2/§3/§5/§7/§8.
