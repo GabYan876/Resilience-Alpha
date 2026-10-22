@@ -418,9 +418,10 @@ gantt
     title Travail réellement commité (19/10 au 22/10/2026)
     dateFormat YYYY-MM-DD
     axisFormat %d/%m
+    tickInterval 1day
     todayMarker off
     section Kevin
-    Architecture, remédiation, auth, passerelle     :2026-10-19, 1d
+    Architecture, auth, passerelle   :2026-10-19, 1d
     ML, WAF, détection S4, EBIOS, PCA/PRA           :2026-10-20, 2d
     SOPS, rotation, campagne flood                  :2026-10-21, 1d
     Consigne 1, alertes, rejeu, dossier             :2026-10-22, 1d

@@ -80,6 +80,7 @@ gantt
     title Travail réel par personne (19/10 au 22/10/2026)
     dateFormat YYYY-MM-DD
     axisFormat %d/%m
+    tickInterval 1day
     todayMarker off
 
     section Kevin
