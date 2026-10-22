@@ -493,7 +493,7 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 - Démonstration rejouable : `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5`.
 - Essai à froid du 22/10 : clone neuf de `main`, volumes des deux piles supprimés (`down -v`), `Deploy.ps1 -RenderEnv`
   sans erreur (12 services en marche, transaction de 100 centimes réglée), puis 5/5 reprises depuis le PC Hôte et
-  5/5 depuis le PC Attaquant. L'agent caméra du back-office n'est pas lancé par `Deploy.ps1` (voir `README.md`).
+  5/5 depuis le PC Attaquant. `Deploy.ps1` lance aussi l'agent caméra du back-office s'il est installé ; sur un clone neuf sans enrôlement il avertit et le back-office reste fermé (voir `README.md`).
 - Tout le code (y compris généré) est compris et explicable par son auteur devant le jury.
 
 ---

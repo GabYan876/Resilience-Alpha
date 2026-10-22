@@ -116,7 +116,7 @@ docker compose --env-file .env -f infra/compose/docker-compose.observability.yml
 
 Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
-Back-office (consigne 1) : l'agent caméra n'est **pas** lancé par `Deploy.ps1`. Sur le PC Hôte, après installation décrite dans `host-agent/camera/README.md` (venv, modèles, clé et enrôlement), le démarrer avec `.\host-agent\cameraun.ps1` (port 8765 ; il relit `HOST_AGENT_TOKEN` dans le `.env`), puis redémarrer `auth` ; sans lui, la connexion du back-office reste fermée (échec fermé).
+Back-office (consigne 1) : `Deploy.ps1` lance l'agent caméra natif (port 8765) s'il est installé sur le PC Hôte (venv, clé `data/template.key` et `HOST_AGENT_TOKEN` dans le `.env`, voir `host-agent/camera/README.md` pour l'installation et l'enrôlement). Sinon il avertit sans échouer et la connexion du back-office reste fermée (échec fermé). Lancement manuel possible : `.\host-agent\camera\run.ps1`.
 
 Déploiement en une commande (Windows + Docker Desktop, `.env` déjà présent) : `.\infra\ansible\Deploy.ps1` enchaîne contrôle du `.env`, modèle ML si absent, socle, observabilité, vérification Ansible et transaction de test. Détails et limites : `infra/ansible/README.md`.
 
