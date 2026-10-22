@@ -71,3 +71,8 @@ Thumbs.db
 # Livrables générés
 *.zip
 *.mp4
+
+# Agent hôte caméra : modèles ONNX téléchargés, gabarits biométriques chiffrés et clé (jamais dans Git)
+host-agent/camera/models/*.onnx
+host-agent/camera/data/
+*.tpl

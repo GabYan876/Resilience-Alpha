@@ -106,6 +106,12 @@ services:
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-7200}
       WELCOME_BALANCE_CENTS: ${WELCOME_BALANCE_CENTS:-100000}
+      # Connexion du back-office (consigne 1) : agent caméra natif du PC Hôte et LED ESP8266.
+      # Variables vides = connexion de back-office fermée (échec fermé), le reste est inchangé.
+      HOST_AGENT_URL: ${HOST_AGENT_URL:-}
+      HOST_AGENT_TOKEN: ${HOST_AGENT_TOKEN:-}
+      LED_URL: ${LED_URL:-}
+      LED_TOKEN: ${LED_TOKEN:-}
     volumes:
       - jwt-secret-live:/run/secrets:ro
     healthcheck:

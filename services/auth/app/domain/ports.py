@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.domain.models import Credentials, NewUser, Profile
+from app.domain.models import Credentials, LedMode, LockoutRecord, NewUser, Profile
 
 
 class UserRepository(Protocol):
@@ -38,3 +39,50 @@ class EventPublisher(Protocol):
     """Événement JSON structuré (`service`, `trace_id`, `event`) vers Loki. Jamais de secret."""
 
     def publish(self, event: str, trace_id: str, **data: object) -> None: ...
+
+
+class Clock(Protocol):
+    def now(self) -> datetime:
+        """Heure courante, avec fuseau (injectée pour tester blocage et expirations)."""
+        ...
+
+
+class CameraControl(Protocol):
+    """Allume/éteint la caméra de l'agent hôte. Lève `FaceCheckUnavailable` si injoignable."""
+
+    async def start(self) -> None: ...
+
+    async def stop(self) -> None: ...
+
+
+class FaceVerifier(Protocol):
+    async def verify(self, identifier: str) -> bool:
+        """Comparaison 1:1 avec le gabarit de `identifier` (jamais de recherche 1:N).
+
+        Lève `FaceCheckUnavailable` si l'agent est en panne ; `False` si visage absent ou différent.
+        """
+        ...
+
+
+class StatusLed(Protocol):
+    async def set(self, mode: LedMode) -> None:
+        """Peut échouer (ESP8266 injoignable) : l'accès ne doit pas en dépendre."""
+        ...
+
+
+class LockoutStore(Protocol):
+    async def get(self, identifier: str) -> LockoutRecord: ...
+
+    async def save(self, record: LockoutRecord) -> None: ...
+
+    async def clear(self, identifier: str) -> None: ...
+
+
+class FaceSessionStore(Protocol):
+    """Mémorise « visage reconnu » entre l'étape caméra et l'étape mot de passe."""
+
+    async def grant(self, identifier: str, expires_at: datetime) -> None: ...
+
+    async def consume(self, identifier: str, now: datetime) -> bool:
+        """Usage unique : vrai une seule fois, et seulement avant l'expiration."""
+        ...
