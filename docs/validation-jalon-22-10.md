@@ -21,8 +21,9 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 - [ ] **Arbitrage calendrier (Kevin + équipe)** : gel de 17h maintenu ou décalé ? Demander à l'enseignant. Sans réponse, viser la tranche minimale démontrable (§8 de l'analyse).
 - [ ] Interprétations validées (§2 de l'analyse) : « recommencer 1 fois puis bloqué 5 min, etc. », compteur d'échecs, blocage par identifiant, vérification 1:1.
-- [ ] Matériel disponible : caméra USB sur le PC Hôte (Kevin), ESP8266 + LED bicolore + résistances (Hugo), WiFi du point d'accès joignable par l'ESP8266.
-- [ ] Choix agent hôte natif (option A) confirmé, RAM de l'agent mesurée sur le PC Hôte.
+- [x] Caméra USB sur le PC Hôte (Kevin) : UGREEN, détectée et utilisée le 22/10 (voir `repartition-reelle.md` §7, L2).
+- [ ] ESP8266 + LED bicolore + résistances (Hugo), WiFi du point d'accès joignable par l'ESP8266.
+- [x] Choix agent hôte natif (option A) confirmé, RAM de l'agent mesurée sur le PC Hôte (environ 198 Mo caméra allumée, 22/10).
 - [ ] Consentement écrit des membres enrôlés ; aucun gabarit hors du PC Hôte (§5 de l'analyse).
 - [ ] Lots L1 à L6 attribués (§7 de l'analyse) ; code sur branche, merge seulement si `pytest` et `demo_loop.py --runs 5` restent verts.
 
@@ -78,7 +79,7 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 - [ ] Clip 60 s sans coupe livré (§4).
 - [ ] Code gelé à 17h, `main` stable, PR ouvertes = 0 (§2, §6).
 - [ ] Remise complète avant **23h59** : `-Dossier.pdf`, `-Pres.pptx`, `-VidChrono.mp4`, `-Code.zip` sans secret.
-- [ ] Consigne additionnelle 1 : soit tranche minimale démontrée (identifiant → caméra → LED → mot de passe → blocage 5 min) avec preuve, soit écart consigné au §8 avec responsable. Aucun point « prouvé » sans essai réel sur le PC Hôte.
+- [ ] Consigne additionnelle 1 *(partiel au 22/10 : identifiant → caméra → mot de passe → blocage 5 min prouvés via le WAF ; LED et ESP8266 non faits, blocage non persistant)* : soit tranche minimale démontrée (identifiant → caméra → LED → mot de passe → blocage 5 min) avec preuve, soit écart consigné au §8 avec responsable. Aucun point « prouvé » sans essai réel sur le PC Hôte.
 
 ## 8. Écarts restants pour le vendredi
 
