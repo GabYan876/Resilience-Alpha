@@ -312,7 +312,7 @@ preuve existe.
 | ER1 crash | Health check → redémarrage | Essai réel du 20/10 : reprise en 34 s | En cours (à rejouer en boucle) |
 | ER2 SQLi | WAF | 12/12 bloquées le 21/10, 6/6 le 22/10 depuis le PC Attaquant | Prouvé |
 | ER2 SQLi | Rotation de secrets | `POST /incidents kind=compromise` | Prouvé en déclenchement manuel |
-| ER2 SQLi | Investigation manuelle | Procédure et journal | À faire |
+| ER2 SQLi | Investigation manuelle | Aucune procédure écrite | Non démontrable, limite assumée |
 | ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10), sans essai d'exploitation | En cours |
 | ER6 RAG | Isolation, lecture seule | Banc `attack/rag_prompt_injection/` : 9/10 | Prouvé avec réserve |
 | ER7 back-office | Caméra 1:1 + mot de passe + blocage 5 min | Parcours, 423 et 403 essayés via le WAF (22/10) ; pas d'attaque rejouée | En cours |
