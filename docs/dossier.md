@@ -262,7 +262,7 @@ Niveaux de gravité : échelle de 1 à 4 commune à EBIOS et à l'AMDEC.
 | ER5 Faux positif / contournement ML | 2 Significative | SS5 | Seuil appris, 3 confirmations, vérification avant clôture | Moyen : score saturant, seuil à recalibrer |
 | ER6 Abus du RAG | 2 Significative | Injection de prompt | Réseau isolé, lecture seule, aucun outil | Moyen : défense par le prompt non étanche (9/10) |
 | ER7 Accès frauduleux au back-office | 4 Critique | SO3 — script à écrire | Caméra 1:1 + mot de passe + blocage | Élevé : vivacité non couverte, consigne partielle |
-| ER8 Authentification indisponible | 2 Significative | Panne caméra / ESP8266 | Échec fermé | Non essayé côté ESP8266 |
+| ER8 Authentification indisponible | 2 Significative | Panne caméra / ESP32 | Échec fermé | Firmware ESP32 compilé ; comportement matériel non essayé |
 
 Source : [`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md), ateliers 1 et 5.
 
@@ -301,7 +301,7 @@ preuve existe.
 | ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10), sans essai d'exploitation | En cours |
 | ER6 RAG | Isolation, lecture seule | Banc `attack/rag_prompt_injection/` : 9/10 | Prouvé avec réserve |
 | ER7 back-office | Caméra 1:1 + mot de passe + blocage 5 min | Parcours, 423 et 403 essayés via le WAF (22/10) ; pas d'attaque rejouée | En cours |
-| ER8 auth indisponible | Échec fermé | Agent arrêté : `identify` 503, `login` 403 (22/10) ; ESP8266 non essayé | En cours |
+| ER8 auth indisponible | Échec fermé | Agent arrêté : `identify` 503, `login` 403 (22/10) ; firmware ESP32 compilé, non essayé sur banc | En cours |
 
 ### 7.5 NIS2 / DORA
 
@@ -337,8 +337,8 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
   **partielle au 22/10**. Fait : identifiant → caméra USB (agent hôte natif, OpenCV YuNet/SFace,
   seuil 0,363, ~198 Mo de RAM) → mot de passe, blocage après une reprise, échec fermé si caméra ou
   agent coupé, prouvé en réel via le WAF. Habilitations `admin` / `operator` et console
-  `/admin/console` livrées (PR #93), testées avec des doubles, pas encore jouées sur le PC Hôte. Non fait : ESP8266 + LED
-  bicolore, consentement écrit formalisé, persistance du blocage et des habilitations (en mémoire, perdus au redémarrage
+  `/admin/console` livrées (PR #93), testées avec des doubles, pas encore jouées sur le PC Hôte. Firmware ESP32 (LED bicolore)
+  compilé, non flashé ni essayé sur banc. Non fait : consentement écrit formalisé, persistance du blocage et des habilitations (en mémoire, perdus au redémarrage
   de `auth`). La détection de vivacité (photo devant la caméra) n'est pas couverte.
 
 ---

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+
 import httpx
 import pytest
 
@@ -56,15 +59,36 @@ async def test_panne_de_l_agent_devient_face_check_unavailable(handler) -> None:
 
 
 @pytest.mark.anyio
-async def test_led_poste_le_mode_avec_le_jeton() -> None:
+async def test_led_poste_le_mode_signe_sans_envoyer_le_secret() -> None:
     seen: list[httpx.Request] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
         return httpx.Response(200)
 
-    await HttpStatusLed(_client(handler), "jeton-led").set(LedMode.RED_BLINK)
+    await HttpStatusLed(_client(handler), "secret-led", now_ms=lambda: 1000).set(LedMode.RED_BLINK)
 
-    assert seen[0].url.path == "/led"
-    assert seen[0].read() == b'{"mode":"red_blink"}'
-    assert seen[0].headers["Authorization"] == "Bearer jeton-led"
+    request = seen[0]
+    body = request.read()
+    expected = hmac.new(b"secret-led", b'1000.{"mode":"red_blink"}', hashlib.sha256).hexdigest()
+    assert request.url.path == "/led"
+    assert body == b'{"mode":"red_blink"}'
+    assert request.headers["X-Counter"] == "1000"
+    assert request.headers["X-Signature"] == expected
+    assert "Authorization" not in request.headers
+    assert b"secret-led" not in body
+
+
+@pytest.mark.anyio
+async def test_led_compteur_strictement_croissant_meme_si_l_horloge_recule() -> None:
+    counters: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        counters.append(request.headers["X-Counter"])
+        return httpx.Response(200)
+
+    led = HttpStatusLed(_client(handler), "s", now_ms=lambda: 500)
+    await led.set(LedMode.OFF)
+    await led.set(LedMode.OFF)
+
+    assert counters == ["500", "501"]

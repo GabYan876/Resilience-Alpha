@@ -44,7 +44,7 @@ JSON structuré (`service`, `trace_id`, `event`). L'identifiant n'apparaît que 
 |---|---|
 | `DATABASE_URL`, `JWT_SECRET` / `JWT_SECRET_FILE` | Base et secret JWT (≥ 32 caractères, jamais en clair dans le dépôt) |
 | `HOST_AGENT_URL`, `HOST_AGENT_TOKEN` | Agent caméra natif. Absent : le back-office échoue fermé (503) |
-| `LED_URL`, `LED_TOKEN` | ESP8266. Absent : pas de retour visuel, accès inchangé |
+| `LED_URL`, `LED_TOKEN` | ESP32 (LED bicolore, requêtes signées HMAC). Absent : pas de retour visuel, accès inchangé |
 | `BACKOFFICE_ADMINS` | Premiers `admin`, séparés par des virgules. **Vide : personne n'entre** (échec fermé) |
 | `ADMIN_TOKEN_TTL_SECONDS` | Durée de la session de back-office (900 par défaut) |
 
