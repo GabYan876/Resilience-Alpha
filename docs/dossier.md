@@ -227,6 +227,8 @@ non isolé). Journal complet :
 | S1 flood, `demo_loop.py --runs 5` (22/10) | 5/5 reprises, transaction de test OK à chaque passage | RTO moyen 32 s, max 35 s (lancé depuis le PC Hôte) | **Non** |
 | S1 flood depuis PC Attaquant via WAF (22/10, 1 passage) | reprise auto (`block_subject` + `restart_service`) | 4,84 s (détecté → résolu) | **Non** |
 | S4 corruption BDD, pile complète (21/10, 2 passages) | restauration auto, transaction OK | RTO 3,24–3,79 s ; RPO 13,56–59,32 s | **Non** |
+| S4 corruption BDD, pile S4 isolée (22/10, 1 passage, journaux stdout, pas Loki) | restauration auto, API saine, transaction OK | RTO 6,376839 s ; RPO 108,776809 s | **Non** |
+| Restauration à froid, pile complète isolée (22/10) | arrêt puis `up --wait` en une commande, transaction de 100 centimes OK, volumes conservés | stop 2,66 s ; démarrage 26,72 s ; sonde 0,52 s (exercice piloté, pas un RTO) | Oui (piloté) |
 | S2 SQLi depuis PC Attaquant via WAF (22/10) | 6/6 charges bloquées (403 ; règle CRS 942100 confirmée sur le run du 21/10, 12/12) | — | **Non** |
 | S2 compromission (déclenchement manuel `POST /incidents kind=compromise`) | rotation JWT, redémarrage `auth`/`api`, `incident.resolved` | — | déclenchement manuel |
 | Faux positifs ML (21/10, puis 22/10 après le chaos) | 0/120 puis 0/60 mesures anormales, 0 fausse alerte ; attaque détectée (75 %, alerte à la mesure 5) | — | — |
@@ -296,7 +298,7 @@ preuve existe.
 | ER2 SQLi | WAF | 12/12 bloquées le 21/10, 6/6 le 22/10 depuis le PC Attaquant | Prouvé |
 | ER2 SQLi | Rotation de secrets | `POST /incidents kind=compromise` | Prouvé en déclenchement manuel |
 | ER2 SQLi | Investigation manuelle | Procédure et journal | À faire |
-| ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10) | Prouvé |
+| ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10), sans essai d'exploitation | En cours |
 | ER6 RAG | Isolation, lecture seule | Banc `attack/rag_prompt_injection/` : 9/10 | Prouvé avec réserve |
 | ER7 back-office | Caméra 1:1 + mot de passe + blocage 5 min | Parcours, 423 et 403 essayés via le WAF (22/10) ; pas d'attaque rejouée | En cours |
 | ER8 auth indisponible | Échec fermé | Agent arrêté : `identify` 503, `login` 403 (22/10) ; ESP8266 non essayé | En cours |

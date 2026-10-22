@@ -11,7 +11,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
 1. **Avant** : le dashboard montre les services sains ; une transaction de test réussit.
 2. **Attaque** : flood HTTP contrôlé depuis le PC Attaquant vers l'API (bonus : injection SQL bloquée par le WAF).
 3. **Détection** : métriques (Prometheus) et logs (Loki) montrent un pic anormal ; le modèle ML signale l'anomalie.
-4. **Remédiation automatique** : décision → blocage de la source (IP et compte, via le WAF) → redémarrage/mise à l'échelle de l'API.
+4. **Remédiation automatique** : décision → blocage du compte (`block_subject`) via le WAF ; le blocage d'IP échoue sous Docker Desktop (voir « Limites connues ») → redémarrage/mise à l'échelle de l'API.
 5. **Vérification** : l'API répond **et** une nouvelle transaction passe → incident clos.
 
 ## Architecture
@@ -135,7 +135,7 @@ python attack/flood_http.py --base-url http://192.168.137.1:8080 --duration 30
 python scripts/demo_loop.py --runs 5
 ```
 
-Scénario S4 (corruption de la base, restauration automatique) : [`docs/procedures/s4-corruption-bdd.md`](docs/procedures/s4-corruption-bdd.md) ; service : [`services/db/recovery/README.md`](services/db/recovery/README.md).
+Scénario S4 (corruption de la base, restauration automatique) : [`docs/procedures/s4-corruption-bdd.md`](docs/procedures/s4-corruption-bdd.md) ; service : [`services/db/recovery/README.md`](services/db/recovery/README.md).
 
 Restauration à froid (arrêt complet puis redémarrage en une commande) : [`docs/procedures/restauration-a-froid.md`](docs/procedures/restauration-a-froid.md).
 
