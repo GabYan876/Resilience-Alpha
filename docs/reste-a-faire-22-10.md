@@ -23,7 +23,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
   - [ ] démarrer Docker Desktop
   - [ ] vérifier l'IP du PC Hôte et `WAF_BIND_HOST` dans `.env` (le WAF refuse de démarrer si l'IP est absente)
   - [ ] `Deploy.ps1` sur clone neuf, pile saine, transaction de test réussie
-  - [ ] `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5` : 5/5 reprises
+  - [x] `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5` : 5/5 reprises (Kevin, 22/10 18h55, RTO moyen 31 s, max 34 s ; pile déjà démarrée, flood depuis le PC Hôte, donc à refaire sur clone neuf et depuis le PC Attaquant)
   - [ ] idéalement 5 passages depuis le PC Attaquant
 
 ## 2. Consigne additionnelle 1
