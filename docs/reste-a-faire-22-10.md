@@ -73,9 +73,9 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 
 ## 6. Critères de sortie avant 23h59
 
-- [ ] ≥ 5 démos consécutives sans intervention, transaction de test réussie à chaque passage
-- [ ] Une attaque de disponibilité et une de compromission traitées, RTO mesuré
-- [ ] Clip 60 s sans coupe livré
-- [ ] `main` stable, PR ouvertes = 0, branches supprimées
-- [ ] Dossier PDF, Pres.pptx, VidChrono.mp4 et Code.zip (sans secret) remis
+- [x] ≥ 5 démos consécutives sans intervention, transaction de test réussie à chaque passage
+- [x] Une attaque de disponibilité et une de compromission traitées, RTO mesuré
+- [x] Clip 60 s sans coupe livré
+- [x] `main` stable, PR ouvertes = 0, branches supprimées
+- [x] Dossier PDF, Pres.pptx, VidChrono.mp4 et Code.zip (sans secret) remis
 - [ ] Consigne 1 : tranche démontrée avec preuve, ou écart consigné avec responsable
