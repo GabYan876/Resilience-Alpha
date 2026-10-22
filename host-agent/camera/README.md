@@ -35,7 +35,9 @@ L'enrôlement et la révocation sont en **ligne de commande locale uniquement** 
 
 ## Seuil de similarité
 
-Valeur de départ **0,363** (recommandation d'OpenCV pour SFace), **non mesurée sur nos visages**.
+Valeur de départ **0,363** (recommandation d'OpenCV pour SFace). Mesure du 22/10, caméra USB : membre
+enrôlé 0,752 à 0,806 (10 mesures), autre membre consentant 0,023 à 0,094 (10 mesures). Valeur conservée.
+Échantillon minimal (1 imposteur) : à ne pas présenter comme un taux d'erreur.
 `python -m app.cli check <identifiant>` affiche la similarité d'une image : relever des valeurs
 visage conforme / autre membre, puis fixer `FACE_THRESHOLD` et consigner les taux dans la doc.
 
