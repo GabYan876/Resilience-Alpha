@@ -45,6 +45,11 @@ réservé au runtime des conteneurs ; le relancer après toute rotation de secre
 valeur réellement utilisée par `auth`/`api`, qui préfèrent le fichier `JWT_SECRET_FILE` dès qu'une
 rotation a eu lieu (voir `services/remediation/app/adapters/secret_rotation.py`).
 
+Le script renseigne aussi `HOST_AGENT_URL` (`http://host.docker.internal:8765`) et génère un `HOST_AGENT_TOKEN`
+aléatoire s'ils sont vides : jeton propre au poste, jamais versionné. `host-agent/camera/run.ps1` le relit dans ce
+`.env`, donc `auth` et l'agent partagent le même jeton sans le recopier. Relancer `render_env.sh` en génère un
+nouveau : redémarrer `auth` et l'agent ensemble.
+
 Pour ajouter ou modifier un secret : `sops infra/secrets/app.enc.yaml` (ou `jwt.enc.yaml`) ouvre un
 éditeur sur le texte déchiffré et re-chiffre à la sauvegarde.
 
