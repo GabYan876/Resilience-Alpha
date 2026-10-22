@@ -17,6 +17,10 @@ def _read_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]  # KeyError volontaire : aucun secret par défaut
 
 
+def _read_optional(name: str) -> str | None:
+    return os.environ.get(name) or None
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str  # postgresql+asyncpg://app_rw:... (jamais le rôle propriétaire)
@@ -24,6 +28,11 @@ class Settings:
     jwt_ttl_seconds: int = 7200
     # Solde de bienvenue fictif (centimes) : démonstration uniquement, aucune valeur réelle.
     welcome_balance_cents: int = 100_000
+    # Connexion du back-office (consigne 1). Sans agent hôte configuré, elle échoue fermée.
+    host_agent_url: str | None = None  # agent caméra natif du PC Hôte
+    host_agent_token: str | None = None
+    led_url: str | None = None  # ESP8266 ; absent = pas de retour visuel, accès inchangé
+    led_token: str | None = None
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -35,4 +44,8 @@ class Settings:
             jwt_secret=secret,
             jwt_ttl_seconds=int(os.environ.get("JWT_TTL_SECONDS", "7200")),
             welcome_balance_cents=int(os.environ.get("WELCOME_BALANCE_CENTS", "100000")),
+            host_agent_url=os.environ.get("HOST_AGENT_URL") or None,
+            host_agent_token=_read_optional("HOST_AGENT_TOKEN"),
+            led_url=os.environ.get("LED_URL") or None,
+            led_token=_read_optional("LED_TOKEN"),
         )

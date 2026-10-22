@@ -17,3 +17,23 @@ class PhoneAlreadyUsed(DomainError):
 
 class InvalidCredentials(DomainError):
     """E-mail inconnu ou mot de passe faux : volontairement indiscernables."""
+
+
+class AccountLocked(DomainError):
+    """Identifiant bloqué après trop d'échecs consécutifs."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("identifiant bloqué, réessayez plus tard")
+        self.retry_after_seconds = retry_after_seconds
+
+
+class FaceNotRecognized(DomainError):
+    """Le visage ne correspond pas au gabarit de l'identifiant (ou est absent)."""
+
+
+class FaceNotVerified(DomainError):
+    """Mot de passe présenté sans reconnaissance de visage valide préalable."""
+
+
+class FaceCheckUnavailable(DomainError):
+    """Caméra ou agent hôte en panne : échec fermé, jamais de repli sur le mot de passe seul."""

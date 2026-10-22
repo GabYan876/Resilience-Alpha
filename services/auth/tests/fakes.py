@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from app.domain.errors import EmailAlreadyUsed, PhoneAlreadyUsed
-from app.domain.models import Credentials, NewUser, Profile
+from app.domain.errors import EmailAlreadyUsed, FaceCheckUnavailable, PhoneAlreadyUsed
+from app.domain.models import Credentials, LedMode, NewUser, Profile
 
 
 class InMemoryUserRepository:
@@ -63,3 +64,51 @@ class HealthyProbe:
 
     async def ping(self) -> bool:
         return self._up
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self._now = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
+
+    def now(self) -> datetime:
+        return self._now
+
+    def advance(self, delta: timedelta) -> None:
+        self._now += delta
+
+
+class FakeCamera:
+    def __init__(self, broken: bool = False) -> None:
+        self.broken = broken
+        self.is_on = False
+
+    async def start(self) -> None:
+        if self.broken:
+            raise FaceCheckUnavailable("caméra indisponible")
+        self.is_on = True
+
+    async def stop(self) -> None:
+        self.is_on = False
+
+
+class FakeFaceVerifier:
+    def __init__(self, enrolled: set[str] | None = None, broken: bool = False) -> None:
+        self.enrolled = enrolled or set()
+        self.broken = broken
+        self.present = True  # un visage conforme est devant la caméra
+
+    async def verify(self, identifier: str) -> bool:
+        if self.broken:
+            raise FaceCheckUnavailable("agent hôte injoignable")
+        return self.present and identifier in self.enrolled
+
+
+class RecordingLed:
+    def __init__(self, broken: bool = False) -> None:
+        self.broken = broken
+        self.modes: list[LedMode] = []
+
+    async def set(self, mode: LedMode) -> None:
+        if self.broken:
+            raise ConnectionError("ESP8266 injoignable")
+        self.modes.append(mode)

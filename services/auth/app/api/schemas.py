@@ -34,6 +34,19 @@ class LoginIn(BaseModel):
         return value.lower()
 
 
+class AdminIdentifyIn(BaseModel):
+    identifier: str = Field(pattern=_EMAIL, max_length=320)
+
+    @field_validator("identifier")
+    @classmethod
+    def _lower(cls, value: str) -> str:
+        return value.lower()
+
+
+class AdminLoginIn(AdminIdentifyIn):
+    password: str = Field(min_length=1, max_length=128)
+
+
 class ProfileOut(BaseModel):
     id: UUID = Field(serialization_alias="_id")
     name: str
