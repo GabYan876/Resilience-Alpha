@@ -62,7 +62,7 @@ logs WAF dans Loki et l'alerte SOC restent à contrôler en essai de bout en bou
 
 ## Limites
 
-- L'agent caméra du back-office (`host-agent/camera/run.ps1`, natif Windows) n'est pas lancé par `Deploy.ps1` : à démarrer à la main, voir `host-agent/camera/README.md`.
+- L'agent caméra du back-office (`host-agent/camera/run.ps1`, natif Windows) est lancé par `Deploy.ps1` seulement si son environnement est prêt (venv, `data/template.key`, `HOST_AGENT_TOKEN`) ; sinon avertissement et back-office fermé. L'installation et l'enrôlement restent manuels, voir `host-agent/camera/README.md`.
 - Chemin Linux (`RESILIENCE_DIRECT_DEPLOY=true`) non testé.
 - Image de base `docker:27-cli` non épinglée par digest.
 - `-RenderEnv` demande la clé age et `sops` ; le `bash` du PATH doit être Git Bash (pas WSL).

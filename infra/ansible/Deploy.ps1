@@ -9,6 +9,8 @@
   volume et ne remet pas la base à zéro (voir scripts/reset_demo.sh pour cela).
   Prérequis : .env à la racine, ou -RenderEnv pour le produire depuis les secrets SOPS
   (SOPS_AGE_KEY_FILE = clé age "ops" partagée hors dépôt ; sops et bash requis).
+  Lance aussi l'agent caméra du back-office s'il est installé (venv, clé des gabarits, jeton) ;
+  sinon avertit et laisse le back-office fermé.
 .EXAMPLE
   .\infra\ansible\Deploy.ps1 -CheckOnly
 .EXAMPLE
@@ -48,6 +50,55 @@ function Invoke-Checked {
     & $Executable @Arguments
     if ($LASTEXITCODE -ne 0) {
         throw "$Executable a échoué (code $LASTEXITCODE)"
+    }
+}
+
+function Start-CameraAgent {
+    # L'agent caméra du back-office est natif Windows (Docker Desktop ne voit pas la caméra USB).
+    # Lancé seulement si son environnement est prêt (venv, clé des gabarits, jeton dans .env) :
+    # sinon simple avertissement, le déploiement continue et le back-office reste fermé (échec fermé).
+    $agentDir = Join-Path $repoRoot 'host-agent\camera'
+    $port = 8765
+    $missing = @()
+    if (-not (Test-Path (Join-Path $agentDir '.venv'))) { $missing += '.venv' }
+    if (-not (Test-Path (Join-Path $agentDir 'data\template.key'))) { $missing += 'data\template.key' }
+    if (-not (Select-String -Path $envFile -Pattern '^HOST_AGENT_TOKEN=.+' -Quiet)) { $missing += 'HOST_AGENT_TOKEN' }
+    if ($missing.Count -gt 0) {
+        Write-Warning ("[agent] Agent caméra non lancé (manque : {0}) : back-office fermé. Voir host-agent/camera/README.md." -f ($missing -join ', '))
+        return
+    }
+    if (Test-AgentPort -Port $port) {
+        Write-Host "[agent] Agent caméra déjà à l'écoute sur le port $port."
+        return
+    }
+    Write-Host "[agent] Lancement de l'agent caméra (port $port, journaux dans host-agent/camera/agent.*.log)..."
+    # Le chemin du dépôt peut contenir des espaces : -File exige donc un argument entre guillemets.
+    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -WorkingDirectory $agentDir `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"{0}"' -f (Join-Path $agentDir 'run.ps1'))) `
+        -RedirectStandardOutput (Join-Path $agentDir 'agent.out.log') `
+        -RedirectStandardError (Join-Path $agentDir 'agent.err.log')
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Seconds 1
+        if (Test-AgentPort -Port $port) {
+            Write-Host '[ok] Agent caméra à l''écoute.'
+            return
+        }
+    }
+    Write-Warning '[agent] Agent caméra lancé mais pas joignable après 30 s : consulter host-agent/camera/agent.err.log.'
+}
+
+function Test-AgentPort {
+    param([Parameter(Mandatory = $true)][int]$Port)
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $client.Connect('127.0.0.1', $Port)
+        return $true
+    }
+    catch {
+        return $false
+    }
+    finally {
+        $client.Close()
     }
 }
 
@@ -162,6 +213,8 @@ Invoke-Checked -Executable 'docker' -Arguments @('compose', '--env-file', $envFi
 
 Write-Host '[deploy] Observabilité (Compose Windows, après le socle qui crée resilience-net)...'
 Invoke-Checked -Executable 'docker' -Arguments @('compose', '--env-file', $envFile, '-f', $obsCompose, 'up', '-d', '--wait')
+
+Start-CameraAgent
 
 Write-Host '[verify] Vérification des services par Ansible...'
 Invoke-Ansible -Tag 'verify' -NeedsDockerSocket
