@@ -47,7 +47,7 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 ## 3. Restauration et backend — Antoine
 
 - [ ] S4 (corruption BDD) rejoué dans le chaos, RTO et RPO consignés (référence du 21/10 : RTO 3,24-3,79 s, RPO 13,56-59,32 s).
-- [ ] Restauration à froid rejouée en fin de chaos : arrêt complet puis redémarrage en une commande, transaction de test réussie.
+- [x] Restauration à froid rejouée en fin de chaos : pile complète isolée arrêtée puis relancée en une commande, transaction réussie ; volumes PostgreSQL/sauvegardes conservés. Preuve et chronométrages (non assimilés à un RTO) dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 et [`restauration-a-froid.md`](procedures/restauration-a-froid.md).
 - [ ] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée.
 - [ ] Doc d'API à jour (voir §0), tests `pytest` verts avant le gel.
 
