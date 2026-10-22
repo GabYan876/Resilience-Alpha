@@ -41,12 +41,12 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 | Pilier | Contenu |
 |---|---|
 | Développement | Microservices FastAPI (BDD, API, auth), front de paiement React/Tailwind, moteur de remédiation, dashboard de supervision Grafana |
-| Infrastructure | Docker Compose, Ansible, Prometheus, Grafana, Loki |
+| Infrastructure | Docker Compose, Ansible (`Deploy.ps1`, déploiement en une commande), Prometheus, Grafana, Loki |
 | IA / Data | Détection d'anomalies (ML), assistant RAG Ollama + LangChain (≤ 8B) |
 | Cybersécurité | Attaques Red Team, WAF, SIEM/SOC, durcissement, SOPS + age |
 | Gouvernance | EBIOS RM, PCA/PRA, NIS2/DORA |
 
-## Structure du dépôt (cible)
+## Structure du dépôt
 
 ```
 .
@@ -64,9 +64,11 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 │   ├── observability/    # Prometheus, Grafana, Loki
 │   ├── waf/              # ModSecurity + OWASP CRS, liste de blocage (njs)
 │   └── secrets/          # SOPS (chiffré uniquement)
+├── host-agent/camera/    # agent hôte natif : caméra USB + reconnaissance de visage (hors Compose)
+├── firmware/esp32-led/   # firmware PlatformIO de la LED bicolore d'état
 ├── attack/               # scripts Red Team (PC Attaquant)
 ├── ml/                   # jeux de données, notebooks, entraînement
-├── scripts/              # vérif. de transaction, reset de démo, chaos
+├── scripts/              # vérif. de transaction, reset de démo, boucle de démo, trafic de fond
 ├── docs/                 # architecture, EBIOS RM, PCA/PRA, NIS2/DORA, procédures (indexées par le RAG)
 ├── CLAUDE.md
 └── README.md
@@ -84,7 +86,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 
 > Ce qui tourne aujourd'hui : PostgreSQL, l'API métier, le service `auth`, la passerelle Caddy (front Pay-Now), le moteur de remédiation (Compose) et la pile d'observabilité, le détecteur ML (Compose ; il exige un modèle entraîné, voir `services/anomaly-detector/README.md`), le WAF ModSecurity + OWASP CRS (seul point d'entrée, `infra/compose/docker-compose.yml`) et l'assistant RAG (`services/rag-assistant/`, Compose ; il exige un Ollama joignable, voir son README).
 
-> **Écarts restants** (échéance jeudi, voir `docs/validation-jalon-21-10.md` §8) : Exposition de la pile testée en réel le 21/10 sur la box (`WAF_BIND_HOST`) ; pile accessible sur n'importe quel réseau privé du binôme. Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
+> **État au 22/10** (voir `docs/validation-jalon-22-10.md`) : exposition de la pile testée en réel le 21/10 sur la box (`WAF_BIND_HOST`) ; pile accessible sur n'importe quel réseau privé du binôme. Secrets chiffrés via SOPS + age, rotation branchée et essayée en réel le 21/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`. Restauration de la BDD (`RestoreDatabaseAction`, scénario S4) implémentée et essayée le 20/10, voir `docs/gouvernance/02-pca-pra.md`.
 
 Matériel : voir **Prérequis** ci-dessus. En plus : Docker ≥ 28 et Compose ≥ v2.30, Git Bash pour les scripts `.sh`, Python 3 pour `scripts/` et `attack/`. Toutes les commandes se lancent **depuis la racine du dépôt**, dans Git Bash.
 
@@ -118,7 +120,18 @@ Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans 
 
 Back-office (consigne 1) : `Deploy.ps1` lance l'agent caméra natif (port 8765) s'il est installé sur le PC Hôte (venv, clé `data/template.key` et `HOST_AGENT_TOKEN` dans le `.env`, voir `host-agent/camera/README.md` pour l'installation et l'enrôlement). Sinon il avertit sans échouer et la connexion du back-office reste fermée (échec fermé). Lancement manuel possible : `.\host-agent\camera\run.ps1`.
 
-Déploiement en une commande (Windows + Docker Desktop, `.env` déjà présent) : `.\infra\ansible\Deploy.ps1` enchaîne contrôle du `.env`, modèle ML si absent, socle, observabilité, vérification Ansible et transaction de test. Détails et limites : `infra/ansible/README.md`.
+### Déploiement en une commande (Ansible)
+
+Windows + Docker Desktop, depuis la racine du dépôt dans PowerShell :
+
+```powershell
+.\infra\ansible\Deploy.ps1               # .env présent : déploiement complet + vérification + transaction de test
+.\infra\ansible\Deploy.ps1 -RenderEnv    # clone neuf : produit d'abord le .env depuis SOPS (clé age « ops » requise)
+.\infra\ansible\Deploy.ps1 -CheckOnly    # contrôle le .env et les fichiers Compose, ne déploie rien
+.\infra\ansible\Deploy.ps1 -VerifyOnly -SkipBuild   # revérifie sans redéployer
+```
+
+Le script enchaîne : contrôle du `.env` (rôle `preflight`), modèle ML si absent, Compose socle puis observabilité, vérification des services (rôle `verify`), puis la **transaction de test** (API saine + transaction réglée). Ansible tourne dans un conteneur éphémère (`resilience-ansible`) ; Compose est lancé depuis PowerShell car les bind mounts de Docker Desktop doivent résoudre des chemins Windows. Il ne remet pas la base à zéro (`./scripts/reset_demo.sh`). Si PowerShell bloque les scripts : `powershell -ExecutionPolicy Bypass -File .\infra\ansible\Deploy.ps1`. Détails, sécurité et limites (chemin Linux non testé) : [`infra/ansible/README.md`](infra/ansible/README.md).
 
 Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant, hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
 
@@ -141,6 +154,8 @@ Scénario S4 (corruption de la base, restauration automatique) : [`docs/procedur
 
 Restauration à froid (arrêt complet puis redémarrage en une commande) : [`docs/procedures/restauration-a-froid.md`](docs/procedures/restauration-a-froid.md).
 
+Rejeux à froid sur clone neuf (volumes supprimés puis `Deploy.ps1 -RenderEnv`, 22/10 soir) : 5/5 reprises depuis le PC Hôte (RTO moyen 33 s, max 36 s), puis 5/5 depuis le PC Attaquant (RTO moyen 32 s), transaction de test réussie à chaque passage. Détail dans [`docs/dossier.md`](docs/dossier.md) §6.
+
 Critère de réussite : **aucune intervention humaine** entre l'attaque et la nouvelle transaction réussie.
 
 ## Tests
@@ -150,8 +165,11 @@ Critère de réussite : **aucune intervention humaine** entre l'attaque et la no
 cd services/api         && python -m pytest -q   # unitaires (domaine sans I/O, adaptateurs avec doubles)
 cd services/remediation && python -m pytest -q
 cd services/rag-assistant && python -m pytest -q
-./scripts/chaos.sh          # injection de défaillances (jeudi, à écrire)
+cd services/auth        && python -m pytest -q
+cd services/anomaly-detector && python -m pytest -q
 ```
+
+Le chaos engineering se joue par scénarios documentés dans [`docs/procedures/chaos-engineering.md`](docs/procedures/chaos-engineering.md).
 
 ## Sécurité
 
