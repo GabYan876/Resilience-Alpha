@@ -6,7 +6,12 @@ from datetime import timedelta
 
 import pytest
 
-from app.adapters.memory_stores import InMemoryFaceSessionStore, InMemoryLockoutStore
+from app.adapters.memory_stores import (
+    InMemoryAccessJournal,
+    InMemoryFaceSessionStore,
+    InMemoryLockoutStore,
+    InMemoryRoleStore,
+)
 from app.application.backoffice_login import BackOfficeLogin
 from app.domain.errors import (
     AccountLocked,
@@ -14,8 +19,9 @@ from app.domain.errors import (
     FaceNotRecognized,
     FaceNotVerified,
     InvalidCredentials,
+    NotAuthorized,
 )
-from app.domain.models import LedMode, NewUser
+from app.domain.models import LedMode, NewUser, Role
 from tests.fakes import (
     FakeCamera,
     FakeClock,
@@ -38,6 +44,9 @@ class Env:
         self.led = RecordingLed()
         self.clock = FakeClock()
         self.publisher = RecordingPublisher()
+        self.roles = InMemoryRoleStore({ADMIN: Role.ADMIN})
+        self.journal = InMemoryAccessJournal()
+        self.lockouts = InMemoryLockoutStore()
         self.login = BackOfficeLogin(
             self.users,
             PlainHasher(),
@@ -45,10 +54,12 @@ class Env:
             self.camera,
             self.faces,
             self.led,
-            InMemoryLockoutStore(),
+            self.lockouts,
             InMemoryFaceSessionStore(),
             self.clock,
             self.publisher,
+            self.roles,
+            self.journal,
         )
 
     async def seed(self) -> None:
@@ -72,7 +83,7 @@ async def test_visage_reconnu_puis_mot_de_passe_valide_donne_acces() -> None:
 
     result = await env.login.submit_password(ADMIN, "bon-mdp")
 
-    assert result.token.startswith("token-")
+    assert result.token.startswith("admin-")
     assert env.led.modes[-1] == LedMode.GREEN_SOLID
 
 
@@ -215,3 +226,38 @@ async def test_journal_sans_identifiant_en_clair() -> None:
 
     assert env.publisher.events
     assert all(ADMIN not in str(data) for _, data in env.publisher.events)
+
+
+@pytest.mark.anyio
+async def test_compte_sans_habilitation_refuse_sans_compter_d_echec() -> None:
+    env = await _env()
+    await env.roles.revoke(ADMIN)
+    await env.login.start(ADMIN)
+
+    with pytest.raises(NotAuthorized):
+        await env.login.submit_password(ADMIN, "bon-mdp")
+
+    assert env.led.modes[-1] is LedMode.RED_SOLID
+    assert (await env.lockouts.get(ADMIN)).failures == 0
+    assert any(name == "auth.access.denied_no_role" for name, _ in env.publisher.events)
+
+
+@pytest.mark.anyio
+async def test_succes_renvoie_le_role_et_un_jeton_de_back_office() -> None:
+    env = await _env()
+    await env.login.start(ADMIN)
+
+    session = await env.login.submit_password(ADMIN, "bon-mdp")
+
+    assert session.role is Role.ADMIN and session.token == f"admin-{ADMIN}"
+
+
+@pytest.mark.anyio
+async def test_journal_du_back_office_garde_l_identifiant_lisible() -> None:
+    env = await _env()
+    await env.login.start(ADMIN)
+    await env.login.submit_password(ADMIN, "bon-mdp")
+
+    events = [(e.event, e.identifier) for e in await env.journal.recent(10)]
+
+    assert events[:2] == [("auth.login.succeeded", ADMIN), ("auth.face.recognized", ADMIN)]
