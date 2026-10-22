@@ -21,8 +21,10 @@ dans un tableau de bord Grafana.
 Principe directeur : *un conteneur qui redémarre ne prouve rien*. Un incident n'est déclaré clos
 que lorsque l'API répond **et** qu'une transaction de sonde passe.
 
-Résultat mesuré (chaos du 22/10, 5 passages consécutifs sans intervention) : **5/5 reprises
-automatiques**, RTO moyen 32 s (max 36 s), transaction de test réussie à chaque passage.
+Résultat mesuré (chaos du 22/10 à 10:35, `demo_loop.py --runs 5` lancé depuis le PC Hôte vers le
+WAF, 5 passages consécutifs sans intervention) : **5/5 reprises automatiques**, RTO moyen 32 s
+(max 35 s), transaction de test réussie à chaque passage. Un flood isolé lancé depuis le PC
+Attaquant a aussi été repris automatiquement le même jour (voir §6).
 
 ---
 
@@ -152,17 +154,19 @@ La clôture d'un incident exige toujours : **API saine ET transaction de sonde r
 ## 6. Essais réels et chiffres
 
 Mesure du RTO (décision du 19/10) : du **début d'attaque** (journal horodaté du script) à
-l'événement `incident.resolved` dans Loki. Journal complet :
+l'événement `incident.resolved` dans Loki. Exception : le chiffre de S1 depuis le PC Attaquant
+(4,84 s) va de `incident.detected` à `incident.resolved` (remédiation seule, délai de détection
+non isolé). Journal complet :
 [`gouvernance/02-pca-pra.md`](gouvernance/02-pca-pra.md) §7.
 
 | Scénario | Résultat | RTO / RPO | Intervention |
 |---|---|---|---|
-| S1 flood, `demo_loop.py --runs 5` (22/10) | 5/5 reprises, transaction de test OK à chaque passage | RTO moyen 32 s, max 36 s | **Non** |
-| S1 flood depuis PC Attaquant via WAF (22/10) | reprise auto (`block_subject` + `restart_service`) | RTO 4,84 s (remédiation) | **Non** |
+| S1 flood, `demo_loop.py --runs 5` (22/10) | 5/5 reprises, transaction de test OK à chaque passage | RTO moyen 32 s, max 35 s (lancé depuis le PC Hôte) | **Non** |
+| S1 flood depuis PC Attaquant via WAF (22/10, 1 passage) | reprise auto (`block_subject` + `restart_service`) | 4,84 s (détecté → résolu) | **Non** |
 | S4 corruption BDD, pile complète (21/10, 2 passages) | restauration auto, transaction OK | RTO 3,24–3,79 s ; RPO 13,56–59,32 s | **Non** |
-| S2 SQLi depuis PC Attaquant via WAF (22/10) | 6/6 charges bloquées (403, règle CRS 942100) | — | **Non** |
+| S2 SQLi depuis PC Attaquant via WAF (22/10) | 6/6 charges bloquées (403 ; règle CRS 942100 confirmée sur le run du 21/10, 12/12) | — | **Non** |
 | S2 compromission (déclenchement manuel `POST /incidents kind=compromise`) | rotation JWT, redémarrage `auth`/`api`, `incident.resolved` | — | déclenchement manuel |
-| Faux positifs ML (21/10) | 0/120 mesures anormales, attaque toujours détectée | — | — |
+| Faux positifs ML (21/10, puis 22/10 après le chaos) | 0/120 puis 0/60 mesures anormales, 0 fausse alerte ; attaque détectée (75 %, alerte à la mesure 5) | — | — |
 | ER6 injection de prompt, banc 6 scénarios / 10 questions (22/10) | `llama3.1:8b` 9/10 repoussées ; `llama3.2:3b` 5/10 | — | — |
 
 ---
@@ -185,9 +189,15 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 - **Sauvegardes S4** : locales, non chiffrées, non répliquées ; pire cas théorique ≈ 315 s,
   au-dessus de la cible de 5 min. Protègent de la corruption logique, pas de la perte de l'hôte.
 - **Modèle ML** : le score d'IsolationForest sature ; seuil à recalibrer sur trafic réel.
-- **Consigne additionnelle 1** (authentification du back-office par caméra, reconnaissance de
-  visage, ESP8266) : conçue ([`consigne-additionnelle-1.md`](consigne-additionnelle-1.md)), **non
-  implémentée**. La détection de vivacité ne serait de toute façon pas couverte.
+- **Blocage WAF non réinitialisé entre essais** : `/blocklist/blocked.txt` n'est vidé que par
+  `scripts/reset_demo.sh` ; un flood isolé hors de ce script laisse le compte bloqué pour l'essai
+  suivant.
+- **Consigne additionnelle 1** ([`consigne-additionnelle-1.md`](consigne-additionnelle-1.md)) :
+  **partielle au 22/10**. Fait : identifiant → caméra USB (agent hôte natif, OpenCV YuNet/SFace,
+  seuil 0,363, ~198 Mo de RAM) → mot de passe, blocage après une reprise, échec fermé si caméra ou
+  agent coupé, prouvé en réel via le WAF. Non fait : ESP8266 + LED bicolore, habilitations dans le
+  back-office, consentement écrit formalisé, blocage de 5 min non persistant au redémarrage de
+  l'agent. La détection de vivacité (photo devant la caméra) n'est pas couverte.
 
 ---
 
