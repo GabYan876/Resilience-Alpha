@@ -24,7 +24,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
   - [x] (Kevin, 22/10 : `-RenderEnv` produit `WAF_BIND_HOST=127.0.0.1`, hotspot en `192.168.137.1` à fixer pour le PC Attaquant) vérifier l'IP du PC Hôte et `WAF_BIND_HOST` dans `.env` (le WAF refuse de démarrer si l'IP est absente)
   - [x] (Kevin, 22/10 vers 19h45 : clone neuf de `dc1dfeb`, volumes supprimés, `Deploy.ps1 -RenderEnv` sans erreur, 12 services en marche, transaction réglée ; puis `demo_loop.py --runs 5` : 5/5 reprises, RTO moyen 33 s, max 36 s, depuis le PC Hôte) `Deploy.ps1` sur clone neuf, pile saine, transaction de test réussie
   - [x] `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5` : 5/5 reprises (Kevin, 22/10 18h55, RTO moyen 31 s, max 34 s ; pile déjà démarrée, flood depuis le PC Hôte, donc à refaire sur clone neuf et depuis le PC Attaquant)
-  - [ ] idéalement 5 passages depuis le PC Attaquant
+  - [x] (Kevin, 22/10 de 19h57 à 20h08 heure locale) 5 passages depuis le PC Attaquant : flood lancé depuis le PC Attaquant vers le WAF du PC Hôte (`192.168.137.1:8080`, hotspot), clone neuf, 5/5 reprises automatiques, transaction de test réussie à chaque passage, un seul incident par passage, aucun échec ; détection 25 à 32 s, RTO de l'attaque à `incident.resolved` : 35, 32, 34, 31 et 30 s (moyenne 32 s, max 35 s ; horloges des deux PC non comparées, incertitude d'environ 1 s). Le compteur « erreurs » du flood ne compte que les 5xx et les erreurs réseau, il ne prouve pas le blocage en cours d'attaque
 
 ## 2. Consigne additionnelle 1
 
