@@ -1,9 +1,9 @@
-# Stack d'observabilité — PROJECT RESILIENCE-ALPHA
+# Stack d'observabilité, PROJECT RESILIENCE-ALPHA
 #
 # Prometheus (métriques), Loki (logs), Alloy (collecte), Grafana (seule interface).
 #
 # Pile autonome : elle se lance seule, et survit au redémarrage des services métier
-# déclenché par le moteur de remédiation — c'est précisément ce qu'il faut pour
+# déclenché par le moteur de remédiation, c'est précisément ce qu'il faut pour
 # montrer l'incident avant / pendant / après.
 #
 #   docker compose -f infra/compose/docker-compose.observability.yml up -d
@@ -136,7 +136,7 @@ services:
         # IP fixe : le résolveur DNS intégré de Docker Desktop/WSL2 échoue par
         # intermittence sur ce réseau multi-conteneurs (« dial tcp: lookup
         # docker-proxy: i/o timeout »), et Alloy n'a aucune retentative DNS
-        # intégrée — contrairement à PrometheusMetricsSource côté anomaly-detector.
+        # intégrée, contrairement à PrometheusMetricsSource côté anomaly-detector.
         # Un IP fixe fait sortir ce lien précis de la DNS : Alloy et le
         # healthcheck ci-dessous visent directement l'adresse, jamais le nom.
         ipv4_address: 172.28.90.10

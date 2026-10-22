@@ -15,7 +15,7 @@ Le matériel effectivement ciblé ici est une **ESP32-DevKitC / ESP32-DevKit V1 
 
 | Mode | LED | Durée (gérée **dans le firmware**) |
 |---|---|---|
-| `off` | éteinte | — |
+| `off` | éteinte | - |
 | `green_blink` | vert clignotant | jusqu'au mode suivant |
 | `green_solid` | vert fixe | 30 s, puis éteinte |
 | `red_blink` | rouge clignotant | 10 clignotements, puis éteinte |
@@ -39,7 +39,7 @@ résistances série de 220 à 330 Ω. La cathode commune va au GND ; relier le G
 |---|---|---|
 | GPIO25 | 25 | anode verte, via sa résistance |
 | GPIO26 | 26 | anode rouge, via sa résistance |
-| GND | — | cathode commune et masse commune |
+| GND | - | cathode commune et masse commune |
 
 GPIO25 et GPIO26 ne sont pas des broches de strapping sur l'ESP32. Respecter la polarité de la LED et
 installer une résistance de limitation sur **chaque** anode. Les GPIO sont en logique 3,3 V et ne tolèrent

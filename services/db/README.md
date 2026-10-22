@@ -1,4 +1,4 @@
-# Socle base de données — PostgreSQL + Alembic
+# Socle base de données, PostgreSQL + Alembic
 
 Schéma et migrations de la plateforme de paiement fictive. Les modèles SQLAlchemy
 vivent dans `services/api/app/adapters/persistence/models.py` : ce dossier ne
@@ -149,7 +149,7 @@ corruption logique récupérable, pas d'une perte du PC Hôte ou du volume, et n
 constituent pas une sauvegarde hors site. Données exclusivement fictives ;
 chiffrement et copie hors hôte restent des limites à traiter avant un usage réel.
 
-Deux pièges réglés, à ne pas réintroduire — ils se manifestent uniquement contre
+Deux pièges réglés, à ne pas réintroduire, ils se manifestent uniquement contre
 un vrai PostgreSQL, jamais en test unitaire :
 
 - **Le pool de l'API doit être recréé après chaque reset.** `downgrade` supprime

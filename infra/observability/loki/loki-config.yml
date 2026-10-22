@@ -1,4 +1,4 @@
-# Loki — PROJECT RESILIENCE-ALPHA
+# Loki, PROJECT RESILIENCE-ALPHA
 #
 # Mode `single-binary` (-target=all), stockage `filesystem`, rétention 24 h.
 # Pas de S3, pas d'anneau externe (kvstore en mémoire), pas de conteneur compactor

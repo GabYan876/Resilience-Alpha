@@ -1,4 +1,4 @@
-# Service `auth` — authentification client et back-office
+# Service `auth`, authentification client et back-office
 
 Service FastAPI de la plateforme de paiement **fictive**. Deux parcours distincts :
 

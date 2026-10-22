@@ -1,4 +1,4 @@
-# Prometheus — PROJECT RESILIENCE-ALPHA
+# Prometheus, PROJECT RESILIENCE-ALPHA
 #
 # Rôle : collecte des métriques des microservices, pour rendre l'incident visible
 # avant / pendant / après.

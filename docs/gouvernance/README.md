@@ -1,6 +1,6 @@
-# Gouvernance — PROJECT RESILIENCE-ALPHA
+# Gouvernance, PROJECT RESILIENCE-ALPHA
 
-Pilier 5 du sujet (§3.5) : **10 pts / 70** — « Risques, PCA/PRA et NIS2/DORA reliés au démonstrateur ».
+Pilier 5 du sujet (§3.5) : **10 pts / 70**, « Risques, PCA/PRA et NIS2/DORA reliés au démonstrateur ».
 Un rapport de conformité générique, sans lien avec l'architecture et les essais, ne rapporte rien.
 
 ## Documents

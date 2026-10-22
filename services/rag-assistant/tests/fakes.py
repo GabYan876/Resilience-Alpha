@@ -1,4 +1,4 @@
-"""Fakes en mémoire des ports (substituables aux adaptateurs de prod — LSP)."""
+"""Fakes en mémoire des ports (substituables aux adaptateurs de prod, LSP)."""
 
 from __future__ import annotations
 

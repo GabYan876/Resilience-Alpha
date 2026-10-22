@@ -1,4 +1,4 @@
-# Provisionnement des dashboards Grafana — PROJECT RESILIENCE-ALPHA
+# Provisionnement des dashboards Grafana, PROJECT RESILIENCE-ALPHA
 #
 # Les fichiers JSON de /var/lib/grafana/dashboards sont chargés au démarrage.
 # `allowUiUpdates: false` : le dashboard est du code versionné, pas un objet modifié

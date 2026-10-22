@@ -1,6 +1,6 @@
 # PROJECT RESILIENCE-ALPHA
 
-> Cyber-résilience et reprise autonome — Workshop national EPSI Bac+5, session octobre 2026.
+> Cyber-résilience et reprise autonome, Workshop national EPSI Bac+5, session octobre 2026.
 
 Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une attaque lancée depuis un second PC, de la **détecter par machine learning** et de **se réparer seule** (Zero-Touch Recovery). La reprise est prouvée par une nouvelle transaction réussie.
 
@@ -31,7 +31,7 @@ Plateforme de paiement **fictive** et conteneurisée, capable d'encaisser une at
                                         ▼
                                Dashboard Grafana (supervision)
 
- Assistant RAG (Ollama + LangChain) — isolé, lecture seule, sans droits privilégiés
+ Assistant RAG (Ollama + LangChain), isolé, lecture seule, sans droits privilégiés
 ```
 
 Chaque service Python suit une architecture en couches respectant **SOLID** (`domain` / `application` / `adapters` / `api`, injection de dépendances dans `main.py`). Détails et règles : voir [`CLAUDE.md`](CLAUDE.md).
@@ -78,7 +78,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 **PC Attaquant** : poste distinct, 8 Go RAM min., outils des scénarios retenus.
 **PC IA (optionnel)** : héberge uniquement Ollama si le PC Hôte manque de RAM.
 
-**Réseau** : réseau privé du binôme — point d'accès mobile Windows `RESILIENCE-G<n>` (PC Hôte en `192.168.137.1`) ou box personnelle, peu importe lequel (voir arbitrage du 21/10, `docs/gouvernance/06-pilotage-arbitrages.md`) ; jamais le campus, un autre groupe ni Internet. Seul le point d'entrée (WAF/front) est publié ; BDD, secrets et interfaces de gestion restent sur des réseaux internes.
+**Réseau** : réseau privé du binôme, point d'accès mobile Windows `RESILIENCE-G<n>` (PC Hôte en `192.168.137.1`) ou box personnelle, peu importe lequel (voir arbitrage du 21/10, `docs/gouvernance/06-pilotage-arbitrages.md`) ; jamais le campus, un autre groupe ni Internet. Seul le point d'entrée (WAF/front) est publié ; BDD, secrets et interfaces de gestion restent sur des réseaux internes.
 
 ## Démarrage rapide
 
@@ -118,7 +118,7 @@ Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans 
 
 Déploiement en une commande (Windows + Docker Desktop, `.env` déjà présent) : `.\infra\ansible\Deploy.ps1` enchaîne contrôle du `.env`, modèle ML si absent, socle, observabilité, vérification Ansible et transaction de test. Détails et limites : `infra/ansible/README.md`.
 
-Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant — hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
+Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant, hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
 
 ## Lancer la démonstration
 
@@ -190,4 +190,4 @@ cd services/rag-assistant && python -m pytest -q
 - **Compromission (S2) non automatique** : aucun détecteur n'émet `IncidentKind.COMPROMISE`. La réponse à une injection SQL (rotation de secret via `SopsSecretRotator` + redémarrage de `auth`/`api`) existe et est prouvée, mais l'incident est **déclenché à la main** par `POST /incidents kind=compromise` ; seules les attaques de disponibilité (S1, flood) et de données (S4, corruption BDD) sont traitées sans intervention humaine. L'investigation manuelle de compromission n'est pas développée. Voir `docs/procedures/chaos-engineering.md` (S2) et `docs/gouvernance/02-pca-pra.md` §2.
 - **`block_ip` inopérant sous Docker Desktop** : le WAF ne voit que l'IP de la passerelle Docker, jamais l'IP réelle de l'attaquant ; l'action échoue systématiquement (arbitrage assumé du 20/10, voir `docs/gouvernance/06-pilotage-arbitrages.md`). La disponibilité est restaurée via `block_subject` (JWT) + `restart_service`, prouvé en réel (RTO 4,84 s le 22/10).
 - **Blocage WAF non réinitialisé entre essais** : `/blocklist/blocked.txt` n'est vidé que par `scripts/reset_demo.sh` (reconstruction complète de la base) ; un flood isolé hors de ce script laisse le compte bloqué pour l'essai suivant (constaté le 22/10, vidage manuel possible depuis `resilience-remediation`).
-- **Assistant RAG — injection de prompt (ER6)** : la défense par le prompt n'est pas étanche, même sur `llama3.1:8b` (banc `attack/rag_prompt_injection/` : 9/10 repoussées, cède sur une injection conditionnelle ciblée). Risque résiduel borné par l'absence d'outils, de secrets et d'écriture, et par un corpus non confidentiel.
+- **Assistant RAG, injection de prompt (ER6)** : la défense par le prompt n'est pas étanche, même sur `llama3.1:8b` (banc `attack/rag_prompt_injection/` : 9/10 repoussées, cède sur une injection conditionnelle ciblée). Risque résiduel borné par l'absence d'outils, de secrets et d'écriture, et par un corpus non confidentiel.

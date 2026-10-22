@@ -1,6 +1,6 @@
-# Architecture — PROJECT RESILIENCE-ALPHA
+# Architecture, PROJECT RESILIENCE-ALPHA
 
-> Version initiale du lundi 19/10, mise à jour le mardi 20/10 (WAF, détection de crash, blocage par compte) — à valider par l'équipe. Source de vérité des règles : [`CLAUDE.md`](../../CLAUDE.md).
+> Version initiale du lundi 19/10, mise à jour le mardi 20/10 (WAF, détection de crash, blocage par compte), à valider par l'équipe. Source de vérité des règles : [`CLAUDE.md`](../../CLAUDE.md).
 
 ## 1. Vue d'ensemble
 
@@ -13,24 +13,24 @@ flowchart LR
             WAF[WAF<br/>ModSecurity + OWASP CRS]
             FRONT[Front React<br/>paiement]
         end
-        subgraph APP[réseau app — interne]
+        subgraph APP[réseau app, interne]
             API[API métier]
             AUTH[Auth]
             DB[(BDD)]
             DBR[db-recovery<br/>sauvegarde / restauration]
         end
-        subgraph OBS[réseau obs — interne]
+        subgraph OBS[réseau obs, interne]
             PROM[Prometheus]
             LOKI[Loki + Alloy]
             GRAF[Grafana]
         end
-        subgraph CTRL[réseau control — interne]
+        subgraph CTRL[réseau control, interne]
             DET[Détecteur ML]
             REM[Moteur de remédiation]
             DSP[docker-socket-proxy]
             VAULT[SOPS<br/>fichiers chiffrés montés, pas un service]
         end
-        subgraph RAGNET[réseau rag — isolé]
+        subgraph RAGNET[réseau rag, isolé]
             RAG[Assistant RAG<br/>lecture seule]
         end
     end
@@ -64,7 +64,7 @@ flowchart LR
 
 | Service | Rôle | Réseaux | Publié ? | Propriétaire |
 |---|---|---|---|---|
-| `waf` | ModSecurity + OWASP CRS (nginx), niveau de paranoïa 1 ; refuse les sources de la liste de blocage (njs) ; journal d'audit JSON vers Loki | `resilience-net` | **oui**, `${WAF_BIND_HOST:-127.0.0.1}:8080` (seul point d'entrée ; `127.0.0.1` par défaut, IP LAN du PC Hôte sur le réseau privé du binôme — hotspot ou box — en essai réel) | Hugo |
+| `waf` | ModSecurity + OWASP CRS (nginx), niveau de paranoïa 1 ; refuse les sources de la liste de blocage (njs) ; journal d'audit JSON vers Loki | `resilience-net` | **oui**, `${WAF_BIND_HOST:-127.0.0.1}:8080` (seul point d'entrée ; `127.0.0.1` par défaut, IP LAN du PC Hôte sur le réseau privé du binôme, hotspot ou box, en essai réel) | Hugo |
 | `gateway` | Caddy : build multi-étapes qui embarque le front React (`frontend/`) servi en statique, et route `/auth/*` → `auth`, `/me/*` → `api`. Placée derrière le WAF ; aucun conteneur `frontend` séparé | app | non (joignable par le WAF seulement) | Gabriel / Hugo |
 | `api` | API métier (transactions) | app | non | Antoine |
 | `auth` | Authentification / JWT (inscription, connexion) | app, db | non | Antoine |
@@ -75,7 +75,7 @@ flowchart LR
 | `remediation` | Décision, actions, vérification ; sondage de santé (crash) ; écrit la liste de blocage du WAF | control, app, obs | non | Kevin |
 | `docker-proxy-ctl` | Passerelle Docker du moteur : redémarrage/arrêt d'un conteneur existant uniquement | control | non | Hugo |
 | `docker-proxy`, `docker-proxy-autoheal` | Passerelles Docker d'Alloy (lecture seule) et de l'auto-guérison d'Alloy (restart-only, ajoutée le 21/10) ; voir `observabilite.md` §7bis | pile obs | non | Hugo |
-| *(pas de service dédié)* | Secrets : **SOPS + age**, tranché le 21/10 (voir `06-pilotage-arbitrages.md`). `infra/secrets/*.enc.yaml` montés en fichiers dans `remediation` ; `RotateSecretAction`/`SopsSecretRotator` implémentée et essayée en réel | — | — | Kevin |
+| *(pas de service dédié)* | Secrets : **SOPS + age**, tranché le 21/10 (voir `06-pilotage-arbitrages.md`). `infra/secrets/*.enc.yaml` montés en fichiers dans `remediation` ; `RotateSecretAction`/`SopsSecretRotator` implémentée et essayée en réel | - |, | Kevin |
 | `rag-assistant` | Assistant RAG (LangChain ; modèle Ollama ≤ 8B hébergé hors Compose) | rag | non (interrogé par `docker compose exec`) | François |
 
 **Règle d'exposition** : seul le WAF publie un port pour le trafic applicatif. Grafana ne publie aucun port : elle est servie sous `/grafana` par le WAF (puis la passerelle), donc soumise aux règles ModSecurity. Aucun composant, hors les passerelles `docker-proxy-ctl`, `docker-proxy` et `docker-proxy-autoheal`, ne touche `docker.sock`.
@@ -116,7 +116,7 @@ flowchart LR
 | Type d'incident | Exemple | Actions (dans l'ordre) |
 |---|---|---|
 | `AVAILABILITY` | flood HTTP | `BlockIpAction` → `BlockSubjectAction` → `RestartServiceAction` → (`ScaleServiceAction`) |
-| ↳ détail `BlockIpAction` | — | **Échec attendu, pas un bug.** `DetectionService` (`services/anomaly-detector/app/application/detection.py`) ne renseigne jamais `attacker_ip` : avec Docker Desktop, l'IP de l'attaquant est NATée derrière la gateway avant le WAF, donc toutes les requêtes arrivent sous la même IP (bloquer par IP bloquerait tout le monde). Seul `attacker_subject` (claim `sub` du JWT, via une requête Loki) est renseigné ; `BlockIpAction` échoue donc systématiquement (`aucune IP source identifiée`), loggé en `action.executed` avec `success: false`, et c'est `BlockSubjectAction` qui bloque réellement l'attaquant. Voir l'arbitrage du 20/10 dans `docs/gouvernance/06-pilotage-arbitrages.md`. |
+| ↳ détail `BlockIpAction` | - | **Échec attendu, pas un bug.** `DetectionService` (`services/anomaly-detector/app/application/detection.py`) ne renseigne jamais `attacker_ip` : avec Docker Desktop, l'IP de l'attaquant est NATée derrière la gateway avant le WAF, donc toutes les requêtes arrivent sous la même IP (bloquer par IP bloquerait tout le monde). Seul `attacker_subject` (claim `sub` du JWT, via une requête Loki) est renseigné ; `BlockIpAction` échoue donc systématiquement (`aucune IP source identifiée`), loggé en `action.executed` avec `success: false`, et c'est `BlockSubjectAction` qui bloque réellement l'attaquant. Voir l'arbitrage du 20/10 dans `docs/gouvernance/06-pilotage-arbitrages.md`. |
 | `CRASH` | conteneur arrêté (S3) | `RestartServiceAction` seule |
 | `DATABASE_CORRUPTION` | altération/corruption BDD (S4) | `RestoreDatabaseAction` → `RestartServiceAction` → vérification transactionnelle |
 | `COMPROMISE` | SQLi, exfiltration | `RotateSecretAction` (JWT) → `RestartServiceAction(auth)` → `RestartServiceAction(api)` ; câblé dans `main.py`. Pas de `BlockIpAction` : bloquer une IP ne corrige rien ici. Investigation manuelle non automatisée (assumé). Une restauration S4 ne suffit pas |
@@ -126,9 +126,9 @@ flowchart LR
 | Port | Rôle | Implémentation prod | Implémentation test |
 |---|---|---|---|
 | `Detector` | produit une `Anomaly` | `MlDetector` (modèle chargé) | `FakeDetector` |
-| `DecisionPolicy` | `Incident` → actions | `KindBasedPolicy` | — |
+| `DecisionPolicy` | `Incident` → actions | `KindBasedPolicy` | - |
 | `RemediationAction` | exécute une action | `BlockIpAction`, `RestartServiceAction`… | fakes |
-| `RecoveryVerifier` | prouve la reprise | `HealthAndProbeVerifier` | — |
+| `RecoveryVerifier` | prouve la reprise | `HealthAndProbeVerifier` | - |
 | `ContainerRestarter` | redémarre un conteneur | `DockerProxyClient` | `FakeDockerClient` |
 | `DatabaseRestorer` | restaure la dernière archive validée antérieure à la détection | `HttpDatabaseRestorer` (service privé `db-recovery`, `PROBE_TOKEN`) | fake |
 | `ServiceScaler` | change les replicas | `DockerProxyClient` | `FakeDockerClient` |

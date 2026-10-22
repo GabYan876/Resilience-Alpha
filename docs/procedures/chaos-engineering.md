@@ -1,4 +1,4 @@
-# Scénario de chaos — jeudi 22/10
+# Scénario de chaos, jeudi 22/10
 
 Responsable : François (attaque + Red Team). Rejoué avec Kevin (remédiation). Objectif du
 jalon : **≥ 5 démonstrations consécutives sans intervention humaine**, chacune prouvée par une
@@ -16,7 +16,7 @@ mesures (RTO, RPO, issue) sont consignées dans [`../gouvernance/02-pca-pra.md`]
   confirmation explicite par `--yes-i-know-the-target`. **Ne pas utiliser `--yes-i-know-the-target`**
   pendant le chaos : c'est le garde-fou qui prouve qu'on ne sort pas du périmètre.
 - Cible réelle = le WAF du PC Hôte. Régler `WAF_BIND_HOST` sur l'IP réelle du PC Hôte dans son
-  `.env` **avant** chaque essai (le WAF refuse de démarrer si l'IP n'existe pas sur la machine —
+  `.env` **avant** chaque essai (le WAF refuse de démarrer si l'IP n'existe pas sur la machine,
   constat du 21/10 : `192.168.137.1` fixé alors que seul `192.168.1.140` existait).
 
 ## Prérequis avant le premier passage
@@ -31,25 +31,25 @@ mesures (RTO, RPO, issue) sont consignées dans [`../gouvernance/02-pca-pra.md`]
 4. Trafic de fond actif pour mesurer les faux positifs : `python scripts/background_traffic.py`
    (trafic légitime continu, sert de référence « normale » au détecteur).
 
-## Pannes injectées — ordre et critères de reprise
+## Pannes injectées, ordre et critères de reprise
 
 Le RTO se mesure du **début d'attaque** (journal horodaté du script) à l'événement
 `incident.resolved` dans Loki. Décomposition : délai de détection (`incident.detected`) + temps
 de remédiation.
 
-### S1 — Flood HTTP (disponibilité)
+### S1, Flood HTTP (disponibilité)
 
 - **Injection** : `python attack/flood_http.py --base-url http://<PC_HOTE>:8080 --duration 30`.
 - **Attendu** : le détecteur ML signale une anomalie (hausse `request_rate` / `latency_p95_s`),
   `DecisionPolicy` choisit blocage du compte source + redémarrage, pas une rotation de secret.
 - **Critère de reprise** : `incident.resolved`, API saine **et** transaction de sonde réussie.
-- **Distinction à prouver** : disponibilité, donc blocage + restart — jamais de rotation de
+- **Distinction à prouver** : disponibilité, donc blocage + restart, jamais de rotation de
   secret.
 
-### S2 — Injection SQL (compromission)
+### S2, Injection SQL (compromission)
 
 - **Injection** : `python attack/sqli_injection.py --base-url http://<PC_HOTE>:8080`.
-- **Déclenchement de l'incident — manuel, pas automatique.** Aucun détecteur n'émet
+- **Déclenchement de l'incident, manuel, pas automatique.** Aucun détecteur n'émet
   `IncidentKind.COMPROMISE` : le SQLi seul ne lance rien. On déclenche l'incident à la main par
   `POST /incidents kind=compromise` sur le moteur de remédiation, après le SQLi. C'est ce
   `POST` qui enclenche `DecisionPolicy` → `SopsSecretRotator` (rotation de secret) + redémarrage
@@ -58,11 +58,11 @@ de remédiation.
   rotation.
 - **Limites assumées** : (1) la détection automatique de compromission n'est pas développée
   (hors périmètre, arbitrage `06-pilotage-arbitrages.md`), donc S2 n'est pas « sans intervention
-  humaine » comme S1/S4 — le déclenchement est manuel ; (2) l'investigation manuelle de
+  humaine » comme S1/S4, le déclenchement est manuel ; (2) l'investigation manuelle de
   compromission n'est pas automatisée. Les deux sont consignées dans « Limites connues » du
   README et au §2 de `02-pca-pra.md`.
 
-### S4 — Corruption BDD (données)
+### S4, Corruption BDD (données)
 
 - **Injection** : corruption directe de la base (procédure `s4-corruption-bdd.md`).
 - **Attendu** : incident `DATABASE_CORRUPTION` → `RestoreDatabaseAction` (dernière archive

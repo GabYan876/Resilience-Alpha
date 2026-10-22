@@ -3,15 +3,15 @@
 Jalon : **architecture + EBIOS validés, dépôt + conventions, hotspot OK.**
 Chacun relit son périmètre, répond aux questions et coche. Les réponses sont reportées dans [`06-pilotage-arbitrages.md`](gouvernance/06-pilotage-arbitrages.md).
 
-## 1. Architecture — [`architecture/architecture.md`](architecture/architecture.md)
+## 1. Architecture, [`architecture/architecture.md`](architecture/architecture.md)
 
 Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 
 ### Hugo (infra, WAF, réseaux)
 - [x] Les 5 réseaux Docker (`resilience-net`, `db-internal`, `logs-query`, `control-internal`, `rag`) et l'exposition (seul le WAF publie un port, `127.0.0.1:8080` par défaut) sont réalisés dans `infra/compose/docker-compose.yml` : chaque service n'a que les réseaux dont il a besoin (`postgres`/`db-recovery` → `db-internal` seul ou + `control-internal` ; `docker-proxy-ctl` → `control-internal` seul ; `rag-assistant` → `rag` seul). Vérifié le 21/10 (Kevin) directement dans le fichier Compose.
 - [x] Le `docker-socket-proxy` n'expose que `restart` pour le moteur de remédiation.
-- ~~**Question 1 — WAF** : ModSecurity ou Coraza ?~~ **Réponse (20/10, `06-pilotage-arbitrages.md`)** : ModSecurity + OWASP CRS (nginx), blocage par **compte** (`sub` du JWT) en plus de l'IP — la passerelle Docker Desktop masque l'IP réelle. Revalidé le 21/10 sur 5 passages réels depuis le PC Attaquant.
-- **Question 3 — SOC** : Loki/Grafana seuls, ou Wazuh si la RAM le permet ? **Tranchée le 21/10** : Loki/Grafana seuls, confirmé par Hugo (`06-pilotage-arbitrages.md`, ligne « Fonction SOC »).
+- ~~**Question 1, WAF** : ModSecurity ou Coraza ?~~ **Réponse (20/10, `06-pilotage-arbitrages.md`)** : ModSecurity + OWASP CRS (nginx), blocage par **compte** (`sub` du JWT) en plus de l'IP, la passerelle Docker Desktop masque l'IP réelle. Revalidé le 21/10 sur 5 passages réels depuis le PC Attaquant.
+- **Question 3, SOC** : Loki/Grafana seuls, ou Wazuh si la RAM le permet ? **Tranchée le 21/10** : Loki/Grafana seuls, confirmé par Hugo (`06-pilotage-arbitrages.md`, ligne « Fonction SOC »).
 
 ### Antoine (API, auth, BDD)
 - [x] Contrat de la sonde de transaction : `POST /transactions` avec `{from_account, to_account, amount}` (comptes de test fictifs), réponse 2xx si succès.
@@ -31,7 +31,7 @@ Tous : lire le schéma, le tableau des services et le pipeline de remédiation.
 ### Kevin (tech lead)
 - ~~Question 2 : transport détecteur → remédiation~~ **Réponse (20/10)** : HTTP direct sur `POST /incidents` (token), déjà en place et consigné le 19/10.
 
-## 2. EBIOS RM, ateliers 1 à 3 — [`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md)
+## 2. EBIOS RM, ateliers 1 à 3, [`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md)
 
 Responsable : Antoine. Contributeurs : Hugo (infra), Kevin (remédiation).
 
@@ -44,7 +44,7 @@ Ateliers 1 à 3 validés par le tech lead le 20/10 (voir `validation-jalon-20-10
 - [x] **Scénarios stratégiques** SS1 à SS5 : gravité et mesures liées à l'écosystème.
 - [x] **Socle de sécurité** : référentiel ANSSI retenu ; états et numéros de règles à remplir (peut attendre mardi).
 
-## 3. Conventions — [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+## 3. Conventions, [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 
 Tous : lire `CONTRIBUTING.md` (5 min).
 

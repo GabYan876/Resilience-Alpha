@@ -69,7 +69,7 @@ Si Ollama est injoignable, le service reste sain : `/health` répond, `/ask` ré
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `RAG_TOKEN` | — (obligatoire) | jeton de `/ask` et `/reindex` |
+| `RAG_TOKEN` |, (obligatoire) | jeton de `/ask` et `/reindex` |
 | `OLLAMA_URL` | `http://host.docker.internal:11434` | serveur Ollama |
 | `LLM_MODEL` | `llama3.1:8b` | modèle de langage (≤ 8B) |
 | `EMBED_MODEL` | `nomic-embed-text` | modèle d'embeddings |

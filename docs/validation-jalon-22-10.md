@@ -27,7 +27,7 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 - [ ] Consentement écrit des membres enrôlés ; aucun gabarit hors du PC Hôte (§5 de l'analyse).
 - [ ] Lots L1 à L6 attribués (§7 de l'analyse) ; code sur branche, merge seulement si `pytest` et `demo_loop.py --runs 5` restent verts.
 
-## 1. Infra et durcissement — Hugo
+## 1. Infra et durcissement, Hugo
 
 - [ ] Déploiement en une commande rejoué à froid sur le PC Hôte final (`Deploy.ps1 -RenderEnv` sur clone neuf, ou `Deploy.ps1` si `.env` existe), pile complète saine, transaction de test réussie.
 - [ ] Ansible, Compose et `.env.example` figés : plus aucun changement d'infra après le gel du code.
@@ -35,37 +35,37 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 - [ ] Seul le WAF publie un port ; aucune interface de gestion (Grafana, Prometheus, Loki, proxys Docker) exposée au-delà du WAF.
 - [ ] Aucun secret dans l'arbre qui part au zip : `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `ml/models/*.joblib` exclus du `-Code.zip` (les fichiers `*.enc.yaml` chiffrés sont les seuls autorisés).
 
-## 2. Chaos et remédiation — Kevin
+## 2. Chaos et remédiation, Kevin
 
-- [x] **≥ 5 démos consécutives sans intervention humaine** : `python scripts/demo_loop.py --runs 5` rejoué le 22/10 sur `main` (10:35), 5/5 reprises, `incident.resolved` et transaction de test réussie à chaque passage, RTO 28-35 s (moyenne 32 s). *Rejoué depuis le PC Hôte, ciblant le WAF (`192.168.137.1:8080`) ; un flood isolé lancé directement depuis le PC Attaquant a aussi été prouvé le même jour (1 passage, RTO 4,84 s, voir `docs/gouvernance/02-pca-pra.md` §7) — à refaire en 5 passages depuis le PC Attaquant si le temps le permet avant le gel.
+- [x] **≥ 5 démos consécutives sans intervention humaine** : `python scripts/demo_loop.py --runs 5` rejoué le 22/10 sur `main` (10:35), 5/5 reprises, `incident.resolved` et transaction de test réussie à chaque passage, RTO 28-35 s (moyenne 32 s). *Rejoué depuis le PC Hôte, ciblant le WAF (`192.168.137.1:8080`) ; un flood isolé lancé directement depuis le PC Attaquant a aussi été prouvé le même jour (1 passage, RTO 4,84 s, voir `docs/gouvernance/02-pca-pra.md` §7), à refaire en 5 passages depuis le PC Attaquant si le temps le permet avant le gel.
 - [ ] Scénarios du chaos de François rejoués contre la pile : pour chacun, détection, action choisie par `DecisionPolicy`, vérification (API saine **et** transaction de test) et RTO consignés dans `docs/gouvernance/02-pca-pra.md` §7.
 - [x] Disponibilité ≠ compromission : rejouées le 22/10. Flood → `block_subject` + `restart_service` (RTO 4,84 s, voir `02-pca-pra.md` §7). SQLi → bloqué en périmètre WAF (403, règle CRS), *pas* de rotation de secret automatique câblée sur ce signal (la rotation existe et est prouvée en déclenchement manuel, voir §7) : écart à assumer devant le jury, pas une démonstration de remédiation de compromission de bout en bout.
 - [x] Faux positifs ML re-mesurés après le chaos (22/10, trafic de fond actif pendant la collecte) : `app.cli evaluate` sur 60 mesures inédites (`ml/data/holdout_22_10.csv`) → **0 jugée anormale, 0 fausse alerte** après 3 confirmations ; jeu d'attaque existant (16 mesures) → 75 % jugées anormales, alerte à la mesure 5.
 - [x] Écarts honnêtes consignés dans « Limites connues » du README (22/10) : investigation manuelle de compromission non développée, `block_ip` inopérant sous Docker Desktop (arbitrage du 20/10), détecteur de compromission non automatique, consigne additionnelle 1 partielle, blocklist WAF non réinitialisée entre essais hors `reset_demo.sh`.
 - [ ] **Gel du code à 17h** : plus aucun commit fonctionnel sur `main` après l'heure ; seuls les ajustements de rendu (docs, zip) restent permis.
 
-## 3. Restauration et backend — Antoine
+## 3. Restauration et backend, Antoine
 
 - [x] S4 (corruption BDD) rejoué automatiquement le 22/10 dans une pile S4 locale jetable isolée : 1/1 reprise, RTO 6,38 s de `Tc` à `incident.resolved` (détection 4,83 s, remédiation 1,55 s), RPO 108,78 s ; API saine et transaction de sonde réussie. Détails, horodatages et limites du périmètre dans [`s4-corruption-bdd.md`](procedures/s4-corruption-bdd.md) et [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7.
 - [x] Restauration à froid rejouée en fin de chaos : pile complète isolée arrêtée puis relancée en une commande, transaction réussie ; volumes PostgreSQL/sauvegardes conservés. Preuve et chronométrages (non assimilés à un RTO) dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 et [`restauration-a-froid.md`](procedures/restauration-a-froid.md).
 - [x] EBIOS RM et PCA/PRA mis à jour avec les mesures réelles du chaos ; matrice de traçabilité sans ligne `PROUVÉ` sans preuve référencée (ER4 rétrogradé à `EN COURS`, S1 corrigé en `block_subject`).
 - [x] Doc d'API à jour (voir §0) ; tests `pytest` verts avant le gel : API (58), auth (64) et remediation (80). Commandes et résultats détaillés dans la PR.
 
-## 4. Front, dashboard, rendus — Gabriel
+## 4. Front, dashboard, rendus, Gabriel
 
 - [ ] **Clip chrono 60 s sans coupe** : scénario écrit, prise finale tournée, fichier `Workshop2026-M2-G<n>-VidChrono.mp4` ≤ 60 s. Le clip montre le service **avant / pendant / après** l'incident dans Grafana (disponibilité, latence, requêtes bloquées, événements `incident.*`).
 - [ ] Dashboard Grafana vérifié pendant le chaos : lisible sur les trois temps.
 - [ ] NIS2/DORA relu et relié aux essais réels (chaos du 22/10 inclus).
 - [ ] `Pres.pptx` et pitch prêts pour le jury (5 min de démo + 5 min de questions).
 
-## 5. Attaque et RAG — François
+## 5. Attaque et RAG, François
 
 - [x] **Scénario de chaos écrit** (liste des pannes, ordre, critères de reprise) et rejoué ; toute attaque ne vise que le PC Hôte (garde-fous `ALLOWED_HOSTS`, jamais le campus, un autre groupe ni Internet). Scénario : [`docs/procedures/chaos-engineering.md`](procedures/chaos-engineering.md) (S1 flood auto, S2 SQLi + déclenchement manuel `compromise`, S4 corruption BDD). Rejeu 22/10 depuis le PC Attaquant à travers le WAF consigné dans [`02-pca-pra.md`](gouvernance/02-pca-pra.md) §7 : S1 flood RTO 4,84 s, S2 SQLi 6/6 bloquées (403) ; S4 non rejoué le 22/10 (derniers passages le 21/10, voir §7). Les attaques S1 et S2 viennent du PC Attaquant ; `demo_loop.py` est lancé depuis le PC Hôte. `demo_loop.py --runs 5` rejoué après merge : 5/5, RTO moyen 32 s, max 36 s (consigné dans [`repartition-reelle.md`](repartition-reelle.md)).
 - [x] RAG : ER6 prouvé sur plusieurs scénarios d'injection de prompt (banc [`attack/rag_prompt_injection/`](../attack/rag_prompt_injection/) : 6 scénarios, 10 questions, 2 passages, `temperature=0`). Modèle de démo `llama3.1:8b` (≤ 8B) : 9/10 repoussées, cède sur l'injection conditionnelle ciblée (06) ; `llama3.2:3b` 5/10. Ollama sur le PC Linux dédié (`192.168.137.157:11434`), conteneur en lecture seule avec les restrictions du Compose. Détail et risque résiduel dans [`04-matrice-tracabilite.md`](gouvernance/04-matrice-tracabilite.md) (ER6) et « Limites connues » du README.
 - [ ] Dossier PDF (8–12 p.) assemblé : architecture, 5 piliers, essais réels avec chiffres, limites. Source Markdown : [`dossier.md`](dossier.md) ; reste l'export PDF et le contrôle du nombre de pages.
 - [ ] `Workshop2026-M2-G<n>-Code.zip` : sources, infra, scripts d'attaque/ML, tests, doc d'API, README, **sans secret** (voir §1).
 
-## 6. Cohérence d'intégration — Kevin
+## 6. Cohérence d'intégration, Kevin
 
 - [ ] `README.md`, `architecture.md` et matrice de traçabilité alignés avec la pile réellement déployée au gel.
 - [ ] `gh pr list --state open` vide au gel ; toutes les branches de travail supprimées.
