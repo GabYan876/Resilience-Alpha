@@ -11,10 +11,11 @@ la ligne « Au moins une attaque de compromission (SQLi) est bloquée, visible d
 SIEM/Grafana » des critères de sortie du jalon.
 
 Portée volontairement limitée (voir `docs/validation-jalon-21-10.md` §5) : ce script
-est la partie « attaque » de François. Le traitement complet de S2 (rotation de secrets,
-investigation) n'est pas câblé dans le moteur de remédiation (`VaultSecretRotator`
-reste à développer, voir `docs/gouvernance/02-pca-pra.md` §2) ; seul le blocage/la
-trace WAF sont démontrés ici.
+est la partie « attaque » de François. La rotation de secret (`RotateSecretAction` /
+`SopsSecretRotator`) existe et a été essayée en réel (`docs/gouvernance/02-pca-pra.md`
+§7), mais reste déclenchée manuellement (`POST /incidents kind=compromise`) : ce script
+ne produit pas encore le signal qui la déclencherait automatiquement ; seul le
+blocage/la trace WAF sont démontrés ici.
 
 Garde-fous (identiques à `attack/flood_http.py`) :
   - cible par défaut = la passerelle locale de CE dépôt (127.0.0.1:8080) ;
