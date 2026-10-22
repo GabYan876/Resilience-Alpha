@@ -4,7 +4,8 @@
   Lance l'agent caméra natif du PC Hôte (hors Docker : Docker Desktop ne voit pas la caméra USB).
 .DESCRIPTION
   Crée le venv et télécharge les modèles au premier lancement. Variables attendues :
-    AGENT_TOKEN        jeton partagé avec `auth` (HOST_AGENT_TOKEN dans .env), 32 caractères minimum
+    AGENT_TOKEN        jeton partagé avec `auth` (HOST_AGENT_TOKEN dans .env), 32 caractères minimum ;
+                     relu dans le .env racine s'il n'est pas défini
     TEMPLATE_KEY_FILE  fichier de clé des gabarits (créé par `python -m app.cli genkey <fichier>`)
   Option : -BindAddress, IP du PC Hôte joignable par Docker (défaut : 0.0.0.0 restreint au pare-feu
   Windows : n'autoriser que le sous-réseau Docker / hotspot). Ne jamais exposer ce port hors du PC Hôte.
@@ -21,6 +22,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
+# Par défaut, le jeton est relu dans le .env racine (HOST_AGENT_TOKEN, produit par render_env.sh) et la clé
+# des gabarits dans data\template.key : un seul jeton à tenir, identique des deux côtés.
+$envFile = Join-Path $PSScriptRoot '..\..\.env'
+if (-not $env:AGENT_TOKEN -and (Test-Path $envFile)) {
+    $line = Select-String -Path $envFile -Pattern '^HOST_AGENT_TOKEN=(.+)$' | Select-Object -First 1
+    if ($line) { $env:AGENT_TOKEN = $line.Matches[0].Groups[1].Value.Trim() }
+}
+if (-not $env:TEMPLATE_KEY_FILE -and (Test-Path '.\data\template.key')) { $env:TEMPLATE_KEY_FILE = '.\data\template.key' }
 if (-not $env:AGENT_TOKEN) { throw 'AGENT_TOKEN manquant' }
 if (-not $env:TEMPLATE_KEY_FILE) { throw 'TEMPLATE_KEY_FILE manquant (python -m app.cli genkey <fichier>)' }
 

@@ -11,6 +11,8 @@ cd host-agent\camera
 python -m venv .venv ; .\.venv\Scripts\python -m pip install -r requirements.txt
 .\.venv\Scripts\python scripts\download_models.py         # 2 modèles ONNX, empreintes vérifiées
 .\.venv\Scripts\python -m app.cli genkey data\template.key  # une seule fois ; sauvegarder via SOPS
+# Facultatif : sans ces deux variables, run.ps1 relit HOST_AGENT_TOKEN dans le .env racine (écrit par
+# scripts/render_env.sh) et prend data\template.key s'il existe.
 $env:AGENT_TOKEN = '<32+ caractères, identique à HOST_AGENT_TOKEN du .env>'
 $env:TEMPLATE_KEY_FILE = 'data\template.key'
 .\.venv\Scripts\python -m app.cli enroll admin@resilience.local   # membre consentant, face à la caméra

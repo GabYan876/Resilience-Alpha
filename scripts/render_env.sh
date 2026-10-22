@@ -35,4 +35,14 @@ render_into_env() {
 render_into_env "${APP_SECRETS}"
 render_into_env "${JWT_SECRETS}"
 
+# Agent caméra hôte (consigne additionnelle 1) : jeton partagé entre `auth` et l'agent, propre à
+# ce poste, jamais versionné. Généré seulement s'il est vide ; host-agent/camera/run.ps1 le relit
+# dans ce .env. URL par défaut : l'agent écoute sur le port 8765 du PC Hôte.
+set_if_empty() {
+  grep -q "^$1=." "${ENV_FILE}" && return 0
+  if grep -q "^$1=" "${ENV_FILE}"; then sed -i "s|^$1=.*|$1=$2|" "${ENV_FILE}"; else echo "$1=$2" >> "${ENV_FILE}"; fi
+}
+set_if_empty HOST_AGENT_URL "http://host.docker.internal:8765"
+set_if_empty HOST_AGENT_TOKEN "$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n' | head -c 48)"
+
 echo "Écrit : ${ENV_FILE}"
