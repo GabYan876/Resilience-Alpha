@@ -62,6 +62,67 @@ schéma : [`architecture/architecture.md`](architecture/architecture.md).
 - **Réseau rag (isolé)** : assistant RAG, seul membre ; aucun chemin vers l'API, la base, le
   moteur ni Docker.
 
+Schéma (source : [`architecture/architecture.md`](architecture/architecture.md) §1) :
+
+```mermaid
+flowchart LR
+    ATT[PC Attaquant<br/>réseau privé du binôme]
+    subgraph HOST[PC Hôte]
+        direction LR
+        subgraph PUB[réseau public]
+            WAF[WAF<br/>ModSecurity + OWASP CRS]
+            FRONT[Front React<br/>paiement]
+        end
+        subgraph APP[réseau app — interne]
+            API[API métier]
+            AUTH[Auth]
+            DB[(BDD)]
+            DBR[db-recovery<br/>sauvegarde / restauration]
+        end
+        subgraph OBS[réseau obs — interne]
+            PROM[Prometheus]
+            LOKI[Loki + Alloy]
+            GRAF[Grafana]
+        end
+        subgraph CTRL[réseau control — interne]
+            DET[Détecteur ML]
+            REM[Moteur de remédiation]
+            DSP[docker-socket-proxy]
+            VAULT[SOPS<br/>fichiers chiffrés montés, pas un service]
+        end
+        subgraph RAGNET[réseau rag — isolé]
+            RAG[Assistant RAG<br/>lecture seule]
+        end
+    end
+    OLL[Ollama<br/>3e PC si RAM &lt; 32 Go]
+
+    ATT -->|attaque| WAF
+    WAF --> FRONT --> API
+    API --> AUTH
+    API --> DB
+    DBR -->|pg_dump / pg_restore| DB
+    WAF -.logs.-> LOKI
+    API -.métriques/logs.-> PROM
+    API -.-> LOKI
+    PROM --> DET
+    LOKI --> DET
+    DET -->|anomalie| REM
+    REM -->|actions restreintes| DSP
+    REM -->|blocage IP / compte<br/>fichier partagé| WAF
+    REM -->|sondage /health| API
+    REM -->|rotation| VAULT
+    REM -->|sonde transaction| API
+    REM -->|POST /restore?before=| DBR
+    REM -->|événements JSON| LOKI
+    PROM --> GRAF
+    LOKI --> GRAF
+    GRAF --> FRONT
+    RAG -.lecture seule.-> OLL
+```
+
+*Figure 1 — Réseaux cloisonnés ; seul le WAF est publié. Les flèches pleines sont des flux
+applicatifs, les pointillées des flux d'observation.*
+
 ### 3.2 Principes SOLID (architecture hexagonale)
 
 Chaque service Python suit une architecture en couches `domain` / `application` / `adapters` /
@@ -120,8 +181,10 @@ composition root (D).
 ### 4.5 Gouvernance
 
 - **EBIOS Risk Manager** : ateliers 1 à 5 ([`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md)).
-  Événements redoutés ER1 à ER8, scénarios stratégiques SS1 à SS6, scénarios opérationnels reliés
-  aux scripts d'attaque réels, traitement du risque avec risque résiduel.
+  Événements redoutés ER1 à ER8, scénarios stratégiques SS1 à SS6, scénarios opérationnels SO1
+  (flood) et SO2 (SQLi) reliés aux scripts d'attaque réels `attack/flood_http.py` et
+  `attack/sqli_injection.py` ; SO3 (force brute / photo sur le back-office) est décrit mais son
+  script d'attaque reste à écrire. Traitement du risque avec risque résiduel (§7).
 - **PCA / PRA** : [`gouvernance/02-pca-pra.md`](gouvernance/02-pca-pra.md), RTO/RPO cibles et
   mesurés, journal des essais.
 - **NIS2 / DORA** : [`gouvernance/03-nis2-dora.md`](gouvernance/03-nis2-dora.md), exigences
@@ -171,7 +234,85 @@ non isolé). Journal complet :
 
 ---
 
-## 7. Limites connues et risques résiduels
+## 7. Risques, traçabilité et gouvernance en chiffres
+
+### 7.1 Observabilité avant / pendant / après
+
+Le tableau de bord `resilience-alpha.json` (Grafana, provisionné) montre le service sain, la
+détection et les actions pendant l'incident, puis la reprise. Le tableau `siem-waf.json` assure la
+fonction SOC (journaux WAF, événements `incident.*`, règle d'alerte « WAF - Détection SQLi »).
+
+> **[À INSÉRER avant l'export PDF — Gabriel]** Figure 2 : capture Grafana *avant* (service sain).
+> Figure 3 : capture *pendant* (pic de requêtes, `incident.detected`, `decision.made`).
+> Figure 4 : capture *après* (`incident.resolved`, transaction de sonde réussie). Une capture
+> par figure, avec l'heure visible.
+
+### 7.2 Synthèse EBIOS RM
+
+Niveaux de gravité : échelle de 1 à 4 commune à EBIOS et à l'AMDEC.
+
+| Événement redouté | Gravité | Scénario / script | Mesure principale | Risque résiduel |
+|---|---|---|---|---|
+| ER1 Paiement indisponible | 3 Grave | SO1 flood — `flood_http.py` | Détection ML, blocage du compte, redémarrage, vérification par transaction | Faible : comptes multiples possibles ; IP non distinguée sous Docker Desktop |
+| ER2 Exfiltration (SQLi) | 4 Critique | SO2 — `sqli_injection.py` | WAF CRS, requêtes paramétrées, rotation de secret | Moyen : rotation prouvée mais déclenchée à la main |
+| ER3 Altération de transactions | 4 Critique | S4 corruption BDD | Rôle sans `DELETE`, restauration `db-recovery` | Moyen : sauvegardes locales non chiffrées |
+| ER4 Détournement du moteur | 4 Critique | SS4 | `docker-socket-proxy`, jeton sur `POST /incidents` | Moyen : un jeton volé permet des redémarrages |
+| ER5 Faux positif / contournement ML | 2 Significative | SS5 | Seuil appris, 3 confirmations, vérification avant clôture | Moyen : score saturant, seuil à recalibrer |
+| ER6 Abus du RAG | 2 Significative | Injection de prompt | Réseau isolé, lecture seule, aucun outil | Moyen : défense par le prompt non étanche (9/10) |
+| ER7 Accès frauduleux au back-office | 4 Critique | SO3 — script à écrire | Caméra 1:1 + mot de passe + blocage | Élevé : vivacité non couverte, consigne partielle |
+| ER8 Authentification indisponible | 2 Significative | Panne caméra / ESP8266 | Échec fermé | Non essayé côté ESP8266 |
+
+Source : [`gouvernance/01-ebios-rm.md`](gouvernance/01-ebios-rm.md), ateliers 1 et 5.
+
+### 7.3 AMDEC : défaillances prioritaires
+
+RPN = Gravité × Fréquence × Non-détection (max 64) ; seuil d'action indicatif : RPN ≥ 24.
+Cotation proposée par l'équipe le 20/10 (à valider), source :
+[`gouvernance/05-amdec.md`](gouvernance/05-amdec.md).
+
+| Composant | Défaillance | G | F | D | RPN | Repli / reprise |
+|---|---|---|---|---|---|---|
+| SOPS | Secret exposé | 4 | 2 | 4 | **32** | `SopsSecretRotator`, essayé en réel |
+| Authentification faciale | Usurpation par photo ou écran | 4 | 2 | 4 | **32** | Mot de passe en plus, blocage 5 min, révocation |
+| BDD | Fuite de données (SQLi) | 4 | 2 | 3 | **24** | WAF, rotation de secrets |
+| BDD | Corruption ou suppression | 4 | 2 | 3 | **24** | Restauration de l'archive antérieure |
+| `db-recovery` | Archives lisibles par un tiers | 3 | 2 | 4 | **24** | Chiffrement des archives (non fait) |
+| Assistant RAG | Injection de prompt | 2 | 3 | 4 | **24** | Désactivation du service |
+| API métier | Saturation (flood) | 3 | 4 | 1 | 12 | Blocage + redémarrage : 5/5 reprises |
+
+Les défaillances sous le seuil (faux positif ML, Prometheus/Loki indisponibles, WAF trop strict…)
+figurent dans le document source.
+
+### 7.4 Traçabilité risque → preuve
+
+Extrait de [`gouvernance/04-matrice-tracabilite.md`](gouvernance/04-matrice-tracabilite.md) : chaque
+ligne relie un risque à une mesure et à une preuve vérifiable ; une ligne n'est « PROUVÉ » que si la
+preuve existe.
+
+| Risque | Mesure | Preuve | Statut |
+|---|---|---|---|
+| ER1 flood | Détection ML → blocage → redémarrage | Événements Loki ; `demo_loop.py` 5/5 (22/10) | Prouvé |
+| ER1 crash | Health check → redémarrage | Essai réel du 20/10 : reprise en 34 s | En cours (à rejouer en boucle) |
+| ER2 SQLi | WAF | 12/12 bloquées le 21/10, 6/6 le 22/10 depuis le PC Attaquant | Prouvé |
+| ER2 SQLi | Rotation de secrets | `POST /incidents kind=compromise` | Prouvé en déclenchement manuel |
+| ER2 SQLi | Investigation manuelle | Procédure et journal | À faire |
+| ER4 moteur | `docker-socket-proxy`, jeton | Revue des endpoints (21/10) | Prouvé |
+| ER6 RAG | Isolation, lecture seule | Banc `attack/rag_prompt_injection/` : 9/10 | Prouvé avec réserve |
+| ER7 / ER8 back-office | Caméra 1:1, échec fermé | Voir §8 (consigne partielle) | Voir note |
+
+> **Note :** dans le document source, les lignes ER7 et ER8 portent encore « À FAIRE / aucune
+> preuve », antérieures aux essais caméra du 22/10 ; la matrice est à remettre à jour.
+
+### 7.5 NIS2 / DORA
+
+Les exigences retenues sont reliées au démonstrateur dans
+[`gouvernance/03-nis2-dora.md`](gouvernance/03-nis2-dora.md) : gestion d'incident et tests de
+résilience (DORA), continuité (PCA/PRA, RTO/RPO mesurés au §6), contrôle d'accès, cryptographie
+(SOPS). Les obligations non démontrables par un prototype de 4 jours y sont listées comme telles.
+
+---
+
+## 8. Limites connues et risques résiduels
 
 Présentées honnêtement, comme limites assumées (voir « Limites connues » du
 [`README.md`](../README.md)) :
@@ -201,7 +342,7 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 
 ---
 
-## 8. Reproductibilité
+## 9. Reproductibilité
 
 - Déploiement en une commande (Docker Compose + Ansible) ; voir [`README.md`](../README.md) et
   [`dev.md`](dev.md).
@@ -211,7 +352,7 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 
 ---
 
-## 9. Rendus
+## 10. Rendus
 
 `Workshop2026-M2-G8/` : `-Dossier.pdf` (ce document), `-Pres.pptx`, `-VidChrono.mp4` (≤ 60 s, sans
 coupe), `-Code.zip` (sources, infra, scripts d'attaque/ML, tests, doc API, README, **sans secret**).
