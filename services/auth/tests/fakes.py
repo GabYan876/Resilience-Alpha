@@ -116,5 +116,5 @@ class RecordingLed:
 
     async def set(self, mode: LedMode) -> None:
         if self.broken:
-            raise ConnectionError("ESP8266 injoignable")
+            raise ConnectionError("ESP32 injoignable")
         self.modes.append(mode)

@@ -2,14 +2,14 @@
 // Requête signée : X-Counter (croissant) et X-Signature = HMAC-SHA256(secret, "<compteur>." + corps) en hexa.
 // Les durées (30 s, 10 clignotements) sont gérées ici : la LED reste cohérente si le réseau coupe.
 #include <Arduino.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266WiFi.h>
-#include <bearssl/bearssl_hmac.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include <mbedtls/md.h>
 
 #include "secrets.h"
 
-constexpr uint8_t PIN_GREEN = D1;  // GPIO5, via résistance 220 Ω
-constexpr uint8_t PIN_RED = D2;    // GPIO4, via résistance 220 Ω
+constexpr uint8_t PIN_GREEN = 25;
+constexpr uint8_t PIN_RED = 26;
 constexpr uint32_t SOLID_MS = 30000;
 constexpr uint32_t BLINK_HALF_PERIOD_MS = 300;
 constexpr uint8_t RED_BLINK_COUNT = 10;
@@ -18,10 +18,11 @@ constexpr size_t SIG_HEX_LEN = 64;
 
 enum class Mode { Off, GreenBlink, GreenSolid, RedBlink, RedSolid };
 
-ESP8266WebServer server(80);
+WebServer server(80);
 Mode mode = Mode::Off;
 uint32_t modeStart = 0;
 uint64_t lastCounter = 0;  // en RAM : un rejeu reste possible une fois après un redémarrage
+bool ipLogged = false;
 
 void setMode(Mode next) {
   mode = next;
@@ -70,18 +71,23 @@ bool parseMode(const String& value, Mode& out) {
 // HMAC-SHA256(secret, "<compteur>." + corps) en hexadécimal minuscule.
 String sign(const String& counter, const String& body) {
   const String message = counter + "." + body;
-  const char* secret = LED_TOKEN;
-  br_hmac_key_context keyContext;
-  br_hmac_context context;
   uint8_t digest[32];
-  br_hmac_key_init(&keyContext, &br_sha256_vtable, secret, strlen(secret));
-  br_hmac_init(&context, &keyContext, 0);
-  br_hmac_update(&context, message.c_str(), message.length());
-  br_hmac_out(&context, digest);
+  const mbedtls_md_info_t* md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+  if (md == nullptr ||
+      mbedtls_md_hmac(
+          md,
+          reinterpret_cast<const unsigned char*>(LED_TOKEN),
+          strlen(LED_TOKEN),
+          reinterpret_cast<const unsigned char*>(message.c_str()),
+          message.length(),
+          digest) != 0) {
+    return "";
+  }
   String hex;
-  for (uint8_t byte : digest) {
-    if (byte < 16) hex += '0';
-    hex += String(byte, HEX);
+  constexpr char HEX_DIGITS[] = "0123456789abcdef";
+  for (const uint8_t byte : digest) {
+    hex += HEX_DIGITS[byte >> 4];
+    hex += HEX_DIGITS[byte & 0x0f];
   }
   return hex;
 }
@@ -160,4 +166,9 @@ void setup() {
 void loop() {
   server.handleClient();
   updateLed();
+  if (!ipLogged && WiFi.status() == WL_CONNECTED) {
+    Serial.print("IP ESP32 : ");
+    Serial.println(WiFi.localIP());
+    ipLogged = true;
+  }
 }
