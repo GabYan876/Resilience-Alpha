@@ -79,7 +79,7 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 - [ ] Clip 60 s sans coupe livré (§4).
 - [ ] Code gelé à 17h, `main` stable, PR ouvertes = 0 (§2, §6).
 - [ ] Remise complète avant **23h59** : `-Dossier.pdf`, `-Pres.pptx`, `-VidChrono.mp4`, `-Code.zip` sans secret.
-- [ ] Consigne additionnelle 1 *(partiel au 22/10 : identifiant → caméra → mot de passe → blocage 5 min prouvés via le WAF ; LED et ESP8266 non faits, blocage non persistant)* : soit tranche minimale démontrée (identifiant → caméra → LED → mot de passe → blocage 5 min) avec preuve, soit écart consigné au §8 avec responsable. Aucun point « prouvé » sans essai réel sur le PC Hôte.
+- [ ] Consigne additionnelle 1 *(au 22/10 soir : identifiant → caméra → LED → mot de passe → blocage 5 min joués sur le PC Hôte avec l'ESP32 sur banc, voir `repartition-reelle.md` §7 ; blocage non persistant, coupure réseau de l'ESP32 non essayée)* : soit tranche minimale démontrée (identifiant → caméra → LED → mot de passe → blocage 5 min) avec preuve, soit écart consigné au §8 avec responsable. Aucun point « prouvé » sans essai réel sur le PC Hôte.
 
 ## 8. Écarts restants pour le vendredi
 
@@ -87,5 +87,10 @@ Authentification du back-office renforcée : caméra USB sur le PC Hôte + recon
 
 | Écart | Responsable | Pourquoi c'est assumé |
 |---|---|---|
-| Consigne additionnelle 1 : parties non livrées (reconnaissance de visage, habilitations, ESP8266) | À fixer après l'arbitrage du §0bis | Reçue le jour du chaos ; spécifiée dans `consigne-additionnelle-1.md` |
-| *(autres écarts à compléter après le chaos)* | | |
+| Consigne additionnelle 1 : persistance du blocage, des habilitations et des gabarits (lot L1, en mémoire) | Hugo | Reçue le jour du chaos ; limite assumée, documentée dans le README |
+| Consigne additionnelle 1 : pas de détection de vivacité (une photo peut tromper la caméra) | François | Hors consigne ; scénario d'attaque à consigner avec son résultat réel |
+| Consigne additionnelle 1 : coupure réseau de l'ESP32 en cours de séquence non essayée | Kevin | Les durées sont gérées dans le firmware, essai à refaire si le temps le permet |
+| Compromission (S2) non détectée automatiquement, rotation de secret en déclenchement manuel | Kevin | Voir « Limites connues » du `README.md` |
+| `block_ip` inopérant sous Docker Desktop, blocage par compte (`block_subject`) à la place | Hugo | Arbitrage du 20/10 |
+| Rejeu sur clone neuf (`Deploy.ps1`) et depuis le PC Attaquant | Hugo + Kevin | Rejeu du 22/10 18h55 : 5/5 après reset, pile déjà démarrée |
+| Livrables : `Pres.pptx`, `VidChrono.mp4` (Gabriel), `Dossier.pdf` régénéré (François), `Code.zip` sans secret | Gabriel, François | Remise avant 23h59 |

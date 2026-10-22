@@ -40,11 +40,11 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 ## 3. Documentation incohérente à corriger
 
 - [x] `docs/gouvernance/03-nis2-dora.md` §4 point 3 : dit « firmware compilé mais non essayé sur banc », alors que la matrice (ER8) et le dossier disent flashé et essayé le 22/10.
-- [ ] `docs/validation-jalon-22-10.md` : cocher ce qui est fait (L2 caméra, remédiation, etc.) et remplir le §8 « Écarts restants » avec un responsable par ligne.
+- [x] `docs/validation-jalon-22-10.md` (§7 et §8 remplis, responsables proposés à valider) : cocher ce qui est fait (L2 caméra, remédiation, etc.) et remplir le §8 « Écarts restants » avec un responsable par ligne.
 - [x] `docs/repartition-reelle.md` §7 (L3 firmware, L5, L6) : L3 firmware (« non flashé »), L5 et L6 (« à faire ») à mettre à jour.
 - [ ] `docs/gouvernance/04-matrice-tracabilite.md` : ligne ER2 encore « À FAIRE » (investigation manuelle de la SQLi) ; garder « À FAIRE » avec responsable ou passer en « NON DÉMONTRABLE » expliqué.
-- [ ] `services/db/README.md` « Reste à implémenter » : points périmés (auth n'est plus un squelette, RPO / S4 mesurés).
-- [ ] `README.md` « Limites connues » : retirer « À compléter au fil du sprint » et ajouter les limites ci-dessous.
+- [x] `services/db/README.md` « Reste à implémenter » : points périmés (auth n'est plus un squelette, RPO / S4 mesurés).
+- [x] `README.md` « Limites connues » : retirer « À compléter au fil du sprint » et ajouter les limites ci-dessous.
 - [ ] Statuts « à valider par Antoine / l'équipe » à solder dans EBIOS, AMDEC et PCA/PRA.
 - [ ] Vérifier que `docs/dossier.md` §8 cite le bon numéro de PR pour les habilitations (#93 ou autre).
 - [ ] `README.md`, `architecture.md` et matrice alignés avec la pile réellement déployée.

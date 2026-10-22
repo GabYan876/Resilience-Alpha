@@ -169,9 +169,10 @@ un vrai PostgreSQL, jamais en test unitaire :
 Ce qui n'existe pas encore, par ordre d'importance pour la preuve de reprise.
 
 1. **Sauvegarde et restauration (scénario S4)** : le mécanisme local, la tâche
-   planifiée et `RestoreDatabaseAction` sont implémentés. Reste à mesurer le RPO
-   lors d'un essai réel et à traiter les limites décrites ci-dessus (chiffrement
-   et copie hors hôte) avant tout usage de données réelles.
+   planifiée et `RestoreDatabaseAction` sont implémentés et le RPO est mesuré à chaque
+   essai (`docs/procedures/s4-corruption-bdd.md`, `docs/gouvernance/02-pca-pra.md`).
+   Reste à traiter les limites décrites ci-dessus (chiffrement et copie hors hôte)
+   avant tout usage de données réelles.
 2. **Contrôle automatique de l'équilibre comptable** : la requête `SUM` ci-dessus
    n'est jouée par aucun test ni script. Ajouter un test sur PostgreSQL réel et un
    contrôle dans `check_transaction.sh`, voire une contrainte différée, pour détecter
@@ -180,9 +181,10 @@ Ce qui n'existe pas encore, par ordre d'importance pour la preuve de reprise.
    mémoire, or les deux pièges de la rejouabilité (ACL du pool, plans en cache) ne
    se voient qu'avec un vrai serveur. Prévoir un test de migration (`upgrade` puis
    `downgrade` puis `upgrade`) et un test de droits des rôles `app_rw` / `app_ro`.
-4. **Service `auth`** : la table `users` (hachage argon2, rôles) est prête mais
-   `services/auth/` n'est qu'un squelette. Reste l'émission et la vérification des
-   jetons, qui remplaceront le jeton partagé `PROBE_TOKEN` côté utilisateurs.
+4. **Service `auth`** : le service existe (`services/auth/`, connexion, jetons et
+   parcours du back-office). Restent à persister en base le blocage par identifiant,
+   les habilitations et les gabarits (tables `roles`, `face_templates`,
+   `login_lockouts`, lot L1 non fait) : aujourd'hui en mémoire.
 5. **Usage de `merchants`** : la table et le seed existent, aucune route ne s'en sert
    (pas de vérification de la clé d'API, pas de paiement vers un marchand).
 6. **Rôle `app_ro` et assistant RAG** : le rôle existe, aucun service ne l'utilise
