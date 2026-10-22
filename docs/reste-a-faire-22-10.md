@@ -14,10 +14,10 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 ## 1. Priorité haute
 
 - [x] **Fusionner le correctif LED** (PR #103, `2dabca0`, Kevin, 22/10) : la branche `origin/francois/webserver` porte `a1e91ac` (signature par paramètres d'URL, `espressif32@8.0.0`) et `4050edb` (essai de bout en bout sur banc), absents de `main`. Sur `main`, `services/auth/app/adapters/esp_led.py` envoie `X-Counter` / `X-Signature` en en-têtes, que le WebServer de l'ESP32 ne restitue pas : la LED est refusée en 401. Faire une PR, `pytest` de `auth` vert, reflasher si besoin, fusionner.
-- [ ] **Livrables** dans `Workshop2026-M2-G2/` :
+- [x] **Livrables** dans `Workshop2026-M2-G2/` :
   - [x] `-Pres.pptx` (Kevin, 22/10, Canva, 12 diapos ; chiffres alignés sur le rejeu : RTO moyen 31 s, max 34 s)
   - [x] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Kevin, 22/10)
-  - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 19h, 9 pages, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
+  - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 20h40, 12 pages, Gantt corrigé, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
   - [x] `-Code.zip` sans secret (fait et vérifié par Kevin le 22/10 : aucun `.env` ni clé age dans l'archive) : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
 - [x] **Rejeu à froid sur le PC Hôte** (Kevin, 22/10, voir sous-cases), à refaire après la fusion LED :
   - [x] démarrer Docker Desktop
