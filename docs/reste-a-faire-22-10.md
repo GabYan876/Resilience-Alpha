@@ -17,7 +17,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 - [ ] **Livrables** dans `Workshop2026-M2-G2/` :
   - [ ] `-Pres.pptx` (Gabriel)
   - [ ] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Gabriel)
-  - [ ] `-Dossier.pdf` régénéré à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
+  - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 19h, 9 pages, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
   - [ ] `-Code.zip` sans secret : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
 - [ ] **Rejeu à froid sur le PC Hôte** (Hugo + Kevin), à refaire après la fusion LED :
   - [ ] démarrer Docker Desktop
