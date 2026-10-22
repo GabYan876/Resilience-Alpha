@@ -1,4 +1,4 @@
-# API métier — transactions de paiement
+# API métier, transactions de paiement
 
 Service FastAPI de la plateforme de paiement **fictive** de PROJECT RESILIENCE-ALPHA. Il exécute des virements entre comptes de test, tient un grand livre en double entrée et sert de **preuve de reprise** : le moteur de remédiation ne déclare un incident clos que si `GET /health` répond ET qu'un `POST /transactions` réussit.
 

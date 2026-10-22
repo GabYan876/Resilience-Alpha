@@ -27,7 +27,7 @@ Deux clés age, deux périmètres (moindre privilège) :
   et `infra/secrets/jwt.enc.yaml`. Clé privée partagée hors dépôt entre les 5 membres de l'équipe
   (demander à Kevin), jamais commitée.
 - **"rotation"** : déchiffre seulement `infra/secrets/jwt.enc.yaml`. Sa clé privée est la seule montée
-  dans le conteneur `remediation` — une compromission du moteur n'expose que le JWT, jamais les mots
+  dans le conteneur `remediation`, une compromission du moteur n'expose que le JWT, jamais les mots
   de passe BDD/Grafana.
 
 Pour un poste de dev (déchiffrement avec la clé "ops") :
@@ -75,7 +75,7 @@ Le dépôt versionne la configuration des agents pour que tout le monde obtienne
 /plugin marketplace add DietrichGebert/ponytail
 /plugin            # vérifier que caveman et ponytail sont « enabled »
 
-# rtk (optionnel, condensation de sortie) — https://github.com/rtk-ai/rtk
+# rtk (optionnel, condensation de sortie), https://github.com/rtk-ai/rtk
 # binaire attendu dans le PATH, par exemple ~/.local/bin/rtk
 rtk --version
 ```
@@ -121,7 +121,7 @@ export RTK_DISABLED=1   # désactive rtk entièrement pour une session
 ```
 
 context7 est interrogé sans clé par défaut (quotas limités). Pour lever les quotas, exporter la clé
-dans le profil shell — **pas** dans `.env`, qui est réservé au runtime des conteneurs :
+dans le profil shell, **pas** dans `.env`, qui est réservé au runtime des conteneurs :
 
 ```bash
 echo 'export CONTEXT7_API_KEY=...' >> ~/.bashrc
@@ -129,7 +129,7 @@ echo 'export CONTEXT7_API_KEY=...' >> ~/.bashrc
 
 ### Règles d'usage
 
-Les règles d'usage — context7 et données sensibles, passerelles LLM tierces, réflexe anti-code-superflu —
+Les règles d'usage, context7 et données sensibles, passerelles LLM tierces, réflexe anti-code-superflu,
 sont dans [`CLAUDE.md`](../CLAUDE.md), section « Outillage Claude Code ». Elles ne sont pas recopiées ici :
 une seule source de vérité, sinon les deux fichiers divergent.
 
@@ -146,7 +146,7 @@ Deux points qui ne concernent que le poste :
   que l'installeur de plugins ne sait pas traiter, mais les hooks du plugin lancent `node` directement
   sur ses fichiers sans passer par `node_modules`. La voix et les compétences locales fonctionnent.
   Seules les compétences Caveman Cloud (`caveman-setup`, `caveman-learn`, `caveman-stats`,
-  `caveman-discover`, `caveman-optimize`, `caveman-manage`) ont besoin du paquet manquant — et elles
+  `caveman-discover`, `caveman-optimize`, `caveman-manage`) ont besoin du paquet manquant, et elles
   sont hors périmètre ici, car elles font transiter les requêtes LLM par une passerelle tierce.
 - `/ponytail` ne change rien : le plugin expose à la fois une compétence et des hooks ; selon la version,
   la commande peut se router vers la compétence sans activer le hook. Vérifier avec `/plugin`, et relancer

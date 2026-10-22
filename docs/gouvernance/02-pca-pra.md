@@ -1,4 +1,4 @@
-# PCA / PRA — Resilience-Alpha
+# PCA / PRA, Resilience-Alpha
 
 Statut : mise à jour du 22/10 ; mesures S4 sur pile complète puis pile S4 isolée, et exercice de restauration à froid isolé. Les autres RTO/RPO restent à valider. Responsable : Antoine.
 
@@ -68,9 +68,9 @@ Chaque essai : date, scénario, résultat, RTO observé, intervention humaine (o
 | 22/10 | S2 SQLi (`attack/sqli_injection.py`), 6 charges classiques contre `/me/transfers` (champ `to_account`), **depuis le PC Attaquant à travers le WAF** (`192.168.137.1:8080`) | 6/6 bloquées (403), confirmé par requête Loki (`{container="resilience-waf"} \|= "403"`, 5 flux sur la fenêtre) | Sans objet (bloqué en périmètre, pas d'incident `remediation` : rotation non déclenchée depuis un signal SQLi réel, voir §8) | Non | Logs `resilience-waf` (`docker logs resilience-waf --since 5m`), requête Loki ci-dessus |
 | 22/10 | Restauration à froid de la pile complète sur projet Compose isolé | 17 services actifs revenus à l'état attendu parmi 18 conteneurs ; migration terminée (code 0) ; transaction de 100 centimes réussie ; volumes PostgreSQL et sauvegardes conservés | `stop` : 2,66 s ; `up --detach --wait` : 26,72 s ; sonde : 0,52 s. 53,76 s stop→sonde sur l'horloge murale, intervalle inter-commandes inclus : **mesure d'exercice piloté, pas un RTO d'incident** | Oui (essai piloté ; aucun incident ni attaque) | Projet `coldrestore-b625c11f`, 8 réseaux et 8 volumes isolés ; archives `backup-20261022T115436.790111Z.dump` et `backup-20261022T115646.007172Z.dump` conservées, nouvelle archive `backup-20261022T115744.436459Z.dump` après redémarrage ; mesures consignées dans [`restauration-a-froid.md`](../procedures/restauration-a-froid.md), qui ajoute la procédure `restauration-a-froid.md` |
 
-Objectif : ≥ 5 passages sans intervention — **atteint le 21/10** depuis le PC Attaquant, à travers le WAF.
+Objectif : ≥ 5 passages sans intervention, **atteint le 21/10** depuis le PC Attaquant, à travers le WAF.
 
-`block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages, `block_subject` seul agit — confirme, sans le contredire, l'arbitrage du 20/10 (`06-pilotage-arbitrages.md` ligne 40) : sous Docker Desktop, le WAF voit la passerelle Docker (`172.25.0.1`) pour tout le trafic LAN, attaquant ou légitime, donc `attacker_ip` n'est volontairement jamais renseigné par le détecteur (`detection.py`) et un blocage par IP couperait tout le monde. Ce n'est pas une régression à corriger ; voir `validation-jalon-21-10.md` §2.
+`block_ip` échoue systématiquement (« aucune IP source identifiée ») sur les 5 passages, `block_subject` seul agit, confirme, sans le contredire, l'arbitrage du 20/10 (`06-pilotage-arbitrages.md` ligne 40) : sous Docker Desktop, le WAF voit la passerelle Docker (`172.25.0.1`) pour tout le trafic LAN, attaquant ou légitime, donc `attacker_ip` n'est volontairement jamais renseigné par le détecteur (`detection.py`) et un blocage par IP couperait tout le monde. Ce n'est pas une régression à corriger ; voir `validation-jalon-21-10.md` §2.
 
 ## 8. Risques qui subsistent après la reprise
 - **Attaquant qui revient** : bloqué par compte, il peut en créer un autre ; sous Docker Desktop l'IP n'est pas distinguée.

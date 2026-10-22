@@ -2,7 +2,7 @@
 
 Portée volontairement restreinte : ce conteneur ne déchiffre que `jwt.enc.yaml`, jamais
 `infra/secrets/app.enc.yaml` (mots de passe BDD, jeton Grafana...). La clé age montée ici
-(`SOPS_AGE_KEY_FILE`) n'est recipient que de ce seul fichier — une compromission du moteur
+(`SOPS_AGE_KEY_FILE`) n'est recipient que de ce seul fichier, une compromission du moteur
 n'expose donc que le JWT, pas le reste des secrets.
 
 `auth` et `api` ne relisent `JWT_SECRET` qu'au démarrage (`config.py`) : la rotation écrit la

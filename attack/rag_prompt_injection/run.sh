@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Banc d'essai ER6 — injection de prompt contre l'assistant RAG.
+# Banc d'essai ER6, injection de prompt contre l'assistant RAG.
 #
 # Pour chaque scénario, on fabrique un corpus de test (documents sains + un fichier
 # piégé), on lance un conteneur rag-assistant jetable qui indexe ce corpus et répond

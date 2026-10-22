@@ -1,4 +1,4 @@
-# Procédure S4 — corruption de la base
+# Procédure S4, corruption de la base
 
 Responsable : Antoine (BDD) avec Kevin (moteur). Statut : **procédure d'essai**, à jouer pour mesurer le
 RPO et RTO. Le détecteur signale `database_corruption` tout seul (invariants du grand livre) ; le
@@ -53,7 +53,7 @@ Déclenchement manuel (`POST /incidents`, `kind=database_corruption`) ; corrupti
 
 | Passage | Cas | Résultat | RTO (`incident.detected` → `incident.resolved`) |
 |---|---|---|---|
-| 1 | marge 60 s (ancien défaut), reset < 60 s avant | **échec voulu** : aucune archive éligible, `503 backup_unavailable`, `incident.failed` | — |
+| 1 | marge 60 s (ancien défaut), reset < 60 s avant | **échec voulu** : aucune archive éligible, `503 backup_unavailable`, `incident.failed` | - |
 | 2 | marge 15 s | résolu, 3 transactions + 1 de sonde revenues | 4,7 s |
 | 3 | archive prise **après** la corruption (Tc + 7 s) | résolu, l'archive postérieure est ignorée, données saines restaurées | ≈ 5 s |
 | 4 à 6 | marge 15 s, après `reset_demo.sh` | 3 × résolu, mêmes comptes avant/après | ≈ 5 s |

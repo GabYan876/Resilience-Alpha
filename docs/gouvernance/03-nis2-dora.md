@@ -1,4 +1,4 @@
-# NIS2 / DORA — Resilience-Alpha
+# NIS2 / DORA, Resilience-Alpha
 
 Statut : version du 22/10, relue par Gabriel et reliée aux essais réels du 20 au 22/10 (chaos du 22/10 compris). Première version : 20/10 (Kevin). Responsable : Gabriel. Relecture : Antoine.
 

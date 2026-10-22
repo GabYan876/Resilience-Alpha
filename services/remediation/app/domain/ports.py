@@ -78,7 +78,7 @@ class BlocklistInspector(Protocol):
     """Lecture seule de la liste de blocage : filet de sécurité pour une démo rejouable, sans
 
     `docker exec`. Un blocage oublié d'un essai précédent rend le suivant invisible côté API
-    (le WAF renvoie 403 avant la passerelle) — voir /blocklist et `scripts/reset_demo.sh`.
+    (le WAF renvoie 403 avant la passerelle), voir /blocklist et `scripts/reset_demo.sh`.
     """
 
     def list_entries(self) -> list[str]: ...

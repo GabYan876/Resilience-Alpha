@@ -1,4 +1,4 @@
-# Observabilité — Prometheus, Loki, Alloy, Grafana
+# Observabilité, Prometheus, Loki, Alloy, Grafana
 
 > Source de vérité des règles du projet : [`CLAUDE.md`](../../CLAUDE.md). Vue d'ensemble : [`architecture.md`](architecture.md).
 
@@ -21,7 +21,7 @@ Un conteneur qui redémarre ne prouve rien : le dashboard affiche donc aussi le 
 | Grafana Alloy | `grafana/alloy:v1.7.1` | 128 Mo | 12345 | non |
 | Grafana | `grafana/grafana:11.5.2` | 256 Mo | 3000 | non ; servi sous `/grafana` via le WAF |
 
-Total : **1 280 Mo (1,25 Go)** sur les 16 Go du PC Hôte, + 56 Mo pour `autoheal` et sa passerelle Docker dédiée (§7). Aucune image en `latest` : une démonstration rejouée cinq fois doit tourner sur les mêmes binaires que la veille (`autoheal` fait exception, épinglé par digest — voir §7).
+Total : **1 280 Mo (1,25 Go)** sur les 16 Go du PC Hôte, + 56 Mo pour `autoheal` et sa passerelle Docker dédiée (§7). Aucune image en `latest` : une démonstration rejouée cinq fois doit tourner sur les mêmes binaires que la veille (`autoheal` fait exception, épinglé par digest, voir §7).
 
 Chaque service a un `healthcheck`, un `restart: unless-stopped`, `cap_drop: ALL`, `no-new-privileges` et une rotation de logs (`max-size: 10m`, `max-file: 3`) pour ne pas remplir le disque pendant un flood.
 
@@ -51,7 +51,7 @@ flowchart LR
         WAF[waf]
     end
     DOCKER[(logs des conteneurs<br/>Docker)]
-    subgraph OBS[obs-internal — aucune route sortante]
+    subgraph OBS[obs-internal, aucune route sortante]
         PROM[Prometheus]
         ALLOY[Alloy]
         LOKI[Loki]
@@ -95,7 +95,7 @@ Prometheus scrape le port **8000**, chemin **`/metrics`**, sur `api`, `auth`, `r
 | `http_requests_total` | compteur | `status` (et `method`, `handler`) |
 | `http_request_duration_seconds_bucket` | histogramme | `le` (et `method`, `handler`) |
 
-Le label `service` n'est **pas** attendu des applications : il est ajouté par Prometheus cible par cible (`service: api`, `service: auth`, …). Le dashboard fonctionne donc même si une équipe nomme ses métriques autrement — il suffit d'ajuster les requêtes, pas la topologie.
+Le label `service` n'est **pas** attendu des applications : il est ajouté par Prometheus cible par cible (`service: api`, `service: auth`, …). Le dashboard fonctionne donc même si une équipe nomme ses métriques autrement, il suffit d'ajuster les requêtes, pas la topologie.
 
 ### Cibles absentes
 
@@ -122,15 +122,15 @@ Chaque service écrit sur `stdout` une ligne JSON par événement, avec au minim
 `loki.process` applique, à toutes les lignes :
 
 - extraction JSON (`stage.json`) des champs `service`, `trace_id`, `event`, `incident_id`, `at`, `level`, puis de `data.action`, `data.probe_transaction_ok`, `data.api_healthy` ;
-- **labels indexés** (`stage.labels`) : `service` et `event` — deux clés à domaine de valeurs fermé et petit ;
-- **métadonnées structurées** (`stage.structured_metadata`) : `trace_id`, `incident_id`, `level`, `action`, `probe_ok`, `api_healthy` — requêtables mais non indexées, pour ne pas multiplier les séries ;
+- **labels indexés** (`stage.labels`) : `service` et `event`, deux clés à domaine de valeurs fermé et petit ;
+- **métadonnées structurées** (`stage.structured_metadata`) : `trace_id`, `incident_id`, `level`, `action`, `probe_ok`, `api_healthy`, requêtables mais non indexées, pour ne pas multiplier les séries ;
 - **horodatage applicatif** (`stage.timestamp` sur `at`) : l'ordre détection → décision → action → vérification reste exact dans Grafana, même si la collecte prend du retard pendant le flood.
 
 Labels d'infrastructure ajoutés par la découverte Docker : `container`, `compose_service`, `compose_project`, `stream`, plus `job="docker"`, `env="lab"`, `site="pc-hote"`.
 
 Une ligne **non JSON** (Prometheus, Grafana, Nginx…) traverse le pipeline sans être modifiée : les étapes d'extraction échouent silencieusement et la ligne est indexée avec ses seuls labels d'infrastructure. Aucun log n'est perdu.
 
-### Cardinalité de `trace_id` — pourquoi il n'est pas indexé
+### Cardinalité de `trace_id`, pourquoi il n'est pas indexé
 
 Les conventions du projet exigent que `service`, `trace_id` et `event` soient exploitables dans Loki. Elles n'exigent pas qu'ils soient **indexés**, et `trace_id` ne doit surtout pas l'être : l'API métier en génère un **par transaction**, pas par incident. Chaque valeur distincte d'un label crée un flux Loki. Sous le flood de la démonstration, indexer `trace_id` créerait des milliers de flux, Loki atteindrait ses limites (rejets `429`, 384 Mo de RAM) et l'on perdrait les événements `incident.*` du moteur au moment précis où ils servent de preuve de reprise.
 
@@ -150,7 +150,7 @@ Loki tourne en mode `single-binary` (`-target=all`), stockage `filesystem`, **r�
 
 ## 7. Accès Docker d'Alloy
 
-**Choix retenu : Alloy ne touche jamais le socket Docker.** Il interroge un `docker-socket-proxy` dédié, qui n'expose que des lectures, via `ALLOY_DOCKER_HOST=tcp://172.28.90.10:2375` — l'IP fixe de `docker-proxy` sur `docker-proxy-net` (voir « Auto-guérison d'Alloy » plus bas pour le pourquoi de l'IP plutôt que le nom DNS).
+**Choix retenu : Alloy ne touche jamais le socket Docker.** Il interroge un `docker-socket-proxy` dédié, qui n'expose que des lectures, via `ALLOY_DOCKER_HOST=tcp://172.28.90.10:2375`, l'IP fixe de `docker-proxy` sur `docker-proxy-net` (voir « Auto-guérison d'Alloy » plus bas pour le pourquoi de l'IP plutôt que le nom DNS).
 
 C'est l'alignement complet avec la règle non négociable du projet : aucun composant non privilégié ne touche le `docker.sock`.
 
@@ -164,7 +164,7 @@ Lire directement les fichiers `*-json.log` évite le socket, mais :
 
 ### Pourquoi un proxy, et pas le socket en lecture seule
 
-Monter `/var/run/docker.sock` en `:ro` **protège le nœud d'inode, pas le protocole** : un processus capable d'écrire sur ce socket crée un conteneur privilégié et prend le PC Hôte. Or Alloy ingère des lignes de log potentiellement contrôlées par l'attaquant — injectées via le WAF ou l'API — ce qui en ferait une surface d'entrée vers une interface d'administration complète. Appartenir au groupe `docker` équivaut par ailleurs à un accès root sur l'hôte.
+Monter `/var/run/docker.sock` en `:ro` **protège le nœud d'inode, pas le protocole** : un processus capable d'écrire sur ce socket crée un conteneur privilégié et prend le PC Hôte. Or Alloy ingère des lignes de log potentiellement contrôlées par l'attaquant, injectées via le WAF ou l'API, ce qui en ferait une surface d'entrée vers une interface d'administration complète. Appartenir au groupe `docker` équivaut par ailleurs à un accès root sur l'hôte.
 
 ### Le proxy
 
@@ -173,7 +173,7 @@ Monter `/var/run/docker.sock` en `:ro` **protège le nœud d'inode, pas le proto
 | Réglage | Valeur | Pourquoi |
 |---|---|---|
 | `CONTAINERS` | `1` | `GET /containers/json` et `GET /containers/<id>/logs` |
-| `NETWORKS` | `1` | `discovery.docker` calcule les labels réseau des conteneurs. Sans ce droit, Alloy boucle sur `error while computing network labels: 403 Forbidden` et **aucun log n'est collecté** — constaté à l'exécution, invisible à la lecture. |
+| `NETWORKS` | `1` | `discovery.docker` calcule les labels réseau des conteneurs. Sans ce droit, Alloy boucle sur `error while computing network labels: 403 Forbidden` et **aucun log n'est collecté**, constaté à l'exécution, invisible à la lecture. |
 | `POST` | `0` | aucune écriture, quelle que soit la route |
 | tout le reste | `0` | `IMAGES`, `EXEC`, `VOLUMES`, `SWARM`, `INFO`, `SYSTEM`… refusés explicitement, sans compter sur les valeurs par défaut de l'image |
 
@@ -194,17 +194,17 @@ Atténuations complémentaires : Alloy ne tourne pas en `root` (`user: "473:473"
 
 ### Auto-guérison d'Alloy
 
-Constaté en test (2026-10-21, confirmé en conditions réelles le 22/10 : 343 occurrences sur 30+ min, 0 succès de la découverte pendant que le flood tournait) : le résolveur DNS intégré de Docker Desktop/WSL2 peut cesser de résoudre `docker-proxy` depuis Alloy sans que son process ne plante (`dial tcp: lookup docker-proxy: i/o timeout`). Alloy reste `Up`, son port HTTP répond — le `healthcheck` d'origine, qui ne testait que ce port, ne voyait donc rien — mais il n'inspecte plus aucun conteneur et n'ingère plus une seule ligne de log — panne silencieuse : Loki se vide progressivement sans qu'aucun conteneur ne soit signalé `unhealthy`, `LokiAttackerLocator` ne trouve alors jamais de compte à bloquer faute de données à interroger, et les panneaux Grafana basés sur Loki (incidents clos, transactions vérifiées) restent figés sans que rien ne le signale.
+Constaté en test (2026-10-21, confirmé en conditions réelles le 22/10 : 343 occurrences sur 30+ min, 0 succès de la découverte pendant que le flood tournait) : le résolveur DNS intégré de Docker Desktop/WSL2 peut cesser de résoudre `docker-proxy` depuis Alloy sans que son process ne plante (`dial tcp: lookup docker-proxy: i/o timeout`). Alloy reste `Up`, son port HTTP répond, le `healthcheck` d'origine, qui ne testait que ce port, ne voyait donc rien, mais il n'inspecte plus aucun conteneur et n'ingère plus une seule ligne de log, panne silencieuse : Loki se vide progressivement sans qu'aucun conteneur ne soit signalé `unhealthy`, `LokiAttackerLocator` ne trouve alors jamais de compte à bloquer faute de données à interroger, et les panneaux Grafana basés sur Loki (incidents clos, transactions vérifiées) restent figés sans que rien ne le signale.
 
-Pire : un `docker compose up` qui recrée la pile applicative (nouveaux ID de conteneurs) pendant qu'Alloy tourne déjà peut tomber exactement sur cette fenêtre d'échec DNS et ne jamais récupérer les nouveaux conteneurs, même une fois le résolveur redevenu fonctionnel — observé en conditions réelles le 22/10, où Alloy avait perdu `api`/`auth`/`remediation` recréés plus de 2 h plus tôt sans jamais s'en rétablir seul.
+Pire : un `docker compose up` qui recrée la pile applicative (nouveaux ID de conteneurs) pendant qu'Alloy tourne déjà peut tomber exactement sur cette fenêtre d'échec DNS et ne jamais récupérer les nouveaux conteneurs, même une fois le résolveur redevenu fonctionnel, observé en conditions réelles le 22/10, où Alloy avait perdu `api`/`auth`/`remediation` recréés plus de 2 h plus tôt sans jamais s'en rétablir seul.
 
 Trois mécanismes, du plus direct au plus large :
 
 - **IP fixe plutôt que nom DNS** (fix retenu) : `docker-proxy-net` déclare un subnet (`172.28.90.0/24`), `docker-proxy` y reçoit l'adresse fixe `172.28.90.10`, et `ALLOY_DOCKER_HOST` ainsi que le `healthcheck` d'Alloy pointent directement sur cette IP. Alloy et son `docker-socket-proxy` sont les deux seuls membres d'un réseau `internal: true` dédié : aucun autre conteneur n'y est jamais ajouté, donc fixer l'IP ne crée aucun risque de collision. Ce lien précis ne dépend donc plus du résolveur DNS de Docker Desktop, seule la connexion TCP doit réussir.
-- Le `healthcheck` d'Alloy teste, en plus de son propre port, une connexion TCP vers cette IP fixe — la liaison qui cassait en silence avant le fix.
-- `autoheal` (`willfarrell/autoheal`, épinglé par digest car aucun tag versionné ne gère `DOCKER_SOCK` en `tcp://`) redémarre tout conteneur marqué `unhealthy` portant le label `autoheal: "true"` — aujourd'hui seul Alloy le porte. Docker Compose seul (hors Swarm) ne redémarre jamais un conteneur unhealthy de lui-même ; c'est le rôle de ce sidecar, conservé comme filet de sécurité pour toute panne de connectivité qui ne tiendrait pas qu'à la résolution DNS (proxy lent, réseau coupé...).
+- Le `healthcheck` d'Alloy teste, en plus de son propre port, une connexion TCP vers cette IP fixe, la liaison qui cassait en silence avant le fix.
+- `autoheal` (`willfarrell/autoheal`, épinglé par digest car aucun tag versionné ne gère `DOCKER_SOCK` en `tcp://`) redémarre tout conteneur marqué `unhealthy` portant le label `autoheal: "true"`, aujourd'hui seul Alloy le porte. Docker Compose seul (hors Swarm) ne redémarre jamais un conteneur unhealthy de lui-même ; c'est le rôle de ce sidecar, conservé comme filet de sécurité pour toute panne de connectivité qui ne tiendrait pas qu'à la résolution DNS (proxy lent, réseau coupé...).
 
-`autoheal` n'a, comme Alloy, aucun accès direct au socket : il passe par `docker-proxy-autoheal`, une passerelle dédiée et distincte de celle d'Alloy (réseau `autoheal-internal`, `internal: true`, propre à ces deux conteneurs), n'autorisant que `EVENTS` (détecter les changements d'état), `CONTAINERS` (lecture) et `ALLOW_RESTARTS` (redémarrage) — jamais `IMAGES`, `EXEC` ni aucune écriture au-delà du restart. Testé en coupant volontairement le réseau d'Alloy vers `docker-proxy` : passage à `unhealthy` détecté en ~70 s, redémarrage automatique déclenché par `autoheal`, service à nouveau sain après reconnexion.
+`autoheal` n'a, comme Alloy, aucun accès direct au socket : il passe par `docker-proxy-autoheal`, une passerelle dédiée et distincte de celle d'Alloy (réseau `autoheal-internal`, `internal: true`, propre à ces deux conteneurs), n'autorisant que `EVENTS` (détecter les changements d'état), `CONTAINERS` (lecture) et `ALLOW_RESTARTS` (redémarrage), jamais `IMAGES`, `EXEC` ni aucune écriture au-delà du restart. Testé en coupant volontairement le réseau d'Alloy vers `docker-proxy` : passage à `unhealthy` détecté en ~70 s, redémarrage automatique déclenché par `autoheal`, service à nouveau sain après reconnexion.
 
 ## 8. Grafana
 
@@ -246,11 +246,11 @@ Essai réalisé le 21/10 (pile complète, PC Hôte) : règle `inactive` avant at
 
 Le mot de passe admin vient de `GRAFANA_ADMIN_PASSWORD`, jamais du compose ni du provisionnement. La variable est déclarée **obligatoire** (`${GRAFANA_ADMIN_PASSWORD:?…}`) : sans elle, la pile refuse de démarrer au lieu de retomber sur un `admin/admin` silencieux. Aucun mot de passe n'apparaît dans un fichier versionné, ni dans les logs.
 
-### Accès anonyme — réglage de laboratoire
+### Accès anonyme, réglage de laboratoire
 
 `GF_AUTH_ANONYMOUS_ENABLED=true` avec le rôle `Viewer` : le clip de 60 secondes doit se dérouler sans coupe, et saisir un identifiant à l'écran coûterait plusieurs secondes et afficherait un secret.
 
-> **Ce réglage n'est pas un réglage de production.** Toute personne atteignant Grafana lit toutes les métriques et tous les logs sans authentification. Depuis l'exposition de Grafana sous `/grafana` via le WAF (arbitrage du 21/10), ce n'est plus limité à `127.0.0.1` : **quiconque est sur le réseau privé du binôme — y compris le PC Attaquant — peut consulter le dashboard SOC sans se connecter**, vérifié par `curl` (`/grafana/`, `/grafana/metrics`, `/grafana/api/search`, `/grafana/api/dashboards/...` répondent tous `200` sans en-tête d'authentification). C'est acceptable ici parce que le rôle est en lecture seule et que toutes les données sont fictives, mais ça viole le moindre privilège en conditions réelles : un attaquant ne devrait pas voir le système qui le traque. Hors démonstration, poser `GRAFANA_ANONYMOUS_ENABLED=false` suffit à le désactiver (il faudra alors se connecter avec `GRAFANA_ADMIN_PASSWORD` devant le jury). C'est un écart conscient, à mentionner comme tel dans le volet gouvernance (NIS2 : contrôle d'accès) — et explicitement au jury si la question de la visibilité du SOC pour l'attaquant est posée.
+> **Ce réglage n'est pas un réglage de production.** Toute personne atteignant Grafana lit toutes les métriques et tous les logs sans authentification. Depuis l'exposition de Grafana sous `/grafana` via le WAF (arbitrage du 21/10), ce n'est plus limité à `127.0.0.1` : **quiconque est sur le réseau privé du binôme, y compris le PC Attaquant, peut consulter le dashboard SOC sans se connecter**, vérifié par `curl` (`/grafana/`, `/grafana/metrics`, `/grafana/api/search`, `/grafana/api/dashboards/...` répondent tous `200` sans en-tête d'authentification). C'est acceptable ici parce que le rôle est en lecture seule et que toutes les données sont fictives, mais ça viole le moindre privilège en conditions réelles : un attaquant ne devrait pas voir le système qui le traque. Hors démonstration, poser `GRAFANA_ANONYMOUS_ENABLED=false` suffit à le désactiver (il faudra alors se connecter avec `GRAFANA_ADMIN_PASSWORD` devant le jury). C'est un écart conscient, à mentionner comme tel dans le volet gouvernance (NIS2 : contrôle d'accès), et explicitement au jury si la question de la visibilité du SOC pour l'attaquant est posée.
 
 ### Dashboard `resilience-alpha`
 
@@ -281,7 +281,7 @@ docker compose -f infra/compose/docker-compose.yml up -d
 docker compose -f infra/compose/docker-compose.observability.yml up -d
 ```
 
-La pile d'observabilité porte son propre nom de projet (`resilience-alpha-obs`). Elle est donc **autonome** et survit aux redémarrages de conteneurs déclenchés par le moteur de remédiation — c'est indispensable pour montrer l'incident pendant qu'il a lieu. Corollaire : **ne pas la fusionner** avec la pile principale via plusieurs `-f`, son `name:` écraserait le nom de projet de l'autre.
+La pile d'observabilité porte son propre nom de projet (`resilience-alpha-obs`). Elle est donc **autonome** et survit aux redémarrages de conteneurs déclenchés par le moteur de remédiation, c'est indispensable pour montrer l'incident pendant qu'il a lieu. Corollaire : **ne pas la fusionner** avec la pile principale via plusieurs `-f`, son `name:` écraserait le nom de projet de l'autre.
 
 Grafana est ensuite sur <http://127.0.0.1:8080/grafana/> (ou l'IP du PC Hôte sur le réseau privé du binôme, ex. `http://192.168.137.1:8080/grafana/` sur le hotspot, `http://192.168.1.140:8080/grafana/` sur une box) et ouvre directement le dashboard.
 
@@ -295,12 +295,12 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 
 | Variable | Rôle | Défaut |
 |---|---|---|
-| `GRAFANA_ADMIN_PASSWORD` | mot de passe admin Grafana — **obligatoire**, la pile refuse de démarrer sans | aucun |
+| `GRAFANA_ADMIN_PASSWORD` | mot de passe admin Grafana, **obligatoire**, la pile refuse de démarrer sans | aucun |
 | `GRAFANA_ADMIN_USER` | identifiant admin Grafana | `admin` |
 | `GRAFANA_ROOT_URL` | URL publique vue par les navigateurs, derrière le WAF | `http://127.0.0.1:8080/grafana/` |
 | `GRAFANA_SERVE_FROM_SUB_PATH` | Grafana est servie sous `/grafana` | `true` |
 | `GRAFANA_ANONYMOUS_ENABLED` | accès anonyme en lecture ; `true` pour la démonstration, `false` sinon | `true` |
-| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy — la passerelle restreinte de la pile, par IP fixe (172.28.90.10) pour éviter le résolveur DNS. À ne pas repointer vers le socket. | `tcp://172.28.90.10:2375` |
+| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy, la passerelle restreinte de la pile, par IP fixe (172.28.90.10) pour éviter le résolveur DNS. À ne pas repointer vers le socket. | `tcp://172.28.90.10:2375` |
 | `LOKI_PUSH_URL` | URL de push Loki utilisée par Alloy | `http://loki:3100/loki/api/v1/push` |
 | `RESILIENCE_NET_NAME` | nom Docker réel du réseau externe créé par la pile principale | `resilience-net` |
 

@@ -1,4 +1,4 @@
-# AMDEC — priorisation des défaillances
+# AMDEC, priorisation des défaillances
 
 Complète EBIOS : classe les défaillances par ordre de priorité (RPN) pour décider où investir en premier.
 Les échelles et seuils ne sont pas inventés : l'équipe doit les fixer.

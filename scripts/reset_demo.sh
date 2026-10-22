@@ -55,7 +55,7 @@ compose up -d --force-recreate --no-deps --wait api auth
 
 # Les sources bloquées par la remédiation précédente doivent être libérées, sinon la démo
 # suivante démarrerait avec l'attaquant déjà bloqué : le WAF (njs/blocklist.js) relit la liste
-# à chaque requête et répond 403 avant même la passerelle, donc avant l'API — l'attaque
+# à chaque requête et répond 403 avant même la passerelle, donc avant l'API, l'attaque
 # suivante devient invisible côté métriques/dashboard, sans aucune erreur visible ailleurs.
 BEFORE="$(compose exec -T remediation sh -c 'cat /blocklist/blocked.txt 2>/dev/null' || true)"
 if [[ -n "${BEFORE}" ]]; then

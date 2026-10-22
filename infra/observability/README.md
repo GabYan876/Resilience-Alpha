@@ -1,4 +1,4 @@
-# Pile d'observabilité — Prometheus, Loki, Alloy, Grafana
+# Pile d'observabilité, Prometheus, Loki, Alloy, Grafana
 
 Rend l'incident visible **avant / pendant / après**, et montre le pipeline de
 remédiation. Provisionnée sans aucun clic : datasources, dashboards et règle d'alerte SOC sont du code.
@@ -82,7 +82,7 @@ Dans l'interface : Alerting → Alert rules. Recharger après modification :
 
 ## Variables obligatoires
 
-Sans elles, la pile refuse de démarrer — un échec explicite vaut mieux qu'un
+Sans elles, la pile refuse de démarrer, un échec explicite vaut mieux qu'un
 `admin/admin` silencieux ou un collecteur de logs aveugle.
 
 | Variable | Obtenir la valeur |
@@ -101,7 +101,7 @@ Ils ne se manifestent qu'au démarrage effectif, jamais à la validation de synt
 
 - **Alloy ne doit pas tourner en `root`.** L'image le fait par défaut, mais Docker
   reporte sur le volume nommé l'ownership `473:473` mode `0770` du répertoire de
-  l'image, et `cap_drop: ALL` retire `CAP_DAC_OVERRIDE` — la capacité qui permet à
+  l'image, et `cap_drop: ALL` retire `CAP_DAC_OVERRIDE`, la capacité qui permet à
   root d'ignorer les permissions d'un répertoire qu'il ne possède pas. Résultat :
   `mkdir /var/lib/alloy/data: permission denied` et redémarrage en boucle. D'où
   `user: "473:473"` et le groupe `docker` de l'hôte en groupe supplémentaire, pour
@@ -116,7 +116,7 @@ Ils ne se manifestent qu'au démarrage effectif, jamais à la validation de synt
 - **`NETWORKS=1` est nécessaire sur le proxy Docker.** `discovery.docker` calcule
   les labels réseau des conteneurs. Avec `CONTAINERS=1` seul, Alloy boucle sur
   `error while computing network labels: 403 Forbidden` et ne collecte rien, tout
-  en restant `healthy` — son port répond, il n'a simplement aucune cible.
+  en restant `healthy`, son port répond, il n'a simplement aucune cible.
 - **Le dossier de provisionnement et le dashboard ne doivent pas partager un uid.**
   Avec `folderUid` et l'uid du dashboard tous deux à `resilience-alpha`, le
   provisionnement échoue sur `Dashboard cannot be changed to a folder` et la vue
@@ -126,6 +126,6 @@ Ils ne se manifestent qu'au démarrage effectif, jamais à la validation de synt
 
 Ce fichier Compose porte son propre nom de projet, `resilience-alpha-obs`. La pile
 est donc autonome et survit aux redémarrages de conteneurs déclenchés par le
-moteur de remédiation — indispensable pour montrer l'incident **pendant** qu'il a
+moteur de remédiation, indispensable pour montrer l'incident **pendant** qu'il a
 lieu. La combiner à la pile principale via plusieurs `-f` écraserait le nom de
 projet de celle-ci.

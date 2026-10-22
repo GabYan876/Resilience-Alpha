@@ -1,4 +1,4 @@
-# Contribuer — PROJECT RESILIENCE-ALPHA
+# Contribuer, PROJECT RESILIENCE-ALPHA
 
 Règles de travail de l'équipe. Les règles d'architecture et de sécurité détaillées sont dans [`CLAUDE.md`](CLAUDE.md).
 

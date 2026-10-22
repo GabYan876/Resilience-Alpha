@@ -1,4 +1,4 @@
-# Consigne additionnelle 1 — authentification renforcée du back-office
+# Consigne additionnelle 1, authentification renforcée du back-office
 
 Source : `docs/WorkShop 2026-27 M2 - Consigne Additionnelle 1.pdf` (reçue le 22/10). Le sujet précise : « soyez à l'écoute de toutes nouvelles consignes ».
 Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, essayés sur la caméra intégrée du PC de Kevin ; page `/admin` et panneaux Grafana `auth.*` livrés par la PR #75 ; habilitations et console `/admin/console` livrées par la PR #93 (Gabriel, essayées avec des doubles seulement) ; firmware, persistance du blocage et des habilitations, et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
@@ -15,12 +15,12 @@ Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hô
 
 | Étape | Condition | LED | Suite |
 |---|---|---|---|
-| Repos | — | **éteinte** | attente d'un identifiant |
+| Repos | - | **éteinte** | attente d'un identifiant |
 | Identifiant saisi | caméra activée, visage comparé | éteinte | reconnu ou non |
-| Visage **non reconnu** | — | **rouge fixe 30 s** | caméra éteinte, identifiant vidé, ressaisie possible après les 30 s |
-| Visage **reconnu** | — | **vert clignotant** | jusqu'à la saisie du mot de passe |
-| Mot de passe **valide** | — | **vert fixe 30 s**, puis éteinte | page du back-office disponible |
-| Mot de passe **invalide** | — | **rouge clignotant × 10**, puis éteinte | identifiant vidé, caméra éteinte, on reprend toute l'identification |
+| Visage **non reconnu** | - | **rouge fixe 30 s** | caméra éteinte, identifiant vidé, ressaisie possible après les 30 s |
+| Visage **reconnu** | - | **vert clignotant** | jusqu'à la saisie du mot de passe |
+| Mot de passe **valide** | - | **vert fixe 30 s**, puis éteinte | page du back-office disponible |
+| Mot de passe **invalide** | - | **rouge clignotant × 10**, puis éteinte | identifiant vidé, caméra éteinte, on reprend toute l'identification |
 
 ```mermaid
 stateDiagram-v2

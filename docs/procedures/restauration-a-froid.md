@@ -1,4 +1,4 @@
-# Restauration à froid — PROJECT RESILIENCE-ALPHA
+# Restauration à froid, PROJECT RESILIENCE-ALPHA
 
 ## Objectif
 

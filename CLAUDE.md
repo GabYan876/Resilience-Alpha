@@ -1,4 +1,4 @@
-# CLAUDE.md — PROJECT RESILIENCE-ALPHA
+# CLAUDE.md, PROJECT RESILIENCE-ALPHA
 
 Contexte et règles pour Claude Code sur ce dépôt. Sources : sujet du workshop (`docs/2627_Workshop_Bac+5 - Sujet PROJECT RESILIENCE-ALPHA 1.pdf`) et debrief d'équipe (`docs/Resilience-Alpha – Debrief et répartition.pdf`).
 
@@ -33,7 +33,7 @@ Le sujet prévoit des consignes en cours de route : les lire dans `docs/` (`Work
 - Orchestration : Docker Compose ; automatisation : playbooks Ansible.
 - Observabilité : Prometheus, Grafana, Loki (+ Promtail/Alloy).
 - ML : scikit-learn (ex. IsolationForest) sur métriques/logs. RAG : Ollama + LangChain.
-- Réseau : réseau privé du binôme (hotspot Windows `192.168.137.x` ou box personnelle, peu importe lequel —
+- Réseau : réseau privé du binôme (hotspot Windows `192.168.137.x` ou box personnelle, peu importe lequel,
   voir arbitrage du 21/10 dans `docs/gouvernance/06-pilotage-arbitrages.md`), jamais le campus, un autre
   groupe ni Internet.
 
@@ -44,22 +44,22 @@ Chaque service Python suit une architecture en couches de type hexagonal ; les d
 ```
 services/<service>/
   app/
-    domain/          # entités, règles métier, ports (interfaces abstraites) — aucune dépendance framework
+    domain/          # entités, règles métier, ports (interfaces abstraites), aucune dépendance framework
     application/     # cas d'usage (services applicatifs), orchestrent domain via ports
     adapters/        # implémentations des ports : DB, HTTP, Docker, Prometheus, Loki, WAF...
     api/             # routes FastAPI, schémas Pydantic, injection de dépendances
-    config.py        # lecture de la config/secrets (env, Vault) — seul endroit
+    config.py        # lecture de la config/secrets (env, Vault), seul endroit
     main.py          # composition root : câble les adaptateurs aux ports
   tests/
 ```
 
-- **S — Responsabilité unique** : un module = une raison de changer. Détection, décision, action et vérification sont des composants séparés.
-- **O — Ouvert/fermé** : on ajoute un nouveau type d'attaque / d'action / de détecteur en ajoutant une classe, sans modifier l'existante (registre de stratégies).
-- **L — Substitution de Liskov** : toute implémentation d'un port est interchangeable (ex. `FakeDockerClient` en test, `DockerProxyClient` en prod) sans casser le contrat.
-- **I — Ségrégation des interfaces** : ports petits et ciblés (`ContainerRestarter`, `IpBlocker`, `HealthChecker`, `TransactionProbe`) plutôt qu'une grosse interface « Admin ».
-- **D — Inversion des dépendances** : le domaine/application dépendent d'abstractions (`typing.Protocol` / `ABC`) ; les adaptateurs sont injectés dans `main.py` (FastAPI `Depends`). Pas d'import direct de `docker`, `requests`, SQLAlchemy dans `domain/` ou `application/`.
+- **S, Responsabilité unique** : un module = une raison de changer. Détection, décision, action et vérification sont des composants séparés.
+- **O, Ouvert/fermé** : on ajoute un nouveau type d'attaque / d'action / de détecteur en ajoutant une classe, sans modifier l'existante (registre de stratégies).
+- **L, Substitution de Liskov** : toute implémentation d'un port est interchangeable (ex. `FakeDockerClient` en test, `DockerProxyClient` en prod) sans casser le contrat.
+- **I, Ségrégation des interfaces** : ports petits et ciblés (`ContainerRestarter`, `IpBlocker`, `HealthChecker`, `TransactionProbe`) plutôt qu'une grosse interface « Admin ».
+- **D, Inversion des dépendances** : le domaine/application dépendent d'abstractions (`typing.Protocol` / `ABC`) ; les adaptateurs sont injectés dans `main.py` (FastAPI `Depends`). Pas d'import direct de `docker`, `requests`, SQLAlchemy dans `domain/` ou `application/`.
 
-### Moteur de remédiation — pipeline
+### Moteur de remédiation, pipeline
 
 `Detector (ML)` → `DecisionPolicy` → `RemediationAction[]` → `RecoveryVerifier`
 
@@ -94,7 +94,7 @@ services/<service>/
 - Commits : Conventional Commits (`feat:`, `fix:`, `docs:`, `infra:`, `test:`). Branche par fonctionnalité, PR relue par le tech lead.
 - **Aucun co-auteur dans les commits** : ne jamais ajouter de ligne `Co-Authored-By` (ni autre trailer d'attribution) dans les messages de commit.
 - Pas de logique métier dans les routes FastAPI ni dans les playbooks.
-- Logs structurés JSON, avec `service`, `trace_id`, `event` — exploitables dans Loki/SIEM.
+- Logs structurés JSON, avec `service`, `trace_id`, `event`, exploitables dans Loki/SIEM.
 - Ne pas ajouter de dépendance ou de service lourd sans vérifier l'impact RAM.
 
 ## Répartition de l'équipe
@@ -138,7 +138,7 @@ même comportement sur les 5 postes. Liste des outils, installation et dépannag
 Règles applicables à tout agent travaillant sur ce dépôt :
 
 - **context7 (MCP) est un service externe** : les requêtes de documentation quittent le poste. Documentation
-  publique de bibliothèques uniquement — jamais de secret, de donnée du projet ni de document de
+  publique de bibliothèques uniquement, jamais de secret, de donnée du projet ni de document de
   gouvernance. Application directe de « ne jamais envoyer de clé, secret, donnée perso réelle ou document
   confidentiel à une IA ».
 - **Ne pas brancher le dépôt sur une passerelle LLM tierce** (`caveman-setup` et les compétences Caveman
@@ -153,6 +153,6 @@ Règles applicables à tout agent travaillant sur ce dépôt :
 ## Comment travailler avec Claude ici
 
 - Respecter SOLID et la structure ci-dessus ; proposer l'abstraction avant l'implémentation concrète.
-- Toujours se demander : « est-ce que ça améliore la preuve de reprise automatique ? » — c'est ce qui rapporte les points (axe remédiation = 5 pts, 0 si intervention humaine).
+- Toujours se demander : « est-ce que ça améliore la preuve de reprise automatique ? », c'est ce qui rapporte les points (axe remédiation = 5 pts, 0 si intervention humaine).
 - Ne jamais écrire de secret réel dans un fichier ; utiliser des placeholders.
 - Avant d'ajouter un composant : impact RAM, exposition réseau, droits requis.

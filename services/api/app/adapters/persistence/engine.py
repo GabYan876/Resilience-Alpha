@@ -19,7 +19,7 @@ def build_engine(database_url: str, *, echo: bool = False, pool_size: int = 5) -
     # `reset_demo.sh` joue `downgrade base` puis `upgrade head` : tables et types
     # ENUM sont supprimés puis recréés sous le pool encore ouvert, ce qui invalide
     # les requêtes préparées en cache. Sans désactivation, la première transaction
-    # après chaque reset échoue en InvalidCachedStatementError — éliminatoire pour
+    # après chaque reset échoue en InvalidCachedStatementError, éliminatoire pour
     # une démo rejouable sans intervention humaine. Deux caches à neutraliser :
     # celui du dialecte SQLAlchemy (paramètre d'URL) et celui d'asyncpg.
     url = make_url(database_url).update_query_dict(

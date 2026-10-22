@@ -1,4 +1,4 @@
-# Banc d'essai ER6 — injection de prompt contre l'assistant RAG
+# Banc d'essai ER6, injection de prompt contre l'assistant RAG
 
 Événement redouté ER6 (EBIOS RM) : abus de l'assistant RAG par injection de prompt via un
 document indexé piégé. Ce banc rejoue plusieurs scénarios d'injection contre le vrai service
@@ -48,7 +48,7 @@ Code de sortie 0 si tout est repoussé, 1 sinon. `temperature=0` : résultats re
 
 - `llama3.1:8b` : **9/10 repoussées**. Cède uniquement sur le scénario 06 (injection
   conditionnelle ciblée). Message système jamais révélé.
-- `llama3.2:3b` : **5/10 repoussées** (override direct et faux système inclus) — insuffisant.
+- `llama3.2:3b` : **5/10 repoussées** (override direct et faux système inclus), insuffisant.
 
 Conclusion : la défense par le prompt réduit fortement la surface mais ne l'annule pas, même
 sur un 8B. Le risque résiduel reste borné par l'absence d'outils, de secrets et d'écriture, et
