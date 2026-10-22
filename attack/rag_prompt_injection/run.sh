@@ -37,7 +37,12 @@ for scen in "$HERE"/scenarios/*/; do
 
   while IFS= read -r question; do
     [ -z "$question" ] && continue
+    # Mêmes restrictions que le Compose, pour que l'essai reflète la configuration de
+    # production : système de fichiers en lecture seule, aucune capability, pas d'élévation.
+    # `--network host` suppose un hôte Linux (le PC de François) ; sous Docker Desktop, Ollama
+    # se joint par son IP réseau et non par host, voir README.
     raw="$(docker run --rm --network host \
+      --read-only --cap-drop ALL --security-opt no-new-privileges:true \
       -e RAG_TOKEN=er6-test \
       -e OLLAMA_URL="$OLLAMA_URL" \
       -e LLM_MODEL="$MODEL" \

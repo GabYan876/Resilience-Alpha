@@ -13,8 +13,8 @@ mesures (RTO, RPO, issue) sont consignées dans [`../gouvernance/02-pca-pra.md`]
   réseau du campus, un autre groupe ni Internet.
 - Les scripts `attack/flood_http.py` et `attack/sqli_injection.py` refusent toute cible hors de
   leur liste `ALLOWED_HOSTS` (`127.0.0.1`, `localhost`, `192.168.137.1`, `192.168.1.140`) sauf
-  confirmation explicite par `--confirm`. **Ne pas utiliser `--confirm`** pendant le chaos :
-  c'est le garde-fou qui prouve qu'on ne sort pas du périmètre.
+  confirmation explicite par `--yes-i-know-the-target`. **Ne pas utiliser `--yes-i-know-the-target`**
+  pendant le chaos : c'est le garde-fou qui prouve qu'on ne sort pas du périmètre.
 - Cible réelle = le WAF du PC Hôte. Régler `WAF_BIND_HOST` sur l'IP réelle du PC Hôte dans son
   `.env` **avant** chaque essai (le WAF refuse de démarrer si l'IP n'existe pas sur la machine —
   constat du 21/10 : `192.168.137.1` fixé alors que seul `192.168.1.140` existait).
@@ -28,7 +28,7 @@ mesures (RTO, RPO, issue) sont consignées dans [`../gouvernance/02-pca-pra.md`]
 3. Modèle ML entraîné sur chaque poste qui exécute le détecteur : `ml/models/isolation_forest.joblib`
    présent (le `.joblib` n'est pas versionné ; `docker compose ... exec anomaly-detector python -m
    app.cli train` le régénère depuis `ml/data/normal.csv`).
-4. Trafic de fond actif pour mesurer les faux positifs : `python attack/../scripts/background_traffic.py`
+4. Trafic de fond actif pour mesurer les faux positifs : `python scripts/background_traffic.py`
    (trafic légitime continu, sert de référence « normale » au détecteur).
 
 ## Pannes injectées — ordre et critères de reprise
@@ -49,12 +49,18 @@ de remédiation.
 ### S2 — Injection SQL (compromission)
 
 - **Injection** : `python attack/sqli_injection.py --base-url http://<PC_HOTE>:8080`.
-- **Attendu** : incident de type compromission → `SopsSecretRotator` (rotation de secret) +
-  redémarrage de `auth`/`api`, pas un simple blocage d'IP.
+- **Déclenchement de l'incident — manuel, pas automatique.** Aucun détecteur n'émet
+  `IncidentKind.COMPROMISE` : le SQLi seul ne lance rien. On déclenche l'incident à la main par
+  `POST /incidents kind=compromise` sur le moteur de remédiation, après le SQLi. C'est ce
+  `POST` qui enclenche `DecisionPolicy` → `SopsSecretRotator` (rotation de secret) + redémarrage
+  de `auth`/`api`, distinct du blocage de source + restart de la branche `AVAILABILITY`.
 - **Critère de reprise** : `incident.resolved`, API saine et transaction de sonde réussie après
   rotation.
-- **Limite assumée** : l'investigation manuelle de compromission n'est pas automatisée (voir
-  `02-pca-pra.md` §2).
+- **Limites assumées** : (1) la détection automatique de compromission n'est pas développée
+  (hors périmètre, arbitrage `06-pilotage-arbitrages.md`), donc S2 n'est pas « sans intervention
+  humaine » comme S1/S4 — le déclenchement est manuel ; (2) l'investigation manuelle de
+  compromission n'est pas automatisée. Les deux sont consignées dans « Limites connues » du
+  README et au §2 de `02-pca-pra.md`.
 
 ### S4 — Corruption BDD (données)
 
