@@ -31,7 +31,7 @@ class Settings:
     # Connexion du back-office (consigne 1). Sans agent hôte configuré, elle échoue fermée.
     host_agent_url: str | None = None  # agent caméra natif du PC Hôte
     host_agent_token: str | None = None
-    led_url: str | None = None  # ESP8266 ; absent = pas de retour visuel, accès inchangé
+    led_url: str | None = None  # ESP32 ; absent = pas de retour visuel, accès inchangé
     led_token: str | None = None
 
     @classmethod

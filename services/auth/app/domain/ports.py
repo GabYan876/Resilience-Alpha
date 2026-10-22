@@ -66,7 +66,7 @@ class FaceVerifier(Protocol):
 
 class StatusLed(Protocol):
     async def set(self, mode: LedMode) -> None:
-        """Peut échouer (ESP8266 injoignable) : l'accès ne doit pas en dépendre."""
+        """Peut échouer (ESP32 injoignable) : l'accès ne doit pas en dépendre."""
         ...
 
 

@@ -35,7 +35,7 @@ class Credentials:
 
 
 class LedMode(StrEnum):
-    """Modes de la LED bicolore de l'ESP8266 (durées gérées par le firmware)."""
+    """Modes de la LED bicolore de l'ESP32 (durées gérées par le firmware)."""
 
     OFF = "off"
     GREEN_BLINK = "green_blink"

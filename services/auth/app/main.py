@@ -39,7 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     tokens = JwtTokenIssuer(settings.jwt_secret, settings.jwt_ttl_seconds)
     publisher = JsonEventPublisher(sys.stdout)
 
-    # Agent caméra et ESP8266 : délais courts, la connexion ne doit pas rester suspendue.
+    # Agent caméra et ESP32 : délais courts, la connexion ne doit pas rester suspendue.
     http_clients: list[httpx.AsyncClient] = []
     if settings.host_agent_url and settings.host_agent_token:
         agent_http = httpx.AsyncClient(base_url=settings.host_agent_url, timeout=15.0)

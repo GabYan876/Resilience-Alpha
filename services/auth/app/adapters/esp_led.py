@@ -1,4 +1,4 @@
-"""LED bicolore de l'ESP8266 : `POST /led` signé ; les durées sont gérées par le firmware."""
+"""LED bicolore de l'ESP32 : `POST /led` signé ; les durées sont gérées par le firmware."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from app.domain.models import LedMode
 class HttpStatusLed:
     """Requête signée (HMAC-SHA256 du compteur et du corps) : le secret ne circule pas.
 
-    Le compteur croît strictement ; l'ESP8266 refuse tout compteur déjà vu (rejeu).
+    Le compteur croît strictement ; l'ESP32 refuse tout compteur déjà vu (rejeu).
     """
 
     def __init__(
@@ -49,7 +49,7 @@ class HttpStatusLed:
 
 
 class NoStatusLed:
-    """Pas d'ESP8266 configuré : le retour visuel manque, l'accès n'en dépend pas."""
+    """Pas d'ESP32 configuré : le retour visuel manque, l'accès n'en dépend pas."""
 
     async def set(self, mode: LedMode) -> None:
         return None
