@@ -21,9 +21,13 @@ Le matériel effectivement ciblé ici est une **ESP32-DevKitC / ESP32-DevKit V1 
 | `red_blink` | rouge clignotant | 10 clignotements, puis éteinte |
 | `red_solid` | rouge fixe | 30 s, puis éteinte |
 
-Signature : en-têtes `X-Counter` (entier strictement croissant ; le client `auth` envoie l'horloge en millisecondes)
-et `X-Signature` = HMAC-SHA256 en hexadécimal minuscule, avec `LED_TOKEN` comme clé, du texte
-`<X-Counter>.<corps exact>`. Le secret ne circule jamais ; l'ESP32 refuse un compteur déjà vu (rejeu).
+Signature : paramètres de requête `counter` (entier strictement croissant ; le client `auth` envoie l'horloge
+en millisecondes) et `signature` = HMAC-SHA256 en hexadécimal minuscule, avec `LED_TOKEN` comme clé, du texte
+`<counter>.<corps exact>`. Le secret ne circule jamais ; l'ESP32 refuse un compteur déjà vu (rejeu).
+
+Ils transitent par l'URL et non par des en-têtes : le `WebServer` de l'ESP32 ne restitue pas les en-têtes
+personnalisés (essai du 22/10 : `X-Counter` arrivait vide quel que soit `collectHeaders` ou
+`collectAllHeaders`, donc toute signature était refusée), alors que la lecture des arguments est fiable.
 
 Réponses : `200` mode appliqué, `400` mode invalide, `401` signature absente ou fausse, `403` IP source différente
 de `ALLOWED_HOST_IP`, `409` compteur déjà vu (rejeu). Le client côté `auth` est `HttpStatusLed` (`services/auth/app/adapters/esp_led.py`).
@@ -70,7 +74,8 @@ import hashlib, hmac, os, time, urllib.request
 body = b'{"mode":"green_solid"}'
 counter = str(time.time_ns() // 1_000_000)
 signature = hmac.new(os.environ["LED_TOKEN"].encode(), counter.encode() + b"." + body, hashlib.sha256).hexdigest()
-request = urllib.request.Request("http://<ip-esp>/led", body, {"X-Counter": counter, "X-Signature": signature})
+url = f"http://<ip-esp>/led?counter={counter}&signature={signature}"
+request = urllib.request.Request(url, body, {"Content-Type": "application/json"})
 print(urllib.request.urlopen(request).read())
 PY
 ```
@@ -87,11 +92,22 @@ PY
 
 ## État de la vérification
 
-- **Compilation** validée avec `pio run -d firmware/esp32-led -e esp32dev` (PlatformIO 6.6.0, Arduino-ESP32 2.0.14,
-  en-tête `secrets.h` local copié depuis l'exemple). La réannonce de l'IP (30 s) n'a pas été recompilée depuis son ajout.
-- **Banc** (22/10, d'après François, carte ESP32-D0WD-V3 rev 3.1, flash 76,9 %, RAM 14,5 %) : les 5 modes
-  répondent `200` et le comportement des LED a été vérifié à l'œil ; signature fausse refusée en `401`, compteur
-  rejoué et compteur ancien refusés en `409`.
-- **Reste à essayer** : le parcours d'authentification complet de bout en bout et la coupure réseau pendant `green_solid`.
+Essayé sur banc le 22/10, carte ESP32-D0WD-V3 rev 3.1 (`espressif32@8.0.0`, Arduino-ESP32 3.3.12), réseau
+`RESILIENCE-G8` :
+
+- Les 5 modes répondent `200` et le comportement des LED a été vérifié à l'œil.
+- Contrôles négatifs : signature fausse refusée en `401`, compteur rejoué et compteur ancien refusés en `409`.
+- **Bout en bout prouvé** : parcours d'authentification complet du back-office depuis le PC Hôte
+  (identifiant → caméra → visage reconnu → mot de passe), la LED suit les transitions émises par `auth`.
+
 - **Couleur** : le banc utilise une LED **jaune** à la place de la verte. Le protocole garde les noms `green_*` ;
   l'écart avec la consigne (LED bicolore vert/rouge) est une limite assumée tant qu'une LED verte n'est pas montée.
+
+Reste à essayer : la coupure réseau pendant `green_solid`, qui doit laisser la LED s'éteindre d'elle-même.
+
+Deux pièges relevés pendant la mise au point, à connaître avant de toucher à ce firmware :
+
+- Après un `pio run -t upload`, le port série reste à la vitesse de téléversement et le moniteur n'affiche que du
+  bruit : faire un reset matériel (`esptool --port <port> --after hard-reset chip-id`) avant de lire.
+- L'IP est distribuée par le DHCP du point d'accès : si la carte ou le point d'accès redémarre, elle peut changer
+  et `LED_URL` est à reprendre. La carte réannonce son adresse toutes les 30 s sur la liaison série.

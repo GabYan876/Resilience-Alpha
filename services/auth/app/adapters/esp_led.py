@@ -36,14 +36,14 @@ class HttpStatusLed:
         signature = hmac.new(
             self._secret, f"{self._last_counter}.".encode() + body, hashlib.sha256
         ).hexdigest()
+        # Compteur et signature passent par la requête, pas par des en-têtes : le `WebServer`
+        # de l'ESP32 ne restitue pas les en-têtes personnalisés (X-Counter arrivait vide,
+        # signature donc toujours refusée), alors que la lecture des arguments est fiable.
         response = await self._client.post(
             "/led",
             content=body,
-            headers={
-                "Content-Type": "application/json",
-                "X-Counter": str(self._last_counter),
-                "X-Signature": signature,
-            },
+            params={"counter": str(self._last_counter), "signature": signature},
+            headers={"Content-Type": "application/json"},
         )
         response.raise_for_status()
 

@@ -140,13 +140,14 @@ void handleLed() {
     return;
   }
   const String body = server.arg("plain");
-  const String counter = server.header("X-Counter");
+  const String counter = server.arg("counter");
   const uint64_t counterValue = strtoull(counter.c_str(), nullptr, 10);
-  const String signature = server.header("X-Signature");
+  const String signature = server.arg("signature");
   // Signature d'abord, puis compteur : un message rejoué ou falsifié ne change jamais l'état.
   if (body.length() > MAX_BODY || counter.length() == 0 || counter.length() > 20 ||
       !sameSignature(sign(counter, body), signature)) {
-    Serial.println("REFUS signature");
+    Serial.printf("REFUS signature (compteur=%s, corps=%u octets)\n", counter.c_str(),
+                  static_cast<unsigned>(body.length()));
     server.send(401, "application/json", "{\"error\":\"unauthorized\"}");
     return;
   }
@@ -186,8 +187,6 @@ void setup() {
 #endif
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  const char* headers[] = {"X-Counter", "X-Signature"};
-  server.collectHeaders(headers, 2);
   server.on("/led", HTTP_POST, handleLed);
   server.begin();
 }
