@@ -43,7 +43,7 @@ Chaque service Python suit une architecture en couches respectant **SOLID** (`do
 | Développement | Microservices FastAPI (BDD, API, auth), front de paiement React/Tailwind, moteur de remédiation, dashboard de supervision Grafana |
 | Infrastructure | Docker Compose, Ansible, Prometheus, Grafana, Loki |
 | IA / Data | Détection d'anomalies (ML), assistant RAG Ollama + LangChain (≤ 8B) |
-| Cybersécurité | Attaques Red Team, WAF, SIEM/SOC, durcissement, Vault/SOPS |
+| Cybersécurité | Attaques Red Team, WAF, SIEM/SOC, durcissement, SOPS + age |
 | Gouvernance | EBIOS RM, PCA/PRA, NIS2/DORA |
 
 ## Structure du dépôt (cible)
@@ -116,6 +116,8 @@ docker compose --env-file .env -f infra/compose/docker-compose.observability.yml
 
 Dépannage : les lignes `pull access denied for resilience-alpha/...` sont sans gravité (ces images sont construites en local, Compose tente d'abord un téléchargement). `container resilience-anomaly-detector is unhealthy` signifie presque toujours que le modèle de l'étape 2 manque (`ls ml/models/isolation_forest.joblib`). `docker compose ... config --quiet` valide le fichier et signale une variable manquante ; `docker compose ... logs <service>` donne la cause d'un service qui ne devient pas sain ; `./scripts/reset_demo.sh` remet la base à zéro. Détails du modèle : `services/anomaly-detector/README.md`.
 
+Back-office (consigne 1) : l'agent caméra n'est **pas** lancé par `Deploy.ps1`. Sur le PC Hôte, après installation décrite dans `host-agent/camera/README.md` (venv, modèles, clé et enrôlement), le démarrer avec `.\host-agent\cameraun.ps1` (port 8765 ; il relit `HOST_AGENT_TOKEN` dans le `.env`), puis redémarrer `auth` ; sans lui, la connexion du back-office reste fermée (échec fermé).
+
 Déploiement en une commande (Windows + Docker Desktop, `.env` déjà présent) : `.\infra\ansible\Deploy.ps1` enchaîne contrôle du `.env`, modèle ML si absent, socle, observabilité, vérification Ansible et transaction de test. Détails et limites : `infra/ansible/README.md`.
 
 Accès actuel : front Pay-Now sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080` (via le WAF, puis la passerelle qui ne route que `/auth/*` et `/me/*` ; `/metrics`, `/health` et la sonde `POST /transactions` restent internes), Grafana et son dashboard sur `http://${WAF_BIND_HOST:-127.0.0.1}:8080/grafana/` (même WAF, route `/grafana` de la passerelle ; plus aucun port 3000 publié). `WAF_BIND_HOST` (`.env`) vaut `127.0.0.1` par défaut ; le fixer à l'IP LAN du PC Hôte sur le réseau privé du binôme (jamais `0.0.0.0`) pour un essai réel depuis le PC Attaquant, hotspot (`192.168.137.1`) ou box (ex. `192.168.1.140`), peu importe lequel. Le `.env` doit définir `JWT_SECRET` (≥ 32 caractères, voir `.env.example`). Exemple sur le hotspot : front `http://192.168.137.1:8080/`, dashboard `http://192.168.137.1:8080/grafana/` (renseigner `GRAFANA_ROOT_URL` à la même URL dans `.env`) ; même principe sur une box, avec son IP à la place.
@@ -155,7 +157,7 @@ cd services/rag-assistant && python -m pytest -q
 
 - Moteur de remédiation : accès Docker via **docker-socket-proxy** / API restreinte à token, jamais le socket brut.
 - Assistant RAG : lecture seule, aucun accès privilégié.
-- Secrets : Vault ou SOPS, jamais en clair dans le dépôt ni dans l'archive de rendu.
+- Secrets : SOPS + age (choix du 21/10), jamais en clair dans le dépôt ni dans l'archive de rendu.
 - Bloquer une attaque ≠ corriger une compromission : les réponses à un flood (disponibilité) et à une exfiltration/injection (intégrité/confidentialité) sont distinctes.
 
 ## Équipe

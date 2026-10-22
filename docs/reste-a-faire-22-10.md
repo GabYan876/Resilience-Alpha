@@ -32,7 +32,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 - [ ] Habilitations `admin` / `operator` et console `/admin/console` (PR #93) jouées sur le PC Hôte (testées jusqu'ici avec des doubles seulement).
 - [ ] Coupure réseau de l'ESP32 en cours de séquence (`green_solid`) essayée.
 - [ ] **Persistance** (lot L1 de Hugo, non fait) : tables `roles`, `face_templates`, `login_lockouts` (migration Alembic), `PostgresLockoutStore`, test de redémarrage de `auth`. Sinon, le consigner comme limite assumée.
-- [ ] Agent caméra lancé par `Deploy.ps1` (aujourd'hui lancé à la main via `host-agent/camera/run.ps1`). Sinon, documenter la commande.
+- [x] (Kevin, 22/10 : commande documentée dans le README racine et `infra/ansible/README.md`, `Deploy.ps1` ne le lance pas) Agent caméra lancé par `Deploy.ps1` (aujourd'hui lancé à la main via `host-agent/camera/run.ps1`). Sinon, documenter la commande.
 - [ ] Consentement écrit des membres enrôlés ; aucun gabarit hors du PC Hôte.
 - [ ] Attaques de François (L5) : force brute sur l'identifiant, photo devant la caméra, coupure caméra / ESP32, avec journal des résultats réels, y compris les échecs de la défense.
 - [ ] Pare-feu du PC Ollama (n'accepter que `192.168.137.1`) vérifié.
@@ -46,8 +46,8 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
 - [x] `services/db/README.md` « Reste à implémenter » : points périmés (auth n'est plus un squelette, RPO / S4 mesurés).
 - [x] `README.md` « Limites connues » : retirer « À compléter au fil du sprint » et ajouter les limites ci-dessous.
 - [x] Statuts « à valider par Antoine / l'équipe » à solder dans EBIOS, AMDEC et PCA/PRA.
-- [ ] Vérifier que `docs/dossier.md` §8 cite le bon numéro de PR pour les habilitations (#93 ou autre).
-- [ ] `README.md`, `architecture.md` et matrice alignés avec la pile réellement déployée.
+- [x] (Kevin, 22/10 : #93 confirmée, PR de Gabriel fusionnée) `docs/dossier.md` cite le bon numéro de PR pour les habilitations.
+- [x] (Kevin, 22/10) `README.md`, `architecture.md` et matrice alignés avec la pile réellement déployée.
 
 ## 4. Hygiène du dépôt
 

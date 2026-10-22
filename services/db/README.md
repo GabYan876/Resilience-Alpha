@@ -183,8 +183,9 @@ Ce qui n'existe pas encore, par ordre d'importance pour la preuve de reprise.
    `downgrade` puis `upgrade`) et un test de droits des rôles `app_rw` / `app_ro`.
 4. **Service `auth`** : le service existe (`services/auth/`, connexion, jetons et
    parcours du back-office). Restent à persister en base le blocage par identifiant,
-   les habilitations et les gabarits (tables `roles`, `face_templates`,
-   `login_lockouts`, lot L1 non fait) : aujourd'hui en mémoire.
+   les habilitations (tables `roles`, `login_lockouts`, lot L1 non fait) :
+   aujourd'hui en mémoire. Les gabarits biométriques restent chiffrés sur le PC Hôte,
+   jamais en base.
 5. **Usage de `merchants`** : la table et le seed existent, aucune route ne s'en sert
    (pas de vérification de la clé d'API, pas de paiement vers un marchand).
 6. **Rôle `app_ro` et assistant RAG** : le rôle existe, aucun service ne l'utilise
