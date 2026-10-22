@@ -125,6 +125,26 @@ Lecture : Kevin occupe les trois jours sans interruption, François travaille su
 - **Charge concentrée sur une personne** : environ deux tiers du code et presque toute la gouvernance viennent de Kevin. Le jury demande que chacun explique le code qu'il présente.
 - **Preuves de contribution** : les rendus (Dossier PDF, Pres.pptx, clip) ne sont pas versionnés, donc cette analyse ne les couvre pas.
 
+## 7. Répartition de la consigne additionnelle 1 (prévisionnelle, 22/10)
+
+Cette section est **prévue, pas réalisée** : rien n'est livré, aucune ligne ci-dessous n'est une preuve. Conception : [`consigne-additionnelle-1.md`](consigne-additionnelle-1.md). Elle est à valider par l'équipe ; l'historique ci-dessus (§5) montre que Kevin porte déjà la majorité du code, donc le code neuf est réparti sur les autres, Kevin ne gardant que l'agent caméra, l'intégration et les revues.
+
+Échéances : **J0** = avant le gel (si maintenu, jeudi 17h), **J1** = après arbitrage du calendrier (à confirmer auprès de l'enseignant, voir `validation-jalon-22-10.md` §0bis). Tout se fait sur branche, une PR par lot, relue par Kevin.
+
+| Qui | Lot | Tâches | Livrable vérifiable | Échéance |
+|---|---|---|---|---|
+| Antoine | L1 | 1. Modèle de données : `roles`, `face_templates`, `login_lockouts` (migration Alembic). 2. Machine à états d'authentification dans `application/` (identifiant → visage → mot de passe, 2 échecs → blocage 5 min par identifiant). 3. Ports `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` + fakes, tests `pytest`. 4. README du service `auth` (réclamé au §0 du jalon) | Tests verts sans matériel : les scénarios de la table de la LED passent avec des fakes | J0 (cœur), J1 (finitions) |
+| Kevin | L2 | 1. Agent hôte natif `host-agent/camera` : ouverture et fermeture de la caméra, détection et comparaison (YuNet + SFace), API locale à jeton. 2. Mesure du seuil de similarité sur les membres consentants (faux rejets / fausses acceptations consignés). 3. Mesure de la RAM de l'agent. 4. Intégration `Deploy.ps1` avec Hugo | Un visage enrôlé reconnu, un autre rejeté, caméra éteinte après décision ; chiffres du seuil | J0 (reconnu / rejeté), J1 (mesures) |
+| Hugo | L3 | 1. Firmware `firmware/esp8266-led/` (CLion + PlatformIO) : WiFi du point d'accès, `POST /led` à jeton, durées dans le firmware (rouge fixe 30 s, vert fixe 30 s, rouge ×10). 2. Câblage LED bicolore et résistances. 3. Pare-feu : l'ESP n'accepte que l'IP du PC Hôte. 4. Lancement de l'agent par `Deploy.ps1` | LED qui suit chaque état de la table, y compris après coupure réseau ; photo ou vidéo du banc | J0 (WiFi + 2 couleurs), J1 (tous les modes) |
+| Gabriel | L4 | 1. Page `/admin` dans le front (React + Tailwind) : comptes, rôles, enrôlement et révocation d'un visage, déblocage d'un identifiant, journal d'accès. 2. Parcours de connexion du back-office (saisie identifiant, retour visuel de la caméra, saisie du mot de passe). 3. Panneau Grafana des événements `auth.*` | Parcours complet utilisable avec les fakes, puis avec l'agent | J1 |
+| François | L5 | 1. Scripts d'attaque `attack/` : force brute sur l'identifiant, présentation d'une photo, coupure de la caméra/de l'ESP8266 (garde-fous `ALLOWED_HOSTS`, depuis le PC Attaquant seulement). 2. Scénario de chaos correspondant et critères de reprise. 3. Rapport honnête : l'usurpation par photo réussit-elle ? | Journal d'attaque avec résultats réels, y compris les échecs de la défense | J1 |
+| Antoine + Gabriel | L6 | EBIOS (ER7/ER8, SS6, SO3), AMDEC, matrice, NIS2/DORA, PCA (mode dégradé si caméra ou ESP en panne) mis à jour **avec les résultats réels** ; Dossier PDF, Pres.pptx, pitch | Plus aucune ligne « À FAIRE » sans responsable ; aucune ligne « PROUVÉ » sans essai | J1 |
+| Kevin | Transverse | Arbitrage du gel, revue de chaque PR (SOLID, pas de logique dans les routes), `pytest` et `scripts/demo_loop.py --runs 5` verts avant chaque merge, mise à jour de ce tableau avec les preuves | `main` stable | en continu |
+
+Ordre : L1 et L3 démarrent en parallèle (aucune dépendance matérielle croisée), L2 dès que la caméra est sur le PC Hôte, L4 après le contrat d'API de L1, L5 et L6 en dernier.
+
+Chacun doit pouvoir expliquer son lot devant le jury, code généré par IA compris (règle du dépôt).
+
 ## 6. Méthode et limites
 
 - Sources : `git log --all --numstat`, `git shortlog`, `gh pr list` (auteur de chaque PR).

@@ -107,6 +107,17 @@ services/<service>/
 | Gabriel | Dev front | Front paiement, Clip Chrono, vérification du dashboard Grafana ; NIS2/DORA, pitch, Pres.pptx |
 | François | IA RAG + Red Team | Assistant RAG, scripts d'attaque, chaos jeudi ; assemblage du Dossier PDF |
 
+Consigne additionnelle 1 (prévisionnelle, à valider par l'équipe ; détail dans `docs/repartition-reelle.md` §7) :
+
+| Qui | Lot | Périmètre |
+|---|---|---|
+| Antoine | L1 | Machine à états d'authentification, tables `roles` / `face_templates` / `login_lockouts`, ports + fakes, tests, README `auth` |
+| Kevin | L2 + transverse | Agent hôte caméra et reconnaissance (seuil, RAM), revue des PR, arbitrage du gel |
+| Hugo | L3 | Firmware ESP8266 (CLion + PlatformIO), câblage LED, WiFi du point d'accès, déploiement de l'agent |
+| Gabriel | L4 + L6 | Page `/admin`, parcours de connexion, panneau Grafana `auth.*` ; NIS2/DORA, pitch, Pres.pptx |
+| François | L5 | Attaques (force brute, photo, coupure caméra/ESP8266), chaos, Dossier PDF |
+| Antoine + Gabriel | L6 | EBIOS, AMDEC, matrice, PCA mis à jour avec les résultats réels |
+
 ## Jalons
 
 - **Lun 19/10** : architecture + EBIOS validés, dépôt + conventions, hotspot OK.
