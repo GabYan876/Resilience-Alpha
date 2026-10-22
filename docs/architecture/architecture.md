@@ -180,16 +180,17 @@ Chaque étape émet un JSON : `{"service","trace_id","event","incident_id","at",
 - Le RAG n'a aucun accès au moteur de remédiation ni à Docker.
 - Reset d'état : `scripts/reset_demo.sh` (débloque les IP, rejoue le schéma et le seed, purge les archives S4 puis sauvegarde l'état propre) pour ≥ 5 passages.
 
-## 5bis. Authentification renforcée du back-office (consigne additionnelle 1, **à implémenter**)
+## 5bis. Authentification renforcée du back-office (consigne additionnelle 1, **partiellement livrée au 22/10**)
 
-Conception, interprétations à trancher et découpage : [`../consigne-additionnelle-1.md`](../consigne-additionnelle-1.md). Éléments d'architecture, **non encore déployés** :
+Conception, interprétations à trancher et découpage : [`../consigne-additionnelle-1.md`](../consigne-additionnelle-1.md). Éléments d'architecture. État au 22/10 : `auth`, l'agent caméra et le firmware sont livrés et essayés (voir `repartition-reelle.md` §7) ; la persistance en base reste à faire (ligne « Tables » ci-dessous). L'agent caméra se lance à la main (`host-agent/camera/run.ps1`), `Deploy.ps1` ne le démarre pas :
 
 | Composant | Rôle | Où | Publié ? |
 |---|---|---|---|
 | `auth` (étendu) | Machine à états identifiant → visage → mot de passe, verrouillage (2 échecs → 5 min), habilitations | Compose, réseaux app/db | non |
 | `host-agent/camera` | Ouvre la caméra USB du PC Hôte, détecte et compare le visage (OpenCV YuNet + SFace) ; API locale + jeton | **natif Windows, hors Docker** (Docker Desktop ne voit pas l'USB) | non, joignable par `auth` seulement |
 | ESP32-DevKitC/V1 (`firmware/esp32-led/`) | LED bicolore, `POST /led` (requête signée HMAC), WiFi du point d'accès | matériel | non |
-| Tables `roles`, `face_templates`, `login_lockouts` | Habilitations, gabarits chiffrés, blocages | BDD | non |
+| Tables `roles`, `login_lockouts` (prévues, **non livrées**) | Habilitations et blocages, aujourd'hui en mémoire dans `auth` (perdus au redémarrage) | BDD | non |
+| Gabarits biométriques | Chiffrés (Fernet), stockés uniquement sur le PC Hôte dans `host-agent/camera/data/`, jamais en base ni dans Git | disque du PC Hôte | non |
 
 Ports : `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` ; `RoleStore` (habilitations `admin` / `operator`, en mémoire pour l'instant) ; événements `auth.face.recognized|rejected`, `auth.locked`, `auth.access.denied_no_role`, `auth.admin.role_granted|role_revoked|unlocked|forbidden` vers Loki. Jeton de back-office à audience `backoffice`, distinct du jeton client : l'API métier le refuse. `POST /auth/admin/login` renvoie `{token, identifier, name, role}` ; routes d'administration en GET/POST sous `/auth/admin/*` (le CRS refuse PUT/DELETE). Détail : [`consigne-additionnelle-1.md`](../consigne-additionnelle-1.md) §4. Échec fermé : sans caméra ou agent, pas d'accès.
 
