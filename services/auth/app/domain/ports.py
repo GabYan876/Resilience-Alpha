@@ -6,7 +6,15 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from app.domain.models import Credentials, LedMode, LockoutRecord, NewUser, Profile
+from app.domain.models import (
+    AccessEntry,
+    Credentials,
+    LedMode,
+    LockoutRecord,
+    NewUser,
+    Profile,
+    Role,
+)
 
 
 class UserRepository(Protocol):
@@ -85,4 +93,46 @@ class FaceSessionStore(Protocol):
 
     async def consume(self, identifier: str, now: datetime) -> bool:
         """Usage unique : vrai une seule fois, et seulement avant l'expiration."""
+        ...
+
+
+class LockoutRegistry(Protocol):
+    """Vue d'administration des blocages (port distinct de `LockoutStore`, ISP)."""
+
+    async def locked(self, now: datetime) -> list[LockoutRecord]: ...
+
+    async def clear(self, identifier: str) -> None: ...
+
+
+class RoleStore(Protocol):
+    """Habilitations du back-office, par identifiant."""
+
+    async def get(self, identifier: str) -> Role | None: ...
+
+    async def set(self, identifier: str, role: Role) -> None: ...
+
+    async def revoke(self, identifier: str) -> None: ...
+
+    async def all(self) -> dict[str, Role]: ...
+
+
+class AccessJournal(Protocol):
+    """Journal des accès au back-office, consultable par les habilités."""
+
+    async def record(self, entry: AccessEntry) -> None: ...
+
+    async def recent(self, limit: int) -> list[AccessEntry]:
+        """Les plus récentes d'abord."""
+        ...
+
+
+class AdminTokenIssuer(Protocol):
+    """Jeton du back-office, distinct du jeton client : l'API métier doit le refuser."""
+
+    def issue_admin(self, identifier: str) -> str: ...
+
+
+class AdminTokenVerifier(Protocol):
+    def verify_admin(self, token: str) -> str | None:
+        """Identifiant porté par un jeton de back-office valide, sinon `None`."""
         ...

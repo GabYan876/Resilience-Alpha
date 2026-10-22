@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+// Types Node absents du build Docker : on déclare seulement ce qu'on lit (évite @types/node).
+declare const process: { env: Record<string, string | undefined> };
+
 // En développement, les appels /auth et /me passent par le WAF publié en local.
 const gateway = process.env.GATEWAY_URL ?? "http://127.0.0.1:8080";
 

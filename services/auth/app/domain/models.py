@@ -70,3 +70,30 @@ class LockoutRecord:
             # Le compteur repart à 0 : le schéma se répète à la sortie du blocage.
             return LockoutRecord(self.identifier, 0, now + policy.lock_duration)
         return LockoutRecord(self.identifier, failures, None)
+
+
+class Role(StrEnum):
+    """Habilitations du back-office (consigne 1). Sans rôle : aucun accès, même visage reconnu."""
+
+    ADMIN = "admin"  # gère les habilitations, débloque les identifiants, lit le journal
+    OPERATOR = "operator"  # lecture seule : blocages et journal d'accès
+
+
+@dataclass(frozen=True)
+class AdminSession:
+    """Résultat d'une connexion de back-office réussie (jamais de hachage ni de gabarit)."""
+
+    token: str
+    identifier: str
+    full_name: str
+    role: Role
+
+
+@dataclass(frozen=True)
+class AccessEntry:
+    """Ligne du journal d'accès affiché aux habilités (mémoire du service, jamais dans les logs)."""
+
+    at: datetime
+    event: str
+    identifier: str
+    detail: str = ""

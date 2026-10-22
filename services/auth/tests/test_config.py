@@ -40,3 +40,22 @@ def test_from_env_requires_minimum_secret_length(monkeypatch):
 
     with pytest.raises(ValueError):
         Settings.from_env()
+
+
+def test_from_env_reads_backoffice_admins_list(monkeypatch):
+    monkeypatch.delenv("JWT_SECRET_FILE", raising=False)
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@db/app")
+    monkeypatch.setenv("BACKOFFICE_ADMINS", " Admin@Resilience.local , ,ops@resilience.local")
+
+    settings = Settings.from_env()
+    assert settings.backoffice_admins == ("admin@resilience.local", "ops@resilience.local")
+
+
+def test_from_env_without_backoffice_admins_is_closed(monkeypatch):
+    monkeypatch.delenv("JWT_SECRET_FILE", raising=False)
+    monkeypatch.delenv("BACKOFFICE_ADMINS", raising=False)
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@db/app")
+
+    assert Settings.from_env().backoffice_admins == ()

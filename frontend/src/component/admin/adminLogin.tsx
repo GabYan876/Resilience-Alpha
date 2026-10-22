@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import axios from "axios";
-import { baseurl, logined, userinfo } from "../../recoil/atom";
-import { saveSession, toUser } from "../../session";
+import { baseurl } from "../../recoil/atom";
+import { saveAdminSession } from "../../session";
 
 // Connexion du back-office (consigne additionnelle 1) :
 // identifiant -> reconnaissance du visage (caméra du PC Hôte) -> mot de passe.
@@ -27,8 +27,6 @@ function messageFor(status: number | undefined, fallback: string): string {
 export default function AdminLogin() {
     const navigate = useNavigate();
     const url = useRecoilValue(baseurl);
-    const setUser = useSetRecoilState(userinfo);
-    const setLogined = useSetRecoilState(logined);
 
     const [step, setStep] = useState<Step>("identifier");
     const [identifier, setIdentifier] = useState("");
@@ -78,11 +76,15 @@ export default function AdminLogin() {
         const password = (e.currentTarget.elements.namedItem("password") as HTMLInputElement).value;
         try {
             const res = await axios.post(url + "/auth/admin/login", { identifier, password });
-            saveSession(res.data.token, res.data.resp);
-            setUser(toUser(res.data.resp));
-            setLogined(true);
-            navigate("/home");
+            saveAdminSession(res.data);
+            navigate("/admin/console");
         } catch (err) {
+            // 403 « no_role » : identité prouvée mais aucune habilitation, inutile de recommencer.
+            if (axios.isAxiosError(err) && err.response?.data?.detail?.reason === "no_role") {
+                setMessage("Identité vérifiée, mais ce compte n'a aucune habilitation au back-office.");
+                setStep("identifier");
+                return;
+            }
             // 403 : le visage n'est plus validé, il faut recommencer depuis l'identifiant.
             if (fail(err, "Connexion échouée") === 403) setStep("identifier");
         }

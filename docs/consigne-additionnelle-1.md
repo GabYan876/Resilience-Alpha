@@ -1,7 +1,7 @@
 # Consigne additionnelle 1 — authentification renforcée du back-office
 
 Source : `docs/WorkShop 2026-27 M2 - Consigne Additionnelle 1.pdf` (reçue le 22/10). Le sujet précise : « soyez à l'écoute de toutes nouvelles consignes ».
-Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, essayés sur la caméra intégrée du PC de Kevin ; page `/admin` et panneaux Grafana `auth.*` livrés par la PR #75 ; firmware, persistance du blocage, habilitations et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
+Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, essayés sur la caméra intégrée du PC de Kevin ; page `/admin` et panneaux Grafana `auth.*` livrés par la PR #75 ; habilitations et console `/admin/console` livrées par la PR #93 (Gabriel, essayées avec des doubles seulement) ; firmware, persistance du blocage et des habilitations, et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
 
 ## 1. Ce que demande la consigne
 
@@ -80,7 +80,17 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 - Rôles minimaux *(proposition)* : `admin` (gère comptes, rôles, enrôlements), `operator` (consulte le tableau de supervision), `customer` (parcours Pay-Now, **hors** authentification faciale : la consigne vise le back-office).
 - Fonctions : créer/désactiver un compte, attribuer/retirer un rôle, **enrôler / révoquer un visage**, débloquer un identifiant, consulter le journal d'accès.
 - Un `admin` ne peut ni s'auto-retirer le dernier rôle admin ni enrôler un visage sans reconnaissance préalable d'un autre admin (amorçage : compte `admin` créé par le seed).
-- Tout changement d'habilitation émet un événement `auth.role.changed` (Loki).
+- Tout changement d'habilitation émet un événement vers Loki (identifiants hachés) : `auth.admin.role_granted`, `auth.admin.role_revoked`, `auth.admin.unlocked`, `auth.admin.forbidden` (opérateur qui tente une écriture) et `auth.access.denied_no_role` (compte sans rôle, visage et mot de passe valides).
+
+**Réalisé par la PR #93 (22/10)** et écarts avec la conception ci-dessus :
+
+- Rôles `admin` / `operator` derrière le port `RoleStore` (stockage en mémoire, perdu au redémarrage de `auth`). Pas de rôle `customer` : le parcours Pay-Now reste hors back-office. Sans rôle : refus, LED rouge fixe, aucun échec compté.
+- Premiers administrateurs fixés par `BACKOFFICE_ADMINS` (vide = back-office fermé). Il n'y a donc pas de compte `admin` créé par le seed.
+- Jeton de back-office à audience `backoffice`, 15 min (`ADMIN_TOKEN_TTL_SECONDS`) ; l'API métier le refuse et le back-office refuse un jeton client. Le rôle n'est pas dans le jeton : il est relu à chaque requête, un retrait prend effet tout de suite.
+- Fonctions livrées : attribuer / retirer un rôle, débloquer un identifiant, consulter le journal d'accès (200 lignes en mémoire). `operator` est en lecture seule.
+- **Écarts** : la règle livrée est « un admin ne peut pas retirer sa propre habilitation » (409), plus simple que « dernier admin ».
+- **Non livré** : créer / désactiver un compte depuis le back-office ; enrôler / révoquer un visage depuis le back-office (volontairement en ligne de commande sur le PC Hôte : le gabarit ne transite jamais par le réseau).
+- Routes en GET/POST uniquement (le CRS du WAF refuse PUT et DELETE) : `/auth/admin/{habilitations, habilitations/revoke, lockouts, lockouts/unlock, journal, me}`.
 
 ## 5. Sécurité, conformité et données
 
