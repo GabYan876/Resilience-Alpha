@@ -135,7 +135,9 @@ python attack/flood_http.py --base-url http://192.168.137.1:8080 --duration 30
 python scripts/demo_loop.py --runs 5
 ```
 
-Scénario S4 (corruption de la base, restauration automatique) : [`docs/procedures/s4-corruption-bdd.md`](docs/procedures/s4-corruption-bdd.md) ; service : [`services/db/recovery/README.md`](services/db/recovery/README.md).
+Scénario S4 (corruption de la base, restauration automatique) : [`docs/procedures/s4-corruption-bdd.md`](docs/procedures/s4-corruption-bdd.md) ; service : [`services/db/recovery/README.md`](services/db/recovery/README.md).
+
+Restauration à froid (arrêt complet puis redémarrage en une commande) : [`docs/procedures/restauration-a-froid.md`](docs/procedures/restauration-a-froid.md).
 
 Critère de réussite : **aucune intervention humaine** entre l'attaque et la nouvelle transaction réussie.
 
