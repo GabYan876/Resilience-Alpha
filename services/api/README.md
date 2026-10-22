@@ -51,6 +51,9 @@ Les ports (`AccountRepository`, `TransactionRepository`, `UnitOfWork`, `HealthPr
 | `POST` | `/transactions` | Exécuter un virement | jeton (`Bearer`) |
 | `GET` | `/transactions/{transaction_id}` | Lire une transaction | non |
 | `GET` | `/accounts/{iban_fake}` | Lire un compte et son solde | non |
+| `GET` | `/me/account` | Lire son propre compte | JWT client |
+| `GET` | `/me/transactions?limit=20` | Lire son historique | JWT client |
+| `POST` | `/me/transfers` | Virement depuis son propre compte | JWT client |
 | `GET` | `/metrics` | Métriques Prometheus (hors schéma OpenAPI) | non |
 
 ### `GET /health`
@@ -99,8 +102,8 @@ Réponse `200 OK` (virement réglé) :
 ```json
 {
   "id": "5d7c0e0a-6a0b-4e1f-9c1b-2f4a9b7e3c11",
-  "account_from": "…",
-  "account_to": "…",
+  "account_from": "<UUID du compte source>",
+  "account_to": "<UUID du compte destinataire>",
   "amount_cents": 100,
   "currency": "EUR",
   "status": "settled",
@@ -130,6 +133,7 @@ Cas particuliers :
 ### `GET /accounts/{iban_fake}`
 
 Utilisé aussi par le script de vérification : le solde du compte de sonde doit rester suffisant.
+`id` est l'UUID du compte et `iban_fake` son identifiant fictif.
 
 ```json
 {
@@ -148,24 +152,36 @@ Format texte Prometheus, produit par `prometheus-fastapi-instrumentator`. Les ro
 
 ## Authentification
 
-Seule l'écriture (`POST /transactions`) est protégée, par un jeton partagé :
+Les deux parcours ci-dessous sont indépendants. Le parcours de la sonde utilise `PROBE_TOKEN` ;
+les routes client utilisent le JWT émis par le service [`auth`](../auth/README.md).
+
+### Sonde et moteur de remédiation
+
+Seule l'écriture `POST /transactions` est protégée par le jeton partagé :
 
 ```
 Authorization: Bearer <PROBE_TOKEN>
 ```
 
 - Le jeton attendu vient de la variable d'environnement `PROBE_TOKEN`, partagée avec la sonde du moteur de remédiation (`services/remediation`) et le service privé de sauvegarde/restauration (`services/db/recovery`).
-- La comparaison se fait en temps constant (`hmac.compare_digest`).
+- La comparaison se fait en temps constant (`hmac.compare_digest`). Le préfixe `Bearer ` est
+  retiré avant la comparaison.
 - Jeton absent ou invalide : `401` `{"detail": "jeton invalide"}`.
 - **Si `PROBE_TOKEN` est vide, la garde est désactivée dans l'API lancée seule.** Réservé au développement local ; le Compose complet refuse une valeur absente ou vide car le service de récupération S4 l'exige également.
 - Les routes de lecture et `/health` ne demandent pas de jeton.
 
-Les utilisateurs finaux s'inscrivent et se connectent auprès du service `auth` (`services/auth`), qui émet un JWT HS256 `{sub, iat, exp}` signé avec `JWT_SECRET`. L'API vérifie ce jeton (algorithme figé à HS256, `sub` et `exp` requis) et expose l'espace client sous `/me`, joignable par la passerelle :
+### Espace client
 
-- `GET /me/account` : compte de l'utilisateur du jeton.
-- `GET /me/transactions?limit=20` : historique (1..100), `direction` `debit`/`credit`.
-- `POST /me/transfers` `{to_account, amount_cents, idempotency_key}` : la source est toujours le compte du jeton ; la clé d'idempotence est hachée avec l'identifiant utilisateur, un client ne peut donc pas rejouer la clé d'un autre.
-- Jeton absent, invalide ou expiré : `401`.
+Les utilisateurs finaux s'inscrivent et se connectent auprès du service `auth`
+(`/auth/register`, `/auth/login`). Il émet un JWT HS256 `{sub, iat, exp}` signé avec `JWT_SECRET`.
+L'API vérifie ce jeton (algorithme figé à HS256, `sub` et `exp` requis) dans l'en-tête
+`Authorization: Bearer <JWT client>` et expose :
+
+- `GET /me/account` : compte lié à l'identifiant `sub`.
+- `GET /me/transactions?limit=20` : historique du plus récent au plus ancien, limite de 1 à 100 ; chaque élément porte `direction` (`debit` ou `credit`) et `counterparty_iban`.
+- `POST /me/transfers` avec `{to_account, amount_cents, idempotency_key}` : `idempotency_key` est obligatoire (8 à 64 caractères) ; la source est toujours le compte du jeton, et la clé est hachée avec l'identifiant utilisateur pour qu'un client ne puisse pas rejouer la clé d'un autre.
+- Les réponses de compte et de transaction réutilisent les schémas décrits plus haut. L'historique renvoie une liste d'objets `{id, direction, counterparty_iban, amount_cents, currency, status, created_at}`.
+- Jeton absent, invalide ou expiré : `401` `{"detail": "jeton invalide ou expiré"}`. Un compte absent ou un destinataire inconnu renvoie `404` ; un virement refusé pour solde insuffisant ou devise incompatible renvoie `409` avec la transaction et `status: "rejected"`.
 
 Le contrat de la sonde (`POST /transactions` + `PROBE_TOKEN`) reste inchangé.
 
@@ -181,10 +197,10 @@ Le contrat de la sonde (`POST /transactions` + `PROBE_TOKEN`) reste inchangé.
 | Code | Quand |
 |---|---|
 | `200` | Succès (virement réglé, lecture) |
-| `401` | Jeton invalide ou absent sur `POST /transactions` |
+| `401` | Jeton de sonde invalide/absent avec garde active, ou JWT client invalide/absent/expiré |
 | `404` | Compte ou transaction inconnu |
 | `409` | Transaction **refusée** (solde insuffisant, devise) ou rejeu d'une transaction non réglée |
-| `422` | Corps invalide : champs manquants, montant ≤ 0, les deux montants fournis, montant plus fin que le centime, devise de longueur ≠ 3, comptes identiques, UUID mal formé |
+| `422` | Corps invalide (dont champ requis absent, montant non entier ou ≤ 0, devise de longueur ≠ 3, comptes identiques, ou clé client trop courte/longue) ; UUID mal formé |
 | `503` | `GET /health` : la base ne répond pas |
 
 ## Événements et métriques
