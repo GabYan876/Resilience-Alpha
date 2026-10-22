@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.application.use_cases import AuthResult
+from app.domain.models import AdminSession
 
 # Volontairement lâche : le seed utilise `.local`, que `EmailStr` refuse.
 _EMAIL = r"^[^@\s]+@[^@\s]+$"
@@ -74,3 +77,40 @@ class AuthOut(BaseModel):
                 balance_cents=p.balance_cents,
             ),
         )
+
+
+class AdminSessionOut(BaseModel):
+    token: str
+    identifier: str
+    name: str
+    role: str
+
+    @classmethod
+    def from_session(cls, session: AdminSession) -> AdminSessionOut:
+        return cls(
+            token=session.token,
+            identifier=session.identifier,
+            name=session.full_name,
+            role=session.role.value,
+        )
+
+
+class HabilitationIn(AdminIdentifyIn):
+    role: Literal["admin", "operator"]
+
+
+class HabilitationOut(BaseModel):
+    identifier: str
+    role: str
+
+
+class LockoutOut(BaseModel):
+    identifier: str
+    locked_until: datetime
+
+
+class AccessEntryOut(BaseModel):
+    at: datetime
+    event: str
+    identifier: str
+    detail: str

@@ -21,6 +21,11 @@ def _read_optional(name: str) -> str | None:
     return os.environ.get(name) or None
 
 
+def _read_list(name: str) -> tuple[str, ...]:
+    raw = os.environ.get(name, "")
+    return tuple(item.strip().lower() for item in raw.split(",") if item.strip())
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str  # postgresql+asyncpg://app_rw:... (jamais le rôle propriétaire)
@@ -31,8 +36,12 @@ class Settings:
     # Connexion du back-office (consigne 1). Sans agent hôte configuré, elle échoue fermée.
     host_agent_url: str | None = None  # agent caméra natif du PC Hôte
     host_agent_token: str | None = None
-    led_url: str | None = None  # ESP8266 ; absent = pas de retour visuel, accès inchangé
+    led_url: str | None = None  # ESP32 ; absent = pas de retour visuel, accès inchangé
     led_token: str | None = None
+    # Comptes habilités `admin` au démarrage (liste séparée par des virgules). Vide = personne :
+    # le back-office reste fermé (échec fermé). Ensuite, les habilitations se gèrent dans /admin.
+    backoffice_admins: tuple[str, ...] = ()
+    admin_token_ttl_seconds: int = 900  # session de back-office courte (15 min)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -48,4 +57,6 @@ class Settings:
             host_agent_token=_read_optional("HOST_AGENT_TOKEN"),
             led_url=os.environ.get("LED_URL") or None,
             led_token=_read_optional("LED_TOKEN"),
+            backoffice_admins=_read_list("BACKOFFICE_ADMINS"),
+            admin_token_ttl_seconds=int(os.environ.get("ADMIN_TOKEN_TTL_SECONDS", "900")),
         )

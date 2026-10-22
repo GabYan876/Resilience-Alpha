@@ -49,6 +49,12 @@ class StaticTokenIssuer:
     def issue(self, user_id: UUID) -> str:
         return f"token-{user_id}"
 
+    def issue_admin(self, identifier: str) -> str:
+        return f"admin-{identifier}"
+
+    def verify_admin(self, token: str) -> str | None:
+        return token.removeprefix("admin-") if token.startswith("admin-") else None
+
 
 class RecordingPublisher:
     def __init__(self) -> None:
@@ -110,5 +116,5 @@ class RecordingLed:
 
     async def set(self, mode: LedMode) -> None:
         if self.broken:
-            raise ConnectionError("ESP8266 injoignable")
+            raise ConnectionError("ESP32 injoignable")
         self.modes.append(mode)

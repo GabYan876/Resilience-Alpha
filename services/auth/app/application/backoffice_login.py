@@ -1,6 +1,7 @@
 """Connexion du back-office : identifiant → visage (1:1) → mot de passe, blocage par identifiant.
 
 La LED reflète l'état (consigne 1). Échec fermé : caméra ou agent en panne = pas d'accès.
+Habilitations : un compte sans rôle n'entre pas, même avec visage et mot de passe valides.
 """
 
 from __future__ import annotations
@@ -9,16 +10,18 @@ import asyncio
 import hashlib
 from uuid import uuid4
 
-from app.application.use_cases import AuthResult
 from app.domain.errors import (
     AccountLocked,
     FaceCheckUnavailable,
     FaceNotRecognized,
     FaceNotVerified,
     InvalidCredentials,
+    NotAuthorized,
 )
-from app.domain.models import LedMode, LockoutPolicy
+from app.domain.models import AccessEntry, AdminSession, LedMode, LockoutPolicy
 from app.domain.ports import (
+    AccessJournal,
+    AdminTokenIssuer,
     CameraControl,
     Clock,
     EventPublisher,
@@ -26,8 +29,8 @@ from app.domain.ports import (
     FaceVerifier,
     LockoutStore,
     PasswordHasher,
+    RoleStore,
     StatusLed,
-    TokenIssuer,
     UserRepository,
 )
 
@@ -37,7 +40,7 @@ class BackOfficeLogin:
         self,
         users: UserRepository,
         hasher: PasswordHasher,
-        tokens: TokenIssuer,
+        tokens: AdminTokenIssuer,
         camera: CameraControl,
         faces: FaceVerifier,
         led: StatusLed,
@@ -45,6 +48,8 @@ class BackOfficeLogin:
         sessions: FaceSessionStore,
         clock: Clock,
         publisher: EventPublisher,
+        roles: RoleStore,
+        journal: AccessJournal,
         policy: LockoutPolicy | None = None,
     ) -> None:
         self._users = users
@@ -57,6 +62,8 @@ class BackOfficeLogin:
         self._sessions = sessions
         self._clock = clock
         self._publisher = publisher
+        self._roles = roles
+        self._journal = journal
         self._policy = policy or LockoutPolicy()
 
     async def start(self, identifier: str) -> None:
@@ -68,7 +75,7 @@ class BackOfficeLogin:
             await self._camera.start()
             recognized = await self._faces.verify(identifier)
         except FaceCheckUnavailable:
-            self._emit("auth.face.unavailable", trace_id, identifier)
+            await self._emit("auth.face.unavailable", trace_id, identifier)
             raise  # ni échec compté ni repli sur le mot de passe seul
         finally:
             await self._stop_camera(trace_id)
@@ -76,20 +83,20 @@ class BackOfficeLogin:
         if not recognized:
             await self._register_failure(identifier, trace_id)
             await self._set_led(LedMode.RED_SOLID, trace_id)
-            self._emit("auth.face.rejected", trace_id, identifier)
+            await self._emit("auth.face.rejected", trace_id, identifier)
             raise FaceNotRecognized("visage non reconnu")
 
         now = self._clock.now()
         await self._sessions.grant(identifier, now + self._policy.face_validity)
         await self._set_led(LedMode.GREEN_BLINK, trace_id)
-        self._emit("auth.face.recognized", trace_id, identifier)
+        await self._emit("auth.face.recognized", trace_id, identifier)
 
-    async def submit_password(self, identifier: str, password: str) -> AuthResult:
+    async def submit_password(self, identifier: str, password: str) -> AdminSession:
         """Étape 2 : mot de passe, uniquement après un visage reconnu (usage unique)."""
         trace_id = uuid4().hex
         await self._ensure_not_locked(identifier, trace_id)
         if not await self._sessions.consume(identifier, self._clock.now()):
-            self._emit("auth.password.refused_no_face", trace_id, identifier)
+            await self._emit("auth.password.refused_no_face", trace_id, identifier)
             raise FaceNotVerified("reconnaissance du visage requise")
 
         found = await self._users.find_by_email(identifier)
@@ -99,19 +106,29 @@ class BackOfficeLogin:
         if not valid or found is None:
             await self._register_failure(identifier, trace_id)
             await self._set_led(LedMode.RED_BLINK, trace_id)
-            self._emit("auth.password.failed", trace_id, identifier)
+            await self._emit("auth.password.failed", trace_id, identifier)
             raise InvalidCredentials("identifiant ou mot de passe incorrect")
+
+        role = await self._roles.get(identifier)
+        if role is None:
+            # Identité prouvée mais aucune habilitation : refus sans compter d'échec (ce n'est
+            # pas une attaque sur le secret), sans dire quels comptes sont habilités.
+            await self._set_led(LedMode.RED_SOLID, trace_id)
+            await self._emit("auth.access.denied_no_role", trace_id, identifier)
+            raise NotAuthorized("aucune habilitation pour le back-office")
 
         await self._lockouts.clear(identifier)
         await self._set_led(LedMode.GREEN_SOLID, trace_id)
-        self._emit("auth.login.succeeded", trace_id, identifier)
-        return AuthResult(self._tokens.issue(found.profile.id), found.profile)
+        await self._emit("auth.login.succeeded", trace_id, identifier, role.value)
+        return AdminSession(
+            self._tokens.issue_admin(identifier), identifier, found.profile.full_name, role
+        )
 
     async def _ensure_not_locked(self, identifier: str, trace_id: str) -> None:
         now = self._clock.now()
         record = await self._lockouts.get(identifier)
         if record.is_locked(now) and record.locked_until is not None:
-            self._emit("auth.locked.refused", trace_id, identifier)
+            await self._emit("auth.locked.refused", trace_id, identifier)
             raise AccountLocked(int((record.locked_until - now).total_seconds()) + 1)
 
     async def _register_failure(self, identifier: str, trace_id: str) -> None:
@@ -119,7 +136,7 @@ class BackOfficeLogin:
         record = (await self._lockouts.get(identifier)).register_failure(now, self._policy)
         await self._lockouts.save(record)
         if record.locked_until is not None:
-            self._emit("auth.locked", trace_id, identifier)
+            await self._emit("auth.locked", trace_id, identifier)
 
     async def _stop_camera(self, trace_id: str) -> None:
         try:
@@ -133,7 +150,9 @@ class BackOfficeLogin:
         except Exception:  # noqa: BLE001 - la LED est un retour visuel, pas une condition d'accès
             self._publisher.publish("auth.led.unavailable", trace_id, mode=mode.value)
 
-    def _emit(self, event: str, trace_id: str, identifier: str) -> None:
+    async def _emit(self, event: str, trace_id: str, identifier: str, detail: str = "") -> None:
         # Empreinte courte : corrélable dans Loki sans écrire l'identifiant en clair.
         digest = hashlib.sha256(identifier.encode()).hexdigest()[:12]
         self._publisher.publish(event, trace_id, identifier_hash=digest)
+        # Le journal du back-office (mémoire, réservé aux habilités) garde l'identifiant lisible.
+        await self._journal.record(AccessEntry(self._clock.now(), event, identifier, detail))

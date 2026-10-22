@@ -13,6 +13,7 @@ const Transaction = React.lazy(() => import('./component/transaction/transaction
 const Transfer = React.lazy(() => import('./component/transfer/transfer'));
 const Auth = React.lazy(() => import('./component/authentication/auth'));
 const AdminLogin = React.lazy(() => import('./component/admin/adminLogin'));
+const AdminConsole = React.lazy(() => import('./component/admin/adminConsole'));
 const Notfound = React.lazy(() => import('./component/notfound/notfound'));
 
 function App() {
@@ -43,6 +44,7 @@ function AnimatedRoutes() {
               <Route path="/" element={<Defaultpage />} />
               <Route path="/register" element={<Register />} />
               <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/console" element={<AdminConsole />} />
               <Route path="*" element={<Notfound />} />
             </Route>
           </Routes>

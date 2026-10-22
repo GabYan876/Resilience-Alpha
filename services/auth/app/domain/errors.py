@@ -37,3 +37,15 @@ class FaceNotVerified(DomainError):
 
 class FaceCheckUnavailable(DomainError):
     """Caméra ou agent hôte en panne : échec fermé, jamais de repli sur le mot de passe seul."""
+
+
+class NotAuthorized(DomainError):
+    """Aucune habilitation, ou habilitation insuffisante pour l'action demandée."""
+
+
+class UnknownUser(DomainError):
+    """Identifiant sans compte : on n'habilite que des comptes existants."""
+
+
+class CannotRevokeSelf(DomainError):
+    """Un administrateur ne retire pas sa propre habilitation (évite un back-office orphelin)."""

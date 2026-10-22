@@ -1,7 +1,7 @@
 # Consigne additionnelle 1 — authentification renforcée du back-office
 
 Source : `docs/WorkShop 2026-27 M2 - Consigne Additionnelle 1.pdf` (reçue le 22/10). Le sujet précise : « soyez à l'écoute de toutes nouvelles consignes ».
-Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, essayés sur la caméra intégrée du PC de Kevin ; page `/admin` et panneaux Grafana `auth.*` livrés par la PR #75 ; firmware, persistance du blocage, habilitations et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
+Statut (22/10) : **conception, puis lots L1 (machine à états) et L2 (agent hôte) livrés** par la PR #72, essayés sur la caméra intégrée du PC de Kevin ; page `/admin` et panneaux Grafana `auth.*` livrés par la PR #75 ; habilitations et console `/admin/console` livrées par la PR #93 (Gabriel, essayées avec des doubles seulement) ; firmware, persistance du blocage et des habilitations, et gouvernance restent à faire. Preuves et manques : [`repartition-reelle.md`](repartition-reelle.md) §7. Les choix marqués *(proposition)* sont à valider par l'équipe ; les points marqués **[à trancher]** bloquent le développement.
 
 ## 1. Ce que demande la consigne
 
@@ -59,7 +59,7 @@ Contrainte technique majeure : **Docker Desktop (WSL2) ne voit pas une caméra U
 
 **Reconnaissance** *(proposition)* : OpenCV `FaceDetectorYN` (YuNet) + `FaceRecognizerSF` (SFace), modèles ONNX d'environ 40 Mo au total, CPU seul, aucune compilation dlib (écarte `face_recognition`, lourd à installer sur Windows). Seuil de similarité cosinus fixé sur les données de l'équipe, mesuré (taux de faux rejet / fausse acceptation) et consigné, comme pour le ML d'anomalies : pas de seuil « au hasard ».
 
-**ESP8266** *(proposition)* : firmware PlatformIO dans `firmware/esp8266-led/` (ouvrable dans CLion), deux GPIO pour la LED bicolore (résistances série), client WiFi du point d'accès. L'ESP8266 expose `POST /led` (`{"mode":"off|green_blink|green_solid|red_blink|red_solid"}`, secret partagé : requête signée HMAC-SHA256 avec compteur anti-rejeu) ; les durées (30 s, 10 clignotements) sont gérées **dans le firmware** pour que la LED reste cohérente si le réseau coupe. Pas de broker MQTT : un service de plus coûterait de la RAM pour rien.
+**Carte retenue** *(matériel disponible)* : ESP32-DevKitC / ESP32-DevKit V1 avec ESP32-WROOM-32, firmware PlatformIO dans `firmware/esp32-led/` (ouvrable dans CLion), GPIO25 et GPIO26 pour la LED bicolore (résistances série), client WiFi du point d'accès. Cette carte remplace l'ESP8266 initialement prévu par la consigne. L'ESP32 expose `POST /led` (`{"mode":"off|green_blink|green_solid|red_blink|red_solid"}`, secret partagé : requête signée HMAC-SHA256 avec compteur anti-rejeu) ; les durées (30 s, 10 clignotements) sont gérées **dans le firmware** pour que la LED reste cohérente si le réseau coupe. Pas de broker MQTT : un service de plus coûterait de la RAM pour rien.
 
 ```mermaid
 flowchart LR
@@ -70,7 +70,7 @@ flowchart LR
         AUTH -->|API locale + jeton| CAM[host-agent camera<br/>OpenCV YuNet + SFace<br/>caméra USB]
         AUTH -->|événements JSON| LOKI[Loki / Grafana]
     end
-    AUTH -->|POST /led + jeton, WiFi du PA| ESP[ESP8266<br/>LED bicolore]
+    AUTH -->|POST /led signé, WiFi du PA| ESP[ESP32-DevKitC/V1<br/>LED bicolore]
 ```
 
 Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` dans le domaine ; adaptateurs `OpenCvFaceVerifier`, `HostCameraClient`, `HttpStatusLed`, `PostgresLockoutStore` ; fakes pour les tests. Logique d'authentification dans `application/`, pas dans les routes.
@@ -80,7 +80,17 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 - Rôles minimaux *(proposition)* : `admin` (gère comptes, rôles, enrôlements), `operator` (consulte le tableau de supervision), `customer` (parcours Pay-Now, **hors** authentification faciale : la consigne vise le back-office).
 - Fonctions : créer/désactiver un compte, attribuer/retirer un rôle, **enrôler / révoquer un visage**, débloquer un identifiant, consulter le journal d'accès.
 - Un `admin` ne peut ni s'auto-retirer le dernier rôle admin ni enrôler un visage sans reconnaissance préalable d'un autre admin (amorçage : compte `admin` créé par le seed).
-- Tout changement d'habilitation émet un événement `auth.role.changed` (Loki).
+- Tout changement d'habilitation émet un événement vers Loki (identifiants hachés) : `auth.admin.role_granted`, `auth.admin.role_revoked`, `auth.admin.unlocked`, `auth.admin.forbidden` (opérateur qui tente une écriture) et `auth.access.denied_no_role` (compte sans rôle, visage et mot de passe valides).
+
+**Réalisé par la PR #93 (22/10)** et écarts avec la conception ci-dessus :
+
+- Rôles `admin` / `operator` derrière le port `RoleStore` (stockage en mémoire, perdu au redémarrage de `auth`). Pas de rôle `customer` : le parcours Pay-Now reste hors back-office. Sans rôle : refus, LED rouge fixe, aucun échec compté.
+- Premiers administrateurs fixés par `BACKOFFICE_ADMINS` (vide = back-office fermé). Il n'y a donc pas de compte `admin` créé par le seed.
+- Jeton de back-office à audience `backoffice`, 15 min (`ADMIN_TOKEN_TTL_SECONDS`) ; l'API métier le refuse et le back-office refuse un jeton client. Le rôle n'est pas dans le jeton : il est relu à chaque requête, un retrait prend effet tout de suite.
+- Fonctions livrées : attribuer / retirer un rôle, débloquer un identifiant, consulter le journal d'accès (200 lignes en mémoire). `operator` est en lecture seule.
+- **Écarts** : la règle livrée est « un admin ne peut pas retirer sa propre habilitation » (409), plus simple que « dernier admin ».
+- **Non livré** : créer / désactiver un compte depuis le back-office ; enrôler / révoquer un visage depuis le back-office (volontairement en ligne de commande sur le PC Hôte : le gabarit ne transite jamais par le réseau).
+- Routes en GET/POST uniquement (le CRS du WAF refuse PUT et DELETE) : `/auth/admin/{habilitations, habilitations/revoke, lockouts, lockouts/unlock, journal, me}`.
 
 ## 5. Sécurité, conformité et données
 
@@ -90,16 +100,16 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 | Stockage | Uniquement le **gabarit** (vecteur de 128 valeurs), jamais l'image ; chiffré au repos, clé gérée par SOPS (même chaîne que les secrets) ; aucun gabarit dans Git, les images, les logs ni le `-Code.zip` |
 | Caméra | Active uniquement entre la saisie de l'identifiant et la décision ; aucune image conservée, aucun flux enregistré |
 | Usurpation (photo, écran) | **Non couvert** sans détection de vivacité ; à assumer dans « Limites connues », à ne pas promettre au jury |
-| Échec fermé | Caméra, agent ou ESP8266 indisponible → pas d'accès au back-office (jamais de repli sur le mot de passe seul) ; LED non joignable : l'accès n'en dépend pas, mais l'événement est journalisé |
-| Exposition | L'agent hôte n'écoute que sur l'IP locale joignable par `auth`, jeton requis ; l'ESP8266 n'accepte que l'IP du PC Hôte ; ni l'un ni l'autre n'est publié par le WAF |
-| Périmètre offensif | Inchangé : attaques uniquement depuis le PC Attaquant. Le déni de service sur l'ESP8266 ou la caméra est à traiter comme scénario du chaos |
+| Échec fermé | Caméra ou agent indisponible → pas d'accès au back-office (jamais de repli sur le mot de passe seul) ; ESP32/LED non joignable : l'accès n'en dépend pas, mais l'événement est journalisé |
+| Exposition | L'agent hôte n'écoute que sur l'IP locale joignable par `auth`, jeton requis ; l'ESP32 n'accepte que l'IP du PC Hôte ; ni l'un ni l'autre n'est publié par le WAF |
+| Périmètre offensif | Inchangé : attaques uniquement depuis le PC Attaquant. Le déni de service sur l'ESP32 ou la caméra est à traiter comme scénario du chaos |
 
 ## 6. Lien avec les 5 piliers
 
 | Pilier | Impact |
 |---|---|
-| Dev | Page `/admin`, API d'habilitations, agent caméra, firmware ESP8266 |
-| Infra | Déploiement de l'agent hôte par `Deploy.ps1`, WiFi de l'ESP8266 sur le point d'accès, `mem_limit` inchangé (l'agent est hors Docker : mesurer sa RAM) |
+| Dev | Page `/admin`, API d'habilitations, agent caméra, firmware ESP32 |
+| Infra | Déploiement de l'agent hôte par `Deploy.ps1`, WiFi de l'ESP32 sur le point d'accès, `mem_limit` inchangé (l'agent est hors Docker : mesurer sa RAM) |
 | IA/Data | Deuxième modèle ML, de reconnaissance cette fois : seuil et taux d'erreur mesurés |
 | Cyber | Nouveaux risques ER7/ER8, nouveau vecteur physique, blocage par identifiant |
 | Gouvernance | EBIOS (SS6, SO3), AMDEC, matrice, NIS2/DORA (authentification forte), PCA : mode dégradé si la caméra tombe |
@@ -110,7 +120,7 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 |---|---|---|---|
 | L1 | Machine à états d'authentification (Kevin), tables et verrouillage en base (Hugo), ports | Kevin + Hugo | décisions §2 |
 | L2 | Agent hôte caméra + reconnaissance, mesure des seuils | Kevin | caméra sur le PC Hôte |
-| L3 | Firmware ESP8266 (CLion + PlatformIO) + test sur banc ; WiFi et pare-feu | Antoine (firmware), Hugo (réseau) | matériel + WiFi du PA |
+| L3 | Firmware ESP32-DevKitC/V1 (CLion + PlatformIO) + test sur banc ; WiFi et pare-feu | Antoine (firmware), Hugo (réseau) | matériel + WiFi du PA |
 | L4 | Page `/admin`, habilitations, enrôlement | Gabriel | L1 |
 | L5 | Scénarios d'attaque physique/IT (usurpation, force brute, DoS ESP), chaos | François | L1 à L3 |
 | L6 | EBIOS, AMDEC, matrice, PCA (Hugo) ; NIS2/DORA, dossier (Gabriel) | Hugo + Gabriel | tout |

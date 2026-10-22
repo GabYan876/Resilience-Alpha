@@ -68,7 +68,16 @@ de remédiation.
 - **Attendu** : incident `DATABASE_CORRUPTION` → `RestoreDatabaseAction` (dernière archive
   valide antérieure à la détection, moins 15 s de marge) + redémarrage API.
 - **Critère de reprise** : `incident.resolved`, transaction de sonde réussie ; RTO et RPO
-  consignés (référence 21/10 : RTO 3,24–3,79 s, RPO 13,56–59,32 s).
+  consignés. Référence historique du 21/10 : RTO 3,24–3,79 s et RPO 13,56–59,32 s. Rejeu
+  isolé du 22/10 : 1/1, RTO 6,38 s de `Tc` à `incident.resolved`, RPO 108,78 s ; détail et
+  limites du périmètre dans [`s4-corruption-bdd.md`](s4-corruption-bdd.md).
+
+### Restauration à froid (fin de chaos)
+
+- **Injection** : arrêt complet de la pile (`docker compose stop`), sans suppression de volume.
+- **Critère de reprise** : redémarrage en une commande (`up --detach --wait`) puis transaction de sonde
+  réussie, volumes PostgreSQL et sauvegardes conservés ; la durée mesurée n'est pas un RTO d'incident.
+  Procédure et preuve du 22/10 : [`restauration-a-froid.md`](restauration-a-froid.md).
 
 ## Boucle des 5 passages sans intervention
 

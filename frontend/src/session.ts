@@ -33,3 +33,30 @@ export function clearSession() {
         sessionStorage.removeItem(PROFILE);
     } catch { /* rien à effacer */ }
 }
+
+// Session du back-office : jeton distinct (audience « backoffice »), refusé par l'API client.
+// Durée courte côté serveur (15 min) ; effacée à la déconnexion ou à la fermeture de l'onglet.
+const ADMIN = "adminSession";
+
+export type AdminSession = { token: string; identifier: string; name: string; role: "admin" | "operator" };
+
+export function saveAdminSession(session: AdminSession) {
+    try {
+        sessionStorage.setItem(ADMIN, JSON.stringify(session));
+    } catch { /* stockage indisponible : la console redemandera la connexion */ }
+}
+
+export function loadAdminSession(): AdminSession | null {
+    try {
+        const raw = sessionStorage.getItem(ADMIN);
+        return raw ? (JSON.parse(raw) as AdminSession) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function clearAdminSession() {
+    try {
+        sessionStorage.removeItem(ADMIN);
+    } catch { /* rien à effacer */ }
+}

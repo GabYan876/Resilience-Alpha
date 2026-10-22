@@ -188,10 +188,10 @@ Conception, interprétations à trancher et découpage : [`../consigne-additionn
 |---|---|---|---|
 | `auth` (étendu) | Machine à états identifiant → visage → mot de passe, verrouillage (2 échecs → 5 min), habilitations | Compose, réseaux app/db | non |
 | `host-agent/camera` | Ouvre la caméra USB du PC Hôte, détecte et compare le visage (OpenCV YuNet + SFace) ; API locale + jeton | **natif Windows, hors Docker** (Docker Desktop ne voit pas l'USB) | non, joignable par `auth` seulement |
-| ESP8266 (`firmware/esp8266-led/`) | LED bicolore, `POST /led` (requête signée HMAC), WiFi du point d'accès | matériel | non |
+| ESP32-DevKitC/V1 (`firmware/esp32-led/`) | LED bicolore, `POST /led` (requête signée HMAC), WiFi du point d'accès | matériel | non |
 | Tables `roles`, `face_templates`, `login_lockouts` | Habilitations, gabarits chiffrés, blocages | BDD | non |
 
-Ports : `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` ; événements `auth.face.recognized|rejected`, `auth.lockout.started`, `auth.role.changed` vers Loki. Échec fermé : sans caméra ou agent, pas d'accès.
+Ports : `FaceVerifier`, `CameraControl`, `StatusLed`, `LockoutStore` ; `RoleStore` (habilitations `admin` / `operator`, en mémoire pour l'instant) ; événements `auth.face.recognized|rejected`, `auth.locked`, `auth.access.denied_no_role`, `auth.admin.role_granted|role_revoked|unlocked|forbidden` vers Loki. Jeton de back-office à audience `backoffice`, distinct du jeton client : l'API métier le refuse. `POST /auth/admin/login` renvoie `{token, identifier, name, role}` ; routes d'administration en GET/POST sous `/auth/admin/*` (le CRS refuse PUT/DELETE). Détail : [`consigne-additionnelle-1.md`](../consigne-additionnelle-1.md) §4. Échec fermé : sans caméra ou agent, pas d'accès.
 
 ## 6. Questions ouvertes
 

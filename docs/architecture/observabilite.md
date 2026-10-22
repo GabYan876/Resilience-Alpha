@@ -150,7 +150,7 @@ Loki tourne en mode `single-binary` (`-target=all`), stockage `filesystem`, **r�
 
 ## 7. Accès Docker d'Alloy
 
-**Choix retenu : Alloy ne touche jamais le socket Docker.** Il interroge un `docker-socket-proxy` dédié, qui n'expose que des lectures, via `ALLOY_DOCKER_HOST=tcp://docker-proxy:2375`.
+**Choix retenu : Alloy ne touche jamais le socket Docker.** Il interroge un `docker-socket-proxy` dédié, qui n'expose que des lectures, via `ALLOY_DOCKER_HOST=tcp://172.28.90.10:2375` — l'IP fixe de `docker-proxy` sur `docker-proxy-net` (voir « Auto-guérison d'Alloy » plus bas pour le pourquoi de l'IP plutôt que le nom DNS).
 
 C'est l'alignement complet avec la règle non négociable du projet : aucun composant non privilégié ne touche le `docker.sock`.
 
@@ -194,12 +194,15 @@ Atténuations complémentaires : Alloy ne tourne pas en `root` (`user: "473:473"
 
 ### Auto-guérison d'Alloy
 
-Constaté en test (2026-10-21) : le résolveur DNS intégré de Docker Desktop/WSL2 peut cesser de résoudre `docker-proxy` depuis Alloy sans que son process ne plante. Alloy reste `Up`, son port HTTP répond, mais il n'inspecte plus aucun conteneur et n'ingère plus une seule ligne de log — panne silencieuse : Loki se vide progressivement sans qu'aucun conteneur ne soit signalé `unhealthy`, et `LokiAttackerLocator` ne trouve alors jamais de compte à bloquer, faute de données à interroger.
+Constaté en test (2026-10-21, confirmé en conditions réelles le 22/10 : 343 occurrences sur 30+ min, 0 succès de la découverte pendant que le flood tournait) : le résolveur DNS intégré de Docker Desktop/WSL2 peut cesser de résoudre `docker-proxy` depuis Alloy sans que son process ne plante (`dial tcp: lookup docker-proxy: i/o timeout`). Alloy reste `Up`, son port HTTP répond — le `healthcheck` d'origine, qui ne testait que ce port, ne voyait donc rien — mais il n'inspecte plus aucun conteneur et n'ingère plus une seule ligne de log — panne silencieuse : Loki se vide progressivement sans qu'aucun conteneur ne soit signalé `unhealthy`, `LokiAttackerLocator` ne trouve alors jamais de compte à bloquer faute de données à interroger, et les panneaux Grafana basés sur Loki (incidents clos, transactions vérifiées) restent figés sans que rien ne le signale.
 
-Deux ajouts pour détecter et corriger ça sans intervention humaine :
+Pire : un `docker compose up` qui recrée la pile applicative (nouveaux ID de conteneurs) pendant qu'Alloy tourne déjà peut tomber exactement sur cette fenêtre d'échec DNS et ne jamais récupérer les nouveaux conteneurs, même une fois le résolveur redevenu fonctionnel — observé en conditions réelles le 22/10, où Alloy avait perdu `api`/`auth`/`remediation` recréés plus de 2 h plus tôt sans jamais s'en rétablir seul.
 
-- Le `healthcheck` d'Alloy teste désormais, en plus de son propre port, une connexion TCP vers `docker-proxy` — c'est précisément la liaison qui casse en silence.
-- `autoheal` (`willfarrell/autoheal`, épinglé par digest car aucun tag versionné ne gère `DOCKER_SOCK` en `tcp://`) redémarre tout conteneur marqué `unhealthy` portant le label `autoheal: "true"` — aujourd'hui seul Alloy le porte. Docker Compose seul (hors Swarm) ne redémarre jamais un conteneur unhealthy de lui-même ; c'est le rôle de ce sidecar.
+Trois mécanismes, du plus direct au plus large :
+
+- **IP fixe plutôt que nom DNS** (fix retenu) : `docker-proxy-net` déclare un subnet (`172.28.90.0/24`), `docker-proxy` y reçoit l'adresse fixe `172.28.90.10`, et `ALLOY_DOCKER_HOST` ainsi que le `healthcheck` d'Alloy pointent directement sur cette IP. Alloy et son `docker-socket-proxy` sont les deux seuls membres d'un réseau `internal: true` dédié : aucun autre conteneur n'y est jamais ajouté, donc fixer l'IP ne crée aucun risque de collision. Ce lien précis ne dépend donc plus du résolveur DNS de Docker Desktop, seule la connexion TCP doit réussir.
+- Le `healthcheck` d'Alloy teste, en plus de son propre port, une connexion TCP vers cette IP fixe — la liaison qui cassait en silence avant le fix.
+- `autoheal` (`willfarrell/autoheal`, épinglé par digest car aucun tag versionné ne gère `DOCKER_SOCK` en `tcp://`) redémarre tout conteneur marqué `unhealthy` portant le label `autoheal: "true"` — aujourd'hui seul Alloy le porte. Docker Compose seul (hors Swarm) ne redémarre jamais un conteneur unhealthy de lui-même ; c'est le rôle de ce sidecar, conservé comme filet de sécurité pour toute panne de connectivité qui ne tiendrait pas qu'à la résolution DNS (proxy lent, réseau coupé...).
 
 `autoheal` n'a, comme Alloy, aucun accès direct au socket : il passe par `docker-proxy-autoheal`, une passerelle dédiée et distincte de celle d'Alloy (réseau `autoheal-internal`, `internal: true`, propre à ces deux conteneurs), n'autorisant que `EVENTS` (détecter les changements d'état), `CONTAINERS` (lecture) et `ALLOW_RESTARTS` (redémarrage) — jamais `IMAGES`, `EXEC` ni aucune écriture au-delà du restart. Testé en coupant volontairement le réseau d'Alloy vers `docker-proxy` : passage à `unhealthy` détecté en ~70 s, redémarrage automatique déclenché par `autoheal`, service à nouveau sain après reconnexion.
 
@@ -297,7 +300,7 @@ Les quatre volumes nommés (`resilience-prometheus-data`, `resilience-loki-data`
 | `GRAFANA_ROOT_URL` | URL publique vue par les navigateurs, derrière le WAF | `http://127.0.0.1:8080/grafana/` |
 | `GRAFANA_SERVE_FROM_SUB_PATH` | Grafana est servie sous `/grafana` | `true` |
 | `GRAFANA_ANONYMOUS_ENABLED` | accès anonyme en lecture ; `true` pour la démonstration, `false` sinon | `true` |
-| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy — la passerelle restreinte de la pile. À ne pas repointer vers le socket. | `tcp://docker-proxy:2375` |
+| `ALLOY_DOCKER_HOST` | endpoint Docker d'Alloy — la passerelle restreinte de la pile, par IP fixe (172.28.90.10) pour éviter le résolveur DNS. À ne pas repointer vers le socket. | `tcp://172.28.90.10:2375` |
 | `LOKI_PUSH_URL` | URL de push Loki utilisée par Alloy | `http://loki:3100/loki/api/v1/push` |
 | `RESILIENCE_NET_NAME` | nom Docker réel du réseau externe créé par la pile principale | `resilience-net` |
 

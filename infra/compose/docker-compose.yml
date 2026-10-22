@@ -112,6 +112,7 @@ services:
       HOST_AGENT_TOKEN: ${HOST_AGENT_TOKEN:-}
       LED_URL: ${LED_URL:-}
       LED_TOKEN: ${LED_TOKEN:-}
+      BACKOFFICE_ADMINS: ${BACKOFFICE_ADMINS:-} # vide = back-office fermé
     volumes:
       - jwt-secret-live:/run/secrets:ro
     healthcheck:

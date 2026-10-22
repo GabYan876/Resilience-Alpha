@@ -22,13 +22,21 @@ from app.adapters.host_agent import (
     UnconfiguredFaceVerifier,
 )
 from app.adapters.logging_publisher import JsonEventPublisher
-from app.adapters.memory_stores import InMemoryFaceSessionStore, InMemoryLockoutStore, SystemClock
-from app.adapters.security import Argon2PasswordHasher, JwtTokenIssuer
+from app.adapters.memory_stores import (
+    InMemoryAccessJournal,
+    InMemoryFaceSessionStore,
+    InMemoryLockoutStore,
+    InMemoryRoleStore,
+    SystemClock,
+)
+from app.adapters.security import Argon2PasswordHasher, JwtAdminTokens, JwtTokenIssuer
 from app.adapters.sql_users import SqlUserRepository
 from app.api.routes import build_admin_router, build_router
+from app.application.backoffice_admin import BackOfficeAdmin
 from app.application.backoffice_login import BackOfficeLogin
 from app.application.use_cases import LoginUser, RegisterUser
 from app.config import Settings
+from app.domain.models import Role
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -39,7 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     tokens = JwtTokenIssuer(settings.jwt_secret, settings.jwt_ttl_seconds)
     publisher = JsonEventPublisher(sys.stdout)
 
-    # Agent caméra et ESP8266 : délais courts, la connexion ne doit pas rester suspendue.
+    # Agent caméra et ESP32 : délais courts, la connexion ne doit pas rester suspendue.
     http_clients: list[httpx.AsyncClient] = []
     if settings.host_agent_url and settings.host_agent_token:
         agent_http = httpx.AsyncClient(base_url=settings.host_agent_url, timeout=15.0)
@@ -54,18 +62,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         led = HttpStatusLed(led_http, settings.led_token)
     else:
         led = NoStatusLed()
+    admin_tokens = JwtAdminTokens(settings.jwt_secret, settings.admin_token_ttl_seconds)
+    lockouts = InMemoryLockoutStore()
+    roles = InMemoryRoleStore({identifier: Role.ADMIN for identifier in settings.backoffice_admins})
+    journal = InMemoryAccessJournal()
+    clock = SystemClock()
     backoffice = BackOfficeLogin(
         users,
         hasher,
-        tokens,
+        admin_tokens,
         camera,
         faces,
         led,
-        InMemoryLockoutStore(),
+        lockouts,
         InMemoryFaceSessionStore(),
-        SystemClock(),
+        clock,
         publisher,
+        roles,
+        journal,
     )
+    backoffice_admin = BackOfficeAdmin(users, roles, lockouts, journal, clock, publisher)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -84,7 +100,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
     )
 
-    app.include_router(build_admin_router(lambda: backoffice))
+    app.include_router(
+        build_admin_router(lambda: backoffice, lambda: backoffice_admin, admin_tokens)
+    )
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
