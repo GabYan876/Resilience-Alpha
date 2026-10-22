@@ -94,7 +94,7 @@ gantt
     Autoheal Alloy, campagne flood, script SQLi          :k9, 2026-10-21, 1d
     Jalons, README, clôture des écarts                   :k10, 2026-10-19, 3d
     -RenderEnv, ruff, validation du jalon du 22/10       :k11, 2026-10-21, 1d
-    Consigne 1 : auth, agent caméra, /admin, LED, rejeu  :k12, 2026-10-22, 1d
+    Consigne 1, auth, agent caméra, /admin, LED, rejeu :k12, 2026-10-22, 1d
     Alertes flood, blocklist, correctif LED, docs        :k13, 2026-10-22, 1d
 
     section François
