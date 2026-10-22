@@ -22,7 +22,8 @@ WebServer server(80);
 Mode mode = Mode::Off;
 uint32_t modeStart = 0;
 uint64_t lastCounter = 0;  // en RAM : un rejeu reste possible une fois après un redémarrage
-bool ipLogged = false;
+uint32_t lastAnnounce = 0;
+constexpr uint32_t ANNOUNCE_PERIOD_MS = 30000;
 
 void setMode(Mode next) {
   mode = next;
@@ -166,9 +167,15 @@ void setup() {
 void loop() {
   server.handleClient();
   updateLed();
-  if (!ipLogged && WiFi.status() == WL_CONNECTED) {
-    Serial.print("IP ESP32 : ");
-    Serial.println(WiFi.localIP());
-    ipLogged = true;
+  // L'IP est réannoncée toutes les 30 s : elle sert à renseigner LED_URL du PC Hôte, et un
+  // moniteur série branché après le démarrage doit pouvoir la lire sans redémarrer la carte.
+  if (lastAnnounce == 0 || millis() - lastAnnounce >= ANNOUNCE_PERIOD_MS) {
+    lastAnnounce = millis();
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print("IP ESP32 : ");
+      Serial.println(WiFi.localIP());
+    } else {
+      Serial.printf("WIFI non connecte (status=%d)\n", WiFi.status());
+    }
   }
 }
