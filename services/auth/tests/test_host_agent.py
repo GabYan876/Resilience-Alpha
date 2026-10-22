@@ -73,8 +73,8 @@ async def test_led_poste_le_mode_signe_sans_envoyer_le_secret() -> None:
     expected = hmac.new(b"secret-led", b'1000.{"mode":"red_blink"}', hashlib.sha256).hexdigest()
     assert request.url.path == "/led"
     assert body == b'{"mode":"red_blink"}'
-    assert request.headers["X-Counter"] == "1000"
-    assert request.headers["X-Signature"] == expected
+    assert request.url.params["counter"] == "1000"
+    assert request.url.params["signature"] == expected
     assert "Authorization" not in request.headers
     assert b"secret-led" not in body
 
@@ -84,7 +84,7 @@ async def test_led_compteur_strictement_croissant_meme_si_l_horloge_recule() -> 
     counters: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        counters.append(request.headers["X-Counter"])
+        counters.append(request.url.params["counter"])
         return httpx.Response(200)
 
     led = HttpStatusLed(_client(handler), "s", now_ms=lambda: 500)

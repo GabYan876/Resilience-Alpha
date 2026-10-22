@@ -21,9 +21,13 @@ Le matériel effectivement ciblé ici est une **ESP32-DevKitC / ESP32-DevKit V1 
 | `red_blink` | rouge clignotant | 10 clignotements, puis éteinte |
 | `red_solid` | rouge fixe | 30 s, puis éteinte |
 
-Signature : en-têtes `X-Counter` (entier strictement croissant ; le client `auth` envoie l'horloge en millisecondes)
-et `X-Signature` = HMAC-SHA256 en hexadécimal minuscule, avec `LED_TOKEN` comme clé, du texte
-`<X-Counter>.<corps exact>`. Le secret ne circule jamais ; l'ESP32 refuse un compteur déjà vu (rejeu).
+Signature : paramètres de requête `counter` (entier strictement croissant ; le client `auth` envoie l'horloge
+en millisecondes) et `signature` = HMAC-SHA256 en hexadécimal minuscule, avec `LED_TOKEN` comme clé, du texte
+`<counter>.<corps exact>`. Le secret ne circule jamais ; l'ESP32 refuse un compteur déjà vu (rejeu).
+
+Ils transitent par l'URL et non par des en-têtes : le `WebServer` de l'ESP32 ne restitue pas les en-têtes
+personnalisés (essai du 22/10 : `X-Counter` arrivait vide quel que soit `collectHeaders` ou
+`collectAllHeaders`, donc toute signature était refusée), alors que la lecture des arguments est fiable.
 
 Réponses : `200` mode appliqué, `400` mode invalide, `401` signature absente ou fausse, `403` IP source différente
 de `ALLOWED_HOST_IP`, `409` compteur déjà vu (rejeu). Le client côté `auth` est `HttpStatusLed` (`services/auth/app/adapters/esp_led.py`).
@@ -70,7 +74,8 @@ import hashlib, hmac, os, time, urllib.request
 body = b'{"mode":"green_solid"}'
 counter = str(time.time_ns() // 1_000_000)
 signature = hmac.new(os.environ["LED_TOKEN"].encode(), counter.encode() + b"." + body, hashlib.sha256).hexdigest()
-request = urllib.request.Request("http://<ip-esp>/led", body, {"X-Counter": counter, "X-Signature": signature})
+url = f"http://<ip-esp>/led?counter={counter}&signature={signature}"
+request = urllib.request.Request(url, body, {"Content-Type": "application/json"})
 print(urllib.request.urlopen(request).read())
 PY
 ```
