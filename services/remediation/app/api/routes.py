@@ -7,15 +7,16 @@ from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
-from app.api.schemas import AnomalyIn, IncidentOut
+from app.api.schemas import AnomalyIn, BlocklistOut, IncidentOut
 from app.application.pipeline import RemediationPipeline
-from app.domain.ports import IncidentStore
+from app.domain.ports import BlocklistInspector, IncidentStore
 
 
 def build_router(
     get_pipeline: Callable[[], RemediationPipeline],
     get_ingest_token: Callable[[], str],
     get_store: Callable[[], IncidentStore],
+    get_blocklist: Callable[[], BlocklistInspector],
 ) -> APIRouter:
     router = APIRouter()
 
@@ -56,5 +57,13 @@ def build_router(
         if incident is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "incident inconnu")
         return IncidentOut.from_domain(incident)
+
+    @router.get("/blocklist", response_model=BlocklistOut, dependencies=[Depends(require_token)])
+    def get_blocklist_entries(
+        blocklist: BlocklistInspector = Depends(get_blocklist),
+    ) -> BlocklistOut:
+        """Filet de sécurité : vérifier avant une démo qu'aucun attaquant d'un essai
+        précédent n'est resté bloqué (sinon le flood suivant est invisible côté API)."""
+        return BlocklistOut(entries=blocklist.list_entries())
 
     return router

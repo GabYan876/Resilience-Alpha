@@ -52,3 +52,9 @@ class IncidentOut(BaseModel):
             attacker_ip=incident.anomaly.attacker_ip,
             attacker_subject=incident.anomaly.attacker_subject,
         )
+
+
+class BlocklistOut(BaseModel):
+    """Lecture seule de `blocked.txt` : vide = personne bloqué (état attendu avant une démo)."""
+
+    entries: list[str]

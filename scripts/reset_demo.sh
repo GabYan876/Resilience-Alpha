@@ -54,9 +54,28 @@ echo "[reset] recréation de l'API et de l'authentification (pools de connexions
 compose up -d --force-recreate --no-deps --wait api auth
 
 # Les sources bloquées par la remédiation précédente doivent être libérées, sinon la démo
-# suivante démarrerait avec l'attaquant déjà bloqué. Le WAF relit la liste à chaque requête.
+# suivante démarrerait avec l'attaquant déjà bloqué : le WAF (njs/blocklist.js) relit la liste
+# à chaque requête et répond 403 avant même la passerelle, donc avant l'API — l'attaque
+# suivante devient invisible côté métriques/dashboard, sans aucune erreur visible ailleurs.
+BEFORE="$(compose exec -T remediation sh -c 'cat /blocklist/blocked.txt 2>/dev/null' || true)"
+if [[ -n "${BEFORE}" ]]; then
+  echo "[reset] liste de blocage avant purge (sources d'un essai précédent) :"
+  echo "${BEFORE}" | sed 's/^/[reset]   /'
+else
+  echo "[reset] liste de blocage déjà vide avant purge"
+fi
+
 echo "[reset] liste de blocage du WAF vidée"
 compose exec -T remediation sh -c ': > /blocklist/blocked.txt'
+
+AFTER="$(compose exec -T remediation sh -c 'cat /blocklist/blocked.txt 2>/dev/null' || true)"
+if [[ -n "${AFTER}" ]]; then
+  echo "[reset] ERREUR : la liste de blocage n'est pas vide après la purge :" >&2
+  echo "${AFTER}" | sed 's/^/[reset]   /' >&2
+  echo "[reset] la prochaine attaque restera bloquée au WAF et n'apparaîtra pas dans le dashboard" >&2
+  exit 1
+fi
+echo "[reset] liste de blocage confirmée vide"
 
 if [[ -n "${DETECTOR_WAS_RUNNING}" ]]; then
   echo "[reset] détecteur relancé"
