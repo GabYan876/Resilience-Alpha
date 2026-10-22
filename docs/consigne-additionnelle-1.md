@@ -115,6 +115,8 @@ Hexagonal (comme le reste) : ports `FaceVerifier`, `CameraControl`, `StatusLed`,
 | L5 | Scénarios d'attaque physique/IT (usurpation, force brute, DoS ESP), chaos | François | L1 à L3 |
 | L6 | EBIOS, AMDEC, matrice, NIS2/DORA, PCA, dossier | Antoine + Gabriel | tout |
 
+Tâches détaillées, livrables et échéances par personne : [`repartition-reelle.md`](repartition-reelle.md) §7.
+
 ## 8. Risque de calendrier
 
 Nous sommes jeudi 22/10 ; le **gel du code est à 17 h** et le vendredi est réservé au jury (« on ne code plus »). Cette consigne ajoute du matériel (caméra, ESP8266), une page et un modèle : **elle ne tient pas dans le temps restant sans arbitrage**.
