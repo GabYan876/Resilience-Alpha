@@ -76,3 +76,7 @@ Thumbs.db
 host-agent/camera/models/*.onnx
 host-agent/camera/data/
 *.tpl
+
+# Firmware : secrets WiFi et jeton
+firmware/**/include/secrets.h
+.pio/

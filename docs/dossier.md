@@ -334,7 +334,7 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
 - **Consigne additionnelle 1** ([`consigne-additionnelle-1.md`](consigne-additionnelle-1.md)) :
   **partielle au 22/10**. Fait : identifiant → caméra USB (agent hôte natif, OpenCV YuNet/SFace,
   seuil 0,363, ~198 Mo de RAM) → mot de passe, blocage après une reprise, échec fermé si caméra ou
-  agent coupé, prouvé en réel via le WAF. Non fait : ESP8266 + LED bicolore, habilitations dans le
+  agent coupé, prouvé en réel via le WAF. Firmware ESP8266 écrit mais non essayé sur banc. Non fait : habilitations dans le
   back-office, consentement écrit formalisé, blocage de 5 min non persistant au redémarrage de
   l'agent. La détection de vivacité (photo devant la caméra) n'est pas couverte.
 
