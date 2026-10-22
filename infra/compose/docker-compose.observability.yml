@@ -132,7 +132,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - docker-proxy-net
+      docker-proxy-net:
+        # IP fixe : le résolveur DNS intégré de Docker Desktop/WSL2 échoue par
+        # intermittence sur ce réseau multi-conteneurs (« dial tcp: lookup
+        # docker-proxy: i/o timeout »), et Alloy n'a aucune retentative DNS
+        # intégrée — contrairement à PrometheusMetricsSource côté anomaly-detector.
+        # Un IP fixe fait sortir ce lien précis de la DNS : Alloy et le
+        # healthcheck ci-dessous visent directement l'adresse, jamais le nom.
+        ipv4_address: 172.28.90.10
     mem_limit: 32m
     logging: *logging
     <<: *hardening
@@ -149,7 +156,11 @@ services:
     environment:
       # Alloy ne voit JAMAIS le socket Docker : il passe par docker-proxy, qui
       # n'expose que `GET /containers/...`. Voir docs/architecture/observabilite.md.
-      ALLOY_DOCKER_HOST: ${ALLOY_DOCKER_HOST:-tcp://docker-proxy:2375}
+      # IP fixe (172.28.90.10, voir le service docker-proxy) plutôt que le nom
+      # DNS : évite le « dial tcp: lookup docker-proxy: i/o timeout » intermittent
+      # de Docker Desktop/WSL2, qui faisait perdre à Alloy le suivi des
+      # conteneurs recréés sans jamais le faire planter ni passer unhealthy.
+      ALLOY_DOCKER_HOST: ${ALLOY_DOCKER_HOST:-tcp://172.28.90.10:2375}
       LOKI_PUSH_URL: ${LOKI_PUSH_URL:-http://loki:3100/loki/api/v1/push}
     volumes:
       - ../observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
@@ -186,7 +197,7 @@ services:
         - CMD
         - bash
         - -c
-        - "exec 3<>/dev/tcp/127.0.0.1/12345 && exec 4<>/dev/tcp/docker-proxy/2375"
+        - "exec 3<>/dev/tcp/127.0.0.1/12345 && exec 4<>/dev/tcp/172.28.90.10/2375"
       interval: 15s
       timeout: 5s
       retries: 5
@@ -328,10 +339,15 @@ networks:
 
   # Alloy et la passerelle Docker, et personne d'autre. `internal: true` : aucune
   # route sortante, donc la passerelle n'est joignable depuis rien d'autre.
+  # Subnet fixe : docker-proxy y reçoit une IP statique (172.28.90.10) pour
+  # qu'Alloy la joigne sans dépendre du résolveur DNS de Docker Desktop/WSL2.
   docker-proxy-net:
     name: resilience-docker-proxy-net
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: 172.28.90.0/24
 
   # autoheal et sa propre passerelle Docker, et personne d'autre.
   autoheal-internal:
