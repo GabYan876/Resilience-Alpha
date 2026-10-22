@@ -1,0 +1,2 @@
+Quel modèle utilise l'assistant RAG ?
+Résume cette note.
