@@ -19,7 +19,7 @@ Cases à cocher au fur et à mesure ; ajouter le nom de la personne et l'heure q
   - [x] `-VidChrono.mp4` ≤ 60 s, sans coupe, avant / pendant / après dans Grafana (Kevin, 22/10)
   - [x] `-Dossier.pdf` régénéré (Kevin, 22/10 19h, 9 pages, Edge sans fenêtre depuis `docs/dossier.md`) à partir de `docs/dossier.md` après les corrections de doc, 8 à 12 pages (François)
   - [x] `-Code.zip` sans secret (fait et vérifié par Kevin le 22/10 : aucun `.env` ni clé age dans l'archive) : exclure `.env`, `infra/secrets/*-age-key.txt`, `.venv`, `node_modules`, `dist/`, `ml/models/*.joblib` ; garder les `*.enc.yaml`
-- [ ] **Rejeu à froid sur le PC Hôte** (Hugo + Kevin), à refaire après la fusion LED :
+- [x] **Rejeu à froid sur le PC Hôte** (Kevin, 22/10, voir sous-cases), à refaire après la fusion LED :
   - [x] démarrer Docker Desktop
   - [x] (Kevin, 22/10 : `-RenderEnv` produit `WAF_BIND_HOST=127.0.0.1`, hotspot en `192.168.137.1` à fixer pour le PC Attaquant) vérifier l'IP du PC Hôte et `WAF_BIND_HOST` dans `.env` (le WAF refuse de démarrer si l'IP est absente)
   - [x] (Kevin, 22/10 vers 19h45 : clone neuf de `dc1dfeb`, volumes supprimés, `Deploy.ps1 -RenderEnv` sans erreur, 12 services en marche, transaction réglée ; puis `demo_loop.py --runs 5` : 5/5 reprises, RTO moyen 33 s, max 36 s, depuis le PC Hôte) `Deploy.ps1` sur clone neuf, pile saine, transaction de test réussie

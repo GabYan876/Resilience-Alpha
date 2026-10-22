@@ -26,6 +26,8 @@ WAF, 5 passages consécutifs sans intervention) : **5/5 reprises automatiques**,
 (max 35 s), transaction de test réussie à chaque passage. Un flood isolé lancé depuis le PC
 Attaquant a aussi été repris automatiquement le même jour (voir §6). Rejeu du soir, après la dernière
 correction (reset puis 5 passages, flood depuis le PC Hôte) : 5/5, RTO moyen 31 s (max 34 s).
+Enfin, rejeu à froid sur clone neuf (voir §6 et §10) : 5/5 depuis le PC Hôte (RTO moyen 33 s, max 36 s) puis
+5/5 avec le flood lancé depuis le PC Attaquant (RTO moyen 32 s, max 35 s).
 
 ---
 
@@ -294,6 +296,8 @@ non isolé). Journal complet :
 | Scénario | Résultat | RTO / RPO | Intervention |
 |---|---|---|---|
 | S1 flood, `demo_loop.py --runs 5` (22/10) | 5/5 reprises, transaction de test OK à chaque passage | RTO moyen 32 s, max 35 s (lancé depuis le PC Hôte) | **Non** |
+| S1 flood, rejeu à froid sur clone neuf, volumes supprimés puis `Deploy.ps1 -RenderEnv` (22/10, soir) | 5/5 reprises depuis le PC Hôte, transaction de test OK à chaque passage | RTO moyen 33 s, max 36 s | **Non** |
+| S1 flood, même clone neuf, 5 passages depuis le PC Attaquant via le WAF (22/10, 19h57 à 20h08) | 5/5 reprises (`block_subject` + `restart_service`), un incident par passage, aucun échec, transaction OK | détection 25 à 32 s ; RTO 35, 32, 34, 31, 30 s (moyenne 32 s, max 35 s ; horloges des deux PC non comparées, environ 1 s) | **Non** |
 | S1 flood depuis PC Attaquant via WAF (22/10, 1 passage) | reprise auto (`block_subject` + `restart_service`) | 4,84 s (détecté → résolu) | **Non** |
 | S4 corruption BDD, pile complète (21/10, 2 passages) | restauration auto, transaction OK | RTO 3,24–3,79 s ; RPO 13,56–59,32 s | **Non** |
 | S4 corruption BDD, pile S4 isolée (22/10, 1 passage, journaux stdout, pas Loki) | restauration auto, API saine, transaction OK | RTO 6,376839 s ; RPO 108,776809 s | **Non** |
@@ -487,6 +491,9 @@ Présentées honnêtement, comme limites assumées (voir « Limites connues » d
   `tsc` propres.
 - Secrets rendus localement via `scripts/render_env.sh` ; aucun secret dans le `-Code.zip`.
 - Démonstration rejouable : `scripts/reset_demo.sh` puis `python scripts/demo_loop.py --runs 5`.
+- Essai à froid du 22/10 : clone neuf de `main`, volumes des deux piles supprimés (`down -v`), `Deploy.ps1 -RenderEnv`
+  sans erreur (12 services en marche, transaction de 100 centimes réglée), puis 5/5 reprises depuis le PC Hôte et
+  5/5 depuis le PC Attaquant. L'agent caméra du back-office n'est pas lancé par `Deploy.ps1` (voir `README.md`).
 - Tout le code (y compris généré) est compris et explicable par son auteur devant le jury.
 
 ---
